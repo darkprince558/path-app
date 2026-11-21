@@ -1,6 +1,6 @@
 # Running Claude Code and Codex together
 
-Use one [agent task](../.github/ISSUE_TEMPLATE/agent-task.md) or Entire Trail per outcome. Claim it with your name, agent, branch and files before editing. Track status there as **Ready**, **Working**, **Blocked**, **Review** or **Merged**. Put the reason and next owner beside a blocker. If an issue and a Trail both exist, link them and keep status in one place.
+Use one GitHub issue per outcome. [Create or claim a task](tasks.md) with your name, agent, branch and files before editing. The [team board](https://github.com/darkprince558/path-app/issues/8) shows planned tasks (`task:ready`), work in progress (`task:active`) and recently completed issues. Post a checkpoint when you verify a step, hit a blocker or hand off. Name the next action and who can take it.
 
 ## Start two sessions
 
@@ -47,7 +47,7 @@ Start with the open [guest viewer](https://github.com/darkprince558/path-app/iss
 
 ## Review and hand off
 
-Commit and push a scoped change after the agent has edited files. Check for the `Entire-Checkpoint` trailer and find the ID with `entire checkpoint list`. Add the branch, commit, checkpoint ID, exact verification command and result, and one next action to the issue or Trail.
+Commit and push a scoped change after the agent has edited files. Use `python3 scripts/tasks.py checkpoint N "Observed result" --head --next "Next action"` with your issue number. It attaches the pushed commit and its shared Entire checkpoint when present. Include the verification command or device used so the next person can repeat the check.
 
 The reviewer fetches the branch and inspects the pushed change against the acceptance test, e.g. `git diff origin/main...origin/feature/guest-viewer -- apps/web`. Ask the reviewer to report a reproducible issue or the result of the test. The human owner resolves findings and decides when to merge.
 

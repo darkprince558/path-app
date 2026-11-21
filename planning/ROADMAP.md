@@ -4,7 +4,7 @@
 
 An organizer uploads a real venue scan as **Unlisted**. Someone on a second phone opens the link while signed out, rotates the scene, and recognizes the turn.
 
-[Edit this roadmap on GitHub](https://github.com/darkprince558/path-app/edit/main/planning/ROADMAP.md) · [Open team issues](https://github.com/darkprince558/path-app/issues)
+[Edit this roadmap on GitHub](https://github.com/darkprince558/path-app/edit/main/planning/ROADMAP.md) · [Live team board and checkpoints](https://github.com/darkprince558/path-app/issues/8)
 
 ## Pick up work
 
