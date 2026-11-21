@@ -1,0 +1,44 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M7ZP9FGJAPCW53MKADJANF2D",
+  "strategy": "manual-commit",
+  "branch": "feature/landing-page",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/web/public/resumes/anish-jami.pdf",
+    "apps/web/public/resumes/arielle-tetelbaum.pdf",
+    "apps/web/public/resumes/krishna-panicker.pdf",
+    "apps/web/public/resumes/sam-deitz.pdf",
+    "apps/web/src/landing/Creators.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 16,
+    "cache_creation_tokens": 9833,
+    "cache_read_tokens": 3510043,
+    "output_tokens": 5245,
+    "api_call_count": 7
+  },
+  "redaction": {
+    "replacements": 179,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 31,
+      "credentialed_uri": 0,
+      "entropy": 128,
+      "key_context": 20,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
