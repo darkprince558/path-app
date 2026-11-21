@@ -1,0 +1,1 @@
+The popup link saved is in a weird position, can you put it at the bottom maybe like aligned to left but to the right of the side bar you know? or like centered when there is no sidebar
