@@ -1,0 +1,60 @@
+We're building !404, an indoor 3D navigation app for Hack Western.
+
+Our new direction is iPhone LiDAR scanning with automatic pathfinding, manual route corrections, and Gemini landmark instructions.
+
+Team:
+- Anish: ARKit LiDAR scanner, capture bundle, CPU mesh processor.
+- Sam: Next.js API, Auth0, Tiger Data PostgreSQL, storage, scan processing.
+- Krishna: Gemini landmark identification from camera frames and verified route directions.
+- Arielle: 3D frontend, eventually unified mobile app.
+
+The agreed capture bundle contains:
+manifest.json, source.glb, points.ply, frames.json, frames/*.jpg, preview.jpg.
+
+The manifest records capture ID, device, coordinate system, entrance pose, file checksums and tracking warnings. Frames have stable IDs and camera poses.
+
+Read AGENTS.md, the existing database schema, API routes, and project documentation.
+
+Create docs/lidar-pipeline-plan.md containing:
+1. Existing functionality we can reuse.
+2. Required schema changes.
+3. Required API endpoints.
+4. Capture upload and processing architecture.
+5. Integration points with existing scans and navigation.
+6. Implementation phases.
+
+Keep Tiger Data. Preserve existing features.
+
+Do not implement functionality yet. Only create the planning document and report the findings.
+
+---
+
+What are you doing
+
+---
+
+I dont see the commands, are you stalling or actually doing things?
+
+---
+
+Read docs/lidar-pipeline-plan.md and the existing Drizzle schema.
+
+Implement only the database changes needed for LiDAR captures:
+- captures
+- processing_jobs
+- scan_revisions
+- Any minimal supporting metadata required for frame references and approval.
+
+Use the existing Tiger Data PostgreSQL connection.
+
+Generate Drizzle migrations, but do not apply them to the remote database automatically.
+
+Preserve existing scans, spaces, routes, events and authentication.
+
+Run schema/type checks and report the migration commands.
+
+Do not implement API endpoints or processing yet.
+
+---
+
+Could you commit the last two tasks i gave you
