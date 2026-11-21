@@ -87,30 +87,46 @@ interface Person {
   who: string;
   line: string;
   sign: string;
-  arrow: string;
+  arrow: Direction;
   figure: ReactNode;
   rolls?: boolean;
 }
 
+type Direction = "right" | "up" | "up-right";
+
 const PEOPLE: Person[] = [
-  { who: "Students", line: "Find Room 204 before the exam.", sign: "Room 204", arrow: "→", figure: <Student /> },
+  { who: "Students", line: "Find Room 204 before the exam.", sign: "Room 204", arrow: "right", figure: <Student /> },
   {
-    who: "Wheelchair users, and anyone skipping stairs",
-    line: "Check a place first. Take the step-free route.",
+    who: "Wheelchair users",
+    line: "Check a place first, then take the step-free route.",
     sign: "Elevator",
-    arrow: "↑",
+    arrow: "up",
     figure: <WheelchairUser />,
     rolls: true,
   },
-  { who: "Event teams", line: "Label the venue your way.", sign: "Sponsor booth", arrow: "→", figure: <EventTeam /> },
-  { who: "Explorers", line: "Share the trails and places you know.", sign: "Trailhead", arrow: "↗", figure: <Explorer /> },
+  { who: "Event teams", line: "Label the venue your way, room by room.", sign: "Sponsor booth", arrow: "right", figure: <EventTeam /> },
+  { who: "Explorers", line: "Share the trails and places you know.", sign: "Trailhead", arrow: "up-right", figure: <Explorer /> },
 ];
+
+/**
+ * Sign arrows are drawn, not typed: typed arrows (→ ↑ ↗) come out at different
+ * weights in different fonts, and iPhones show ↗ as an emoji. 12 × 12 units.
+ */
+function SignArrow({ direction, x, y }: { direction: Direction; x: number; y: number }) {
+  const rotate = direction === "right" ? 0 : direction === "up" ? -90 : -45;
+  return (
+    <g transform={`translate(${x + 6} ${y + 6}) rotate(${rotate})`}>
+      <path d="M-5.5 0 H5 M0.5 -4.5 L5 0 L0.5 4.5" fill="none" stroke="#F3EBD0" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  );
+}
 
 /** Scene units: 260 × 146, route at y = 136. The figure walks from x = 36 to x = 136, stopping short of the post. */
 const WALK = 100;
 
 function Scene({ person, run, delay }: { person: Person; run: number; delay: number }) {
-  const signWidth = Math.max(84, person.sign.length * 9 + 34);
+  const textWidth = person.sign.length * 8.4;
+  const signWidth = Math.round(textWidth + 46);
   const style = { "--walk": `${WALK}px`, "--pg-delay": `${delay}s`, animationDelay: `${delay}s` } as CSSProperties;
   return (
     <svg viewBox="0 0 260 146" className="w-full overflow-visible text-forest" aria-hidden="true">
@@ -121,9 +137,10 @@ function Scene({ person, run, delay }: { person: Person; run: number; delay: num
       <g transform={`translate(${256 - signWidth} 0)`}>
         <rect width={signWidth} height="30" rx="6" fill="#2F4A3A" />
         <rect x="2.5" y="2.5" width={signWidth - 5} height="25" rx="4" fill="none" stroke="#F3EBD0" strokeOpacity="0.8" strokeWidth="1.5" />
-        <text x={signWidth / 2} y="20.5" textAnchor="middle" fontFamily="Overpass, sans-serif" fontWeight="900" fontSize="14" fill="#F3EBD0">
-          {person.sign} {person.arrow}
+        <text x="13" y="20.5" fontFamily="Overpass, sans-serif" fontWeight="900" fontSize="14" fill="#F3EBD0">
+          {person.sign}
         </text>
+        <SignArrow direction={person.arrow} x={signWidth - 25} y={9} />
       </g>
       <g transform="translate(36 28)">
         {run > 0 ? (
@@ -173,8 +190,8 @@ function PersonStop({ person, index }: { person: Person; index: number }) {
     >
       <Scene person={person} run={run} delay={first && wide ? index * 0.45 : 0} />
       <div className="px-2 text-center lg:px-4">
-        <p className="font-mono text-sm tracking-wide text-muted uppercase">{person.who}</p>
-        <p className="mt-1 font-display text-xl leading-tight font-black text-balance">{person.line}</p>
+        <h3 className="font-display text-2xl leading-tight font-black">{person.who}</h3>
+        <p className="mt-1.5 text-lg leading-snug text-balance text-muted">{person.line}</p>
       </div>
     </li>
   );
@@ -183,7 +200,7 @@ function PersonStop({ person, index }: { person: Person; index: number }) {
 /** Phones: the route zigzags down from one person to the next. */
 function Connector({ toRight }: { toRight: boolean }) {
   return (
-    <li aria-hidden="true" className="h-16 lg:hidden xl-text:lg:block">
+    <li aria-hidden="true" className="my-8 h-28 lg:hidden xl-text:lg:block">
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="size-full">
         <path
           d={toRight ? "M40 0 C40 20, 60 20, 60 40" : "M60 0 C60 20, 40 20, 40 40"}
@@ -201,12 +218,12 @@ function Connector({ toRight }: { toRight: boolean }) {
 
 export default function WhoUses() {
   return (
-    <section id="who" aria-labelledby="who-heading" className="overflow-hidden bg-paper py-20 md:py-28">
+    <section id="who" aria-labelledby="who-heading" className="bg-paper py-28 md:py-40">
       <Container>
         <h2 id="who-heading" className="text-center font-display text-[clamp(2rem,3.6vw,3rem)] leading-none font-black text-balance">
           One app. A lot of different trips.
         </h2>
-        <ul className="mx-auto mt-14 grid max-w-md lg:max-w-none lg:grid-cols-4 xl-text:lg:max-w-md xl-text:lg:grid-cols-1">
+        <ul className="mx-auto mt-16 grid max-w-md lg:mt-20 lg:max-w-none lg:grid-cols-4 xl-text:lg:max-w-md xl-text:lg:grid-cols-1">
           {PEOPLE.map((person, i) => (
             <Fragment key={person.who}>
               <PersonStop person={person} index={i} />

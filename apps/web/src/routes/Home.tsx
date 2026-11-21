@@ -14,7 +14,7 @@ export default function Home() {
     <div className="relative min-h-dvh bg-paper">
       <SkipLink />
       <LandingNav />
-      <main id="main" tabIndex={-1} className="focus:outline-none">
+      <main id="main" tabIndex={-1} className="overflow-x-clip focus:outline-none">
         <Hero />
         <Problem />
         <AppTour />

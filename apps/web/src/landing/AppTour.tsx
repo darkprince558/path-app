@@ -390,7 +390,7 @@ export default function AppTour() {
   const wide = useWide();
 
   return (
-    <section id="tour" aria-labelledby="tour-heading" data-surface="night" className="relative bg-night py-20 text-paper md:py-28">
+    <section id="tour" aria-labelledby="tour-heading" data-surface="night" className="relative bg-night py-28 text-paper md:py-40">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_30%_at_10%_0%,rgb(47_74_58/0.8),transparent_70%),radial-gradient(40%_25%_at_90%_60%,rgb(47_74_58/0.45),transparent_70%)]"

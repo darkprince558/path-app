@@ -4,7 +4,7 @@ import { Container, DemoQr, Eyebrow, PrimaryLink, SecondaryLink } from "./shared
 /** Join us: the trail ends at a pin beside the call to action and a big QR code. */
 export default function Join() {
   return (
-    <section id="join" aria-labelledby="join-heading" className="bg-paper py-20 md:py-28">
+    <section id="join" aria-labelledby="join-heading" className="bg-paper py-28 md:py-40">
       <Container className="grid items-center gap-10 md:grid-cols-[auto_1fr_auto]">
         <span className="grid size-16 place-items-center rounded-full bg-coral text-ink shadow-lg max-md:hidden" aria-hidden="true">
           <MapPin className="size-8" />

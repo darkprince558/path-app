@@ -299,7 +299,7 @@ export default function Problem() {
   const next = () => choose((active + 1) % POINTS.length);
 
   return (
-    <section id="problem" aria-labelledby="problem-heading" className="bg-paper py-20 md:py-28">
+    <section id="problem" aria-labelledby="problem-heading" className="bg-paper py-28 md:py-40">
       <Container>
         <div className="mx-auto grid max-w-2xl gap-3 text-center">
           <h2 id="problem-heading" className="font-display text-[clamp(2rem,3.6vw,3rem)] leading-none font-black text-balance">
