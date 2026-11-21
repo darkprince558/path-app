@@ -8,5 +8,5 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ".", "");
   const target = env.API_TARGET || "http://127.0.0.1:3000";
   const proxy = { "/api": { target, changeOrigin: false }, "/auth": { target, changeOrigin: false } };
-  return { plugins: [react(), tailwindcss()], server: { port: 5173, proxy }, preview: { port: 4173, proxy } };
+  return { plugins: [react(), tailwindcss()], optimizeDeps: { exclude: ["recast-navigation"] }, server: { port: 5173, proxy }, preview: { port: 4173, proxy } };
 });

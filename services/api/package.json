@@ -4,16 +4,19 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev --hostname localhost --port 3000",
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
     "build": "next build",
     "start": "next start --hostname localhost --port 3000",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/lib/auth/token.test.ts src/lib/api/*.test.ts",
+    "test": "tsx --test --test-concurrency=1 src/lib/auth/token.test.ts src/lib/api/*.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:check": "drizzle-kit check",
     "db:seed": "tsx src/db/seed.ts",
-    "db:ping": "tsx src/db/ping.ts"
+    "db:ping": "tsx src/db/ping.ts",
+    "worker:captures": "tsx scripts/capture-worker.ts",
+    "contract:export": "tsx scripts/export-capture-contract.ts",
+    "contract:check": "tsx scripts/export-capture-contract.ts --check"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.33.0",

@@ -1,5 +1,13 @@
 # Website
 
+## Automatic navigation demo
+
+Task 6 adds `/navmesh-demo`: Recast NavMesh generation from a synthetic room,
+arbitrary floor picks, agent clearance settings, walkable overlay and doorway
+routing. No API is needed. Existing manual navigation and saved routes remain
+available. See the [NavMesh runbook](../../docs/navmesh-navigation.md) for local
+commands, tests, limits and the approved LiDAR revision integration point.
+
 ## Textured GLB spaces and navigation
 
 The integration preserves this React/Vite/Three.js architecture and adds `/spaces`,
@@ -27,6 +35,13 @@ builds the site. `pnpm test:browser` uses the real local API and requires the re
 URLs listed in the runbook. To integrate into Arielle's later frontend branches,
 add the three route entries and keep `SpaceViewer` and its API adapter; the newer
 map-management, settings and layout branches were not merged here.
+
+## Approved LiDAR scans
+
+Approved revisions appear in the existing space viewer as normal GLBs. Share links
+also preserve the saved transform and coordinate metadata; older mock shares keep
+their identity-transform fallback. Follow the [Task 5 runbook](../../docs/lidar-publishing.md)
+for approval, private/public reads and the synthetic browser test.
 
 ## Legacy PLY/mock workflow
 
