@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
-import { Link, useLocation, useParams } from "react-router";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { ArrowLeft, Settings as SettingsIcon } from "lucide-react";
 import { LoadingPanel, MessagePanel } from "../components/StatusPanel";
+import { readMapOrigin } from "../lib/maps";
 import { useReducedMotion, useTripAvoidStairs } from "../lib/preferences";
 import type { PointScan } from "../lib/ply";
 import { formatBytes } from "../lib/scans";
@@ -108,8 +109,6 @@ export default function GuestView() {
       {state.phase === "ready" ? (
         // Reading and Tab order: top bar, then the map, then the trip switch and Reset.
         <ViewerChrome
-          shareId={state.meta.shareId}
-          scan={state.scan}
           showHint={!touched}
           onReset={resetView}
           avoidStairs={avoidStairs}
@@ -180,16 +179,12 @@ export default function GuestView() {
 }
 
 function ViewerChrome({
-  shareId,
-  scan,
   showHint,
   onReset,
   avoidStairs,
   onAvoidStairsChange,
   children,
 }: {
-  shareId: string;
-  scan: PointScan;
   showHint: boolean;
   onReset: () => void;
   avoidStairs: boolean;
@@ -198,25 +193,44 @@ function ViewerChrome({
   children: ReactNode;
 }) {
   const location = useLocation();
-  const downsampled = scan.count < scan.sourceCount;
+  const navigate = useNavigate();
+  const origin = readMapOrigin(location.state);
+  // Names come from the card the map was opened from. The API has no map names yet (#3).
+  const mapName = origin?.mapName ?? "Shared map";
+  // Going back through history keeps the previous page's filters and scroll position.
+  // A map opened straight from a link or QR has no previous page in Path.
+  const canGoBack = origin !== null && (window.history.state as { idx?: number } | null)?.idx !== 0;
   return (
     <>
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-gradient-to-b from-night/90 to-transparent px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-8">
-        <div>
-          <Link
-            to="/"
-            className="pointer-events-auto font-display text-2xl leading-none font-black tracking-wide text-paper"
-          >
-            Path
-          </Link>
-          <div className="mt-1 font-mono text-xs leading-relaxed text-sage">
-            <span title={shareId}>scan {shareId.slice(0, 8)}</span> · {scan.count.toLocaleString()} pts
-            {downsampled ? ` of ${scan.sourceCount.toLocaleString()}` : ""}
-          </div>
+        <div className="min-w-0">
+          {origin ? (
+            <Link
+              to={origin.from}
+              onClick={(event) => {
+                if (canGoBack) {
+                  event.preventDefault();
+                  navigate(-1);
+                }
+              }}
+              className="pointer-events-auto inline-flex min-h-11 items-center gap-1.5 rounded-full bg-night/80 pr-4 pl-2.5 text-sm font-bold text-paper ring-1 ring-sage/50"
+            >
+              <ArrowLeft className="size-5" aria-hidden />
+              {origin.fromLabel}
+            </Link>
+          ) : (
+            <Link
+              to="/"
+              className="pointer-events-auto font-display text-2xl leading-none font-black tracking-wide text-paper"
+            >
+              Path
+            </Link>
+          )}
+          <h1 className="mt-2 truncate font-display text-xl leading-tight font-black text-paper">{mapName}</h1>
         </div>
         <Link
           to="/settings"
-          state={{ from: location.pathname }}
+          state={{ from: location.pathname, origin }}
           aria-label="Settings: text size, motion, avoid stairs"
           className="pointer-events-auto -mt-1 -mr-1 grid size-11 place-items-center rounded-full bg-night/80 text-paper ring-1 ring-sage/50"
         >

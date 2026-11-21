@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import OptionCards from "../components/OptionCards";
 import Switch from "../components/Switch";
 import { usePreferences, type MotionPreference, type TextSize } from "../lib/preferences";
@@ -33,7 +33,8 @@ function Section({ id, title, intro, children }: { id: string; title: string; in
 export default function Settings() {
   const { preferences, update } = usePreferences();
   const location = useLocation();
-  const backTo = (location.state as { from?: string } | null)?.from;
+  const navigate = useNavigate();
+  const { from: backTo, origin } = (location.state as { from?: string; origin?: unknown } | null) ?? {};
 
   useEffect(() => {
     document.title = "Settings · Path";
@@ -43,7 +44,18 @@ export default function Settings() {
     <div className="mx-auto grid max-w-xl gap-10">
       <div>
         {backTo ? (
-          <Link to={backTo} className="text-sm font-bold text-rust underline underline-offset-4">
+          <Link
+            to={backTo}
+            state={origin}
+            onClick={(event) => {
+              // Step back so the map keeps its "← Community" or "← Your maps" button.
+              if ((window.history.state as { idx?: number } | null)?.idx) {
+                event.preventDefault();
+                navigate(-1);
+              }
+            }}
+            className="text-sm font-bold text-rust underline underline-offset-4"
+          >
             ← Back to the map
           </Link>
         ) : null}

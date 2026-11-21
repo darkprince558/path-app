@@ -1,7 +1,7 @@
 import { Globe, Link2, Lock } from "lucide-react";
 import { useMemo } from "react";
 import { Link } from "react-router";
-import type { MapSummary } from "../lib/maps";
+import type { MapOrigin, MapSummary } from "../lib/maps";
 
 /** Small deterministic random generator so each map gets a stable preview. */
 function seeded(text: string) {
@@ -66,7 +66,16 @@ function formatDate(iso?: string) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export default function MapCard({ map, sample = false }: { map: MapSummary; sample?: boolean }) {
+export default function MapCard({
+  map,
+  sample = false,
+  origin,
+}: {
+  map: MapSummary;
+  sample?: boolean;
+  /** The page this card is on, so the map can offer a way back to it. */
+  origin?: { path: string; label: string };
+}) {
   const badge = VISIBILITY_BADGE[map.visibility];
   const updated = formatDate(map.updated);
 
@@ -104,6 +113,7 @@ export default function MapCard({ map, sample = false }: { map: MapSummary; samp
   return (
     <Link
       to={map.sharePath}
+      state={origin ? ({ from: origin.path, fromLabel: origin.label, mapName: map.name } satisfies MapOrigin) : undefined}
       className={`${frame} block transition-transform hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:scale-[0.99]`}
     >
       <article>{body}</article>

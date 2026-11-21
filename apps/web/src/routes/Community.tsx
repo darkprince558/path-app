@@ -83,7 +83,7 @@ export default function Community() {
         <ul className="mt-6 grid grid-cols-2 gap-3 xl-text:max-sm:grid-cols-1 sm:grid-cols-3 md:gap-5 xl:grid-cols-4">
           {state.maps.map((map) => (
             <li key={map.id}>
-              <MapCard map={map} />
+              <MapCard map={map} origin={{ path: "/community", label: "Community" }} />
             </li>
           ))}
         </ul>

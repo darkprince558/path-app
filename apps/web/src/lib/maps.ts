@@ -46,3 +46,21 @@ export function filterMaps(maps: MapSummary[], filter: MapFilter): MapSummary[] 
   if (filter === "shared") return maps.filter((m) => m.sharedBy);
   return maps.filter((m) => !m.sharedBy && m.visibility === filter);
 }
+
+/**
+ * Where a map was opened from, carried in the router's location state so the map
+ * page can offer "← Community" or "← Your maps". Maps opened from a shared link or
+ * QR code have none, and show the Path logo instead.
+ */
+export interface MapOrigin {
+  from: string;
+  fromLabel: string;
+  mapName?: string;
+}
+
+export function readMapOrigin(state: unknown): MapOrigin | null {
+  const value = state as Partial<MapOrigin> | null;
+  return value && typeof value.from === "string" && typeof value.fromLabel === "string"
+    ? { from: value.from, fromLabel: value.fromLabel, mapName: value.mapName }
+    : null;
+}
