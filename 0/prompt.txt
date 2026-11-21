@@ -1,0 +1,1 @@
+also its off centered, more specifically noticable on the desktop. Also maybe on desktop the scroll onto the section should start making them each move from left to right, each animation starting when the one before it ends. maybe also a little bit of spacing between each of them in the line
