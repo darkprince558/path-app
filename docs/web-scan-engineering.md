@@ -23,6 +23,7 @@
 | --- | --- | --- |
 | Website, navigation, QR and ordinary 3D | `react`, `react-router`, TypeScript, Vite, `three`, `@react-three/fiber`, `@react-three/drei`, `qrcode.react` | Already declared on Arielle’s organizer branch. Extend its point-cloud renderer. [Package manifest](https://github.com/darkprince558/path-app/blob/ad4f3bebe1542e4e568e7b5eb4bbb64d185f1b36/apps/web/package.json) |
 | Camera, local media and offline shell | Browser `getUserMedia`, `MediaRecorder`, service worker, Cache API and IndexedDB. Use npm `idb` for draft transactions. | Proposed baseline. Cache the website shell separately from the user’s recorded files. [idb](https://github.com/jakearchibald/idb) |
+| Trail location | Browser Geolocation API (`watchPosition`, `clearWatch`) plus the same IndexedDB draft store. Use GeoJSON for reviewed geographic waypoints and route lines. | Proposed. Verify location availability, accuracy and timing on physical phones in airplane mode and under canopy. [Web Geolocation](https://www.w3.org/TR/geolocation/) · [GeoJSON](https://www.rfc-editor.org/rfc/rfc7946) |
 | Offline camera tracking | `visloc-rs` compiled to WebAssembly in a Web Worker, reading downscaled frames and permitted motion data. | Prototype on iOS and Android. Keep saved frames as the fallback. [Tracker and phone demo](https://rsasaki0109.github.io/visloc-rs/slam/) |
 | Private live mapping | Browser WebSocket, FastAPI WebSockets, Python `pycolmap` plus Path’s session, frame selection and incremental map code. | Prototype. Benchmark frame-to-display latency with a stateful streaming adapter around COLMAP. [FastAPI](https://fastapi.tiangolo.com/advanced/websockets/) · [PyCOLMAP](https://colmap.github.io/pycolmap/) |
 | Resumable transfer | npm `tus-js-client` in the browser and the self-hosted `tusd` service with private object storage. | Proposed. Persist local upload handles, enforce owner access on every operation, and check the server offset after interruption. [Client](https://github.com/tus/tus-js-client) · [Server](https://github.com/tus/tusd) |
@@ -36,6 +37,7 @@
 flowchart LR
     subgraph Phone[Organizer browser]
       Capture[Camera or file import] --> Draft[Local video and draft journal]
+      Location[Optional timestamped location fixes] --> Draft
       Capture --> Tracker[Optional local tracker]
       Tracker --> Monitor[Capture preview]
     end
@@ -74,13 +76,35 @@ The proposed demo deployment uses Caddy for HTTPS and a single web/API host with
 
 **Implementation risk.** PyCOLMAP supplies geometry components. A low-latency mapper that maintains a session across incoming frames is integration work. First replay the same hallway clip at walking speed, keep a bounded keyframe window, and verify a recognizable corner before adding a phone stream. A dense online mapper is a later candidate if a sparse preview fails to help people spot a missed doorway. Server preview points may move after estimates are refined. Store them separately from approved guest geometry.
 
+### Recording location alongside video
+
+**Acquire and save.** When the mapper enables location on the HTTPS scanner, request permission and start `navigator.geolocation.watchPosition`. Write each fix to IndexedDB as it arrives, independently of video chunks and internet access. Record the acquisition timestamp, WGS84 latitude/longitude and horizontal accuracy in meters. Keep altitude, altitude accuracy, heading and speed nullable when unavailable. The browser chooses its positioning sources and update cadence. Surface **Waiting for location**, fix age and accuracy, and **Location unavailable**. Continue filming through denial, timeout and poor reception. Stop the watch on opt-out or Finish. In between-clips route mode, stopping a clip ends that clip association and leaves the visibly active route recording running until the mapper ends it. Backgrounding or locking the phone can suspend updates. Mark interruptions and restart only within the user’s active capture choice. [Geolocation specification](https://www.w3.org/TR/geolocation/) · [Fix timestamps](https://developer.mozilla.org/en-US/docs/Web/API/GeolocationPosition/timestamp)
+
+**Align by time.** Keep the location trace as a versioned sidecar beside the media and give both the same draft ID. Store each segment’s clock anchors linking device epoch time, monotonic capture time and media presentation time. Start a new interval after a pause, restart or clock discontinuity. Use the fix acquisition time to estimate its offset within an active segment, preserving the original timestamp for audit. Align decoded frames against that timeline. Keep the time difference and horizontal uncertainty when associating a frame with its nearest plausible fix. Flag stale or inaccurate matches, and leave gaps and between-clip fixes unassigned. Imported video with a single embedded location can supply an annotated point. A time series requires a matching trace or an explicitly aligned imported track.
+
+Illustrative private sidecar excerpt with synthetic coordinates. The mapper’s fork marker references this fix and can still carry a video offset if location is unavailable.
+
+```json
+{
+  "schemaVersion": 1,
+  "draftId": "synthetic-trail",
+  "segmentClock": {"segmentId": "clip-02", "startEpochMs": 1800000000000, "startMonotonicMs": 8000, "startMediaMs": 0},
+  "fix": {"id": "fix-7", "acquiredEpochMs": 1800000012500, "segmentId": "clip-02", "mediaOffsetMs": 12500, "latitudeDeg": 0.001, "longitudeDeg": 0.002, "accuracyM": 9, "altitudeM": null},
+  "marker": {"kind": "fork", "segmentId": "clip-02", "mediaOffsetMs": 12500, "fixId": "fix-7"}
+}
+```
+
+**Transport and publication.** Include the sidecar’s kind, schema, byte length and digest in the optional capture manifest. Upload it as an authenticated, resumable source resource. Finalization verifies every declared resource and accepts video-only captures when location is absent. Retry by resource ID and digest. Offer a local export of the video, segment manifest and trace together. Keep the precise raw track owner-only, out of preview sockets, Gemini inputs and telemetry. Let the mapper exclude or trim private approaches and stops before publishing approved geography. Strip location metadata from guest media and remove the raw trace with its source. A hiker’s own location display is a separate permission and stays on their device.
+
+**Map and scene coordinates.** Export reviewed trail lines and forks as GeoJSON in longitude/latitude order. Keep breaks as separate line segments. The 3D scene stays in the local metric frame described below. A reviewed junction anchor locates a scene on the map. Orienting and scaling a whole scan against the trail requires additional independent references and validation. Under canopy, render the reported uncertainty and allow manual junction confirmation. Avoid choosing between close parallel branches from a weak fix. [GeoJSON conventions](https://www.rfc-editor.org/rfc/rfc7946) · [Outdoor field trial and offline route packs](../planning/offline-web-product.md#hiking-trails-and-downloaded-routes)
+
 ## 4. Persistent records and ownership
 
 | Record | Relationships and invariants |
 | --- | --- |
 | Device draft and segments | Browser-only draft UUID, schema version, actual media metadata, ordered segments/chunks, timestamps, stills, local tracking status and any upload handles. Use migration or export on a scanner update. Keep drafts on the originating phone until removed by the organizer. |
 | Venue, scan and source revision | Venue has an owner/authorized editors and entrances. Scan belongs to one venue. Each immutable source revision belongs to one scan, with a segment manifest, byte counts, hashes, private object identifiers and uploader. Bind a local draft to an account at upload. Explicitly reselect the owner if accounts change. |
-| Upload resources | One tus resource per complete media segment, or one for an imported video. Unique `(owner, draftId, segmentId, contentDigest)` maps retries to the same resource. Server-confirmed progress is authoritative. Verify the whole ordered manifest before queuing work. |
+| Upload resources | One tus resource per complete media segment or imported video, plus one for a declared location sidecar. Use a stable resource ID for each segment or sidecar. Unique `(owner, draftId, resourceId, contentDigest)` maps retries to the same resource. Server-confirmed progress is authoritative. Verify the whole ordered manifest before queuing work. |
 | Jobs and renditions | Unique `(sourceRevision, stage, recipeVersion)` job, with lease owner, attempt, heartbeat and result. A rendition references its source revision, representation kind, media type, object key, byte size, digest and coordinate transform. Distinguish point-cloud PLY, textured GLB, splat and 2D photos explicitly. |
 | Event revision | An immutable publication snapshot contains approved section/rendition references, transforms, entrance and destination IDs, waypoints, walkable edges, directed cues, frame IDs and permitted guest photos. Keep draft edits separate. Reviewed access attributes such as stairs, step-free or closed can be unknown. |
 | Share, grants and removal | A stable random share ID points to the current published event revision. Its owner manages visibility and invited accounts. Scope every guest asset to the authorized revision. Record publication/deletion events and a tombstone so late jobs cannot restore removed content. |
@@ -93,9 +117,9 @@ The existing finished-model endpoint remains available for the first PLY and exi
 
 | Handoff | Proposed interface and success behavior |
 | --- | --- |
-| Organizer → API | `POST /api/captures` with a client draft ID, ordered segment descriptors, byte lengths and digests. A retry for the same owner and same source returns the same capture ID. Return a conflict when a reused identity refers to different content. |
-| Organizer → tus | Create a resource for each authorized segment. Use `HEAD` to recover the offset and `PATCH` to append. Authenticate both operations, check ownership and cap accepted size. Keep the service private behind the application gateway. Completion hooks are internal and may be delivered more than once. [tusd hooks](https://tus.github.io/tusd/advanced-topics/hooks/) |
-| Organizer → worker queue | `POST /api/captures/{id}/finalize` validates every segment and seals the manifest. Atomically record the accepted revision and enqueue the first job. Return `202` with a status URL. A retry returns the same revision and job reference. `GET /api/captures/{id}` is owner-scoped and reports stage, recoverable errors and available previews. |
+| Organizer → API | `POST /api/captures` with a client draft ID, ordered segment descriptors, an optional location-sidecar descriptor, byte lengths and digests. A retry for the same owner and same source returns the same capture ID. Return a conflict when a reused identity refers to different content. |
+| Organizer → tus | Create a resource for each authorized segment and declared sidecar. Use `HEAD` to recover the offset and `PATCH` to append. Authenticate both operations, check ownership and cap accepted size. Keep the service private behind the application gateway. Completion hooks are internal and may be delivered more than once. [tusd hooks](https://tus.github.io/tusd/advanced-topics/hooks/) |
+| Organizer → worker queue | `POST /api/captures/{id}/finalize` validates every declared source resource and seals the manifest. Atomically record the accepted revision and enqueue the first job. Return `202` with a status URL. A retry returns the same revision and job reference. `GET /api/captures/{id}` is owner-scoped and reports stage, recoverable errors and available previews. |
 | Reviewer → API | Edit draft waypoints, edges, assets and cues within an event revision. `POST /api/events/{eventId}/revisions/{rev}/publish` uses an idempotency key and expected current revision. Verify asset membership, rights, route reachability, human approval and audience. Return the stable share link. Publishing a photos-only route is an explicit organizer choice. |
 | Visitor → website/API | Keep `/s/{shareId}` and the current metadata and asset endpoints. Add `GET /api/shares/{shareId}/manifest` for versioned route steps, entrances, photos and rendition kinds. Each revision-specific asset, tile, range request and thumbnail repeats the share check. Use the entrance reference in the QR to resolve a validated start waypoint. |
 | Owner → removal | Cancel live sessions and jobs, revoke guest reads immediately and schedule deletion of related originals, derived assets and expiring backups under the retention policy. Use a generation/fencing check to reject old worker writes. Keep a content-free deletion receipt. |

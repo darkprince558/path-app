@@ -27,6 +27,8 @@ The viewer, API, and capture trial can start in parallel. Claim your issue with 
 - [ ] **Publish a contribution.** Align one extra section to a known anchor. Open the guest event link before and after organizer approval and record which section appears. [Event architecture](../docs/architecture.md)
 - [ ] **Rehearse and submit.** Keep a previously uploaded scan and a recording of a successful walkthrough for a slow venue connection. Identify replayed steps during the demo. Save the working commit and demonstrated tracks, then submit before **Sunday, November 22 at 9 a.m. Toronto time**. [Prize plan](../docs/prize-plan.md) · [Devpost schedule](https://hack-western-13.devpost.com/details/dates)
 
+**Outdoor field trial.** After the first venue section passes, qualify a wooded fork with location recorded alongside the video and a public route pack opened offline by a second hiker. [Trail flow and acceptance test](offline-web-product.md#hiking-trails-and-downloaded-routes)
+
 ## Decisions at the next integration
 
 | Decision | Owner and evidence |
