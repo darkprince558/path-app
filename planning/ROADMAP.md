@@ -33,4 +33,8 @@ The viewer, API, and capture trial can start in parallel. Claim your issue with 
 | Which service will host the demo? | Sam and Anish confirm host, storage, identity provider and budget before provisioning. Share a phone-accessible HTTPS URL for #5. |
 | What gets demo time? | All four prioritize the upload-to-second-phone flow. If routing or contributions are unfinished, demonstrate the captured turn and any approved landmark that works. For Entire, keep a real handoff and measure the same lookup in two fresh sessions before reporting savings. |
 
+## Mapping field trial
+
+- [ ] **Test LIMAP on new buildings · Anish and Krishna.** Compare the current RGB pipeline with the same pipeline using LIMAP line tracks at doorframes and turns. Record two routes in each of three new buildings. Set aside one whole building before tuning. Score opening widths, misplaced surfaces and turn recognition with Arielle. This can run alongside the first real share. [Recording guide, comparison and decision rule](mapping-field-trial.md) · [Capture task #4](https://github.com/darkprince558/path-app/issues/4)
+
 Anyone on the team can propose a change with the GitHub edit link above. When a milestone passes, check its box and add the PR, device trial or demo evidence beside it. If the plan changes, update the next milestone, its owner and the issue that carries the work.

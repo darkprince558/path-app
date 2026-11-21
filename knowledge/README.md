@@ -10,6 +10,10 @@ Use this folder for knowledge a teammate will still need after your branch merge
 | Public scans appear in discovery. Unlisted scans open by link. Private scans require an owner or invited account. | Organizers choose an audience for both the scene and its underlying files. | [Sharing rules](../docs/architecture.md#sharing) |
 | GitHub holds the source and team checkpoints. The live site and scan storage need a runtime of their own. | A guest needs an HTTPS URL they can open without access to the team repository. Vultr is a deployment proposal. | [Deployment plan](../docs/deployment.md) |
 
+## Capture findings
+
+[Mac field mapping](mac-field-mapping.md) records how camera sampling changed route coverage and what fixed-pose line tracking recovered on new phone footage.
+
 ## Add a finding
 
 Create a short Markdown file here such as `capture-export.md` for a finding worth reusing. Use the real device, command or example that produced it. Link to the implementation PR or issue and add a link to the note here. If the result changes the first supported format or another team decision, update the linked architecture or plan as part of the same PR.
