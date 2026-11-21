@@ -131,6 +131,46 @@ Image bytes never appear in the result, its `repr`, logs or errors.
 - **Limits:** instruction ≤ 140 characters, landmark ≤ 80, visibleText ≤ 60, reason ≤ 300, at most 3 candidates.
 - **Telemetry:** one `path_gemini` log record per call. Fields: request, revision, segment and approach IDs, frame count, model, prompt version, elapsed ms, attempts and retry count, result category, error category, provider status, candidate count. Nothing else is logged.
 
+## Try it on your own photos (trial runner)
+
+`path_gemini.trial` sends 2–3 photos of one turn to Gemini and saves a report that shows each photo beside Gemini's answer. It also records the organizer's decision and prints evidence counts for the demo and Devpost. It is a local tool; Sam's backend does not use it. It makes real, billable calls with the key in `services/gemini/.env`.
+
+It reads three folder layouts:
+- Anish's native recorder output (`keyframes.json` with `photo-N.jpg`).
+- The handoff's `frames.json`.
+- A plain folder of JPEG/PNG photos.
+
+With Pillow installed (`pip install -e ".[tools]"`), photos are re-encoded first. That drops EXIF and GPS metadata, applies orientation, and caps the longest side at 1280 px. Export iPhone HEIC photos as JPEG first.
+
+From `services/gemini/` (Windows paths shown):
+
+```powershell
+# 1. See the frame IDs in a capture folder
+.venv\Scripts\python -m path_gemini.trial list ..\..\captures-local\turn1
+
+# 2. Run one verified turn (two or three of --approach/--junction/--exit)
+.venv\Scripts\python -m path_gemini.trial run ..\..\captures-local\turn1 --maneuver left --approach photo-3 --junction photo-5 --exit photo-7 --label "Check-in to hardware lab" --open
+
+# 3. Record what the organizer decided
+.venv\Scripts\python -m path_gemini.trial decide <run-folder> accept            # candidate 0 unchanged
+.venv\Scripts\python -m path_gemini.trial decide <run-folder> edit --candidate 1 --text "Turn left at the red door."
+.venv\Scripts\python -m path_gemini.trial decide <run-folder> reject --note "landmark is temporary"
+.venv\Scripts\python -m path_gemini.trial decide <run-folder> agree             # Gemini was right: no clear landmark
+.venv\Scripts\python -m path_gemini.trial decide <run-folder> manual --text "Turn left at the fire door."
+
+# 4. Evidence counts across all runs, with a ready-to-paste Devpost sentence
+.venv\Scripts\python -m path_gemini.trial summary
+```
+
+Each run creates a folder under `captures-local/gemini-trials/`, which is Git-ignored. The folder holds:
+- `run.json`: the inputs.
+- `result.json` or `error.json`: the outcome.
+- `images/`: the exact bytes sent.
+- `decision.json`: the organizer's decision.
+- `report.html`: a self-contained page with photos beside Gemini's answer, cited photos outlined. All text is escaped, and nothing loads from the network.
+
+Reports embed private photos. The runner refuses any output folder inside the repository that Git would track. Run the opposite direction of a turn as a separate run with `--approach-direction approach-b`.
+
 ## Live test (opt-in, makes a real billable call)
 
 From `services/gemini/`, with the key in the environment or in `services/gemini/.env`:
@@ -147,6 +187,7 @@ See **Verification notes** below. They are updated after each live run.
 
 ### Verification notes
 
+- **Trial runner:** 14 offline tests cover the three folder layouts, EXIF/GPS stripping, runs, failures, decisions, summary counts, HTML escaping and the tracked-output guard. Live on 2026-11-21 with `gemini-3.6-flash`: the synthetic purple-panel turn gave 2 drafts in 13.3 s (1 attempt). The plain corridor abstained in 7.9 s. Both synthetic runs were then deleted so real evidence counts start at zero.
 - **Mocked and offline:** 143 unit, response-validation, mocked-service and SDK-adapter tests pass (adapter with `generate_content` stubbed). No network or key is needed.
 - **Live, synthetic fixture only, 2026-11-21, `google-genai` 3.6.1, prompt `landmark-v1`.** Each request sent three generated 320×240 PNGs, about 3,850 prompt tokens.
 
