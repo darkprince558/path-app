@@ -4,7 +4,9 @@ import SharePanel from "../components/SharePanel";
 import VisibilityPicker from "../components/VisibilityPicker";
 import {
   checkFile,
+  cleanMapName,
   formatBytes,
+  MAX_NAME_LENGTH,
   parseViewerIds,
   updateSharing,
   uploadScan,
@@ -27,6 +29,9 @@ export default function Upload() {
   const [fileProblem, setFileProblem] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<Visibility>("unlisted");
   const [viewerText, setViewerText] = useState("");
+  const [name, setName] = useState("");
+  const [nameEdited, setNameEdited] = useState(false);
+  const nameId = useId();
   const [phase, setPhase] = useState<Phase>({ step: "choose" });
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -46,6 +51,8 @@ export default function Upload() {
     } else {
       setFile({ file: chosen, format: check.format });
       setFileProblem(null);
+      // Suggest a name from the file ("eng-floor-2.ply" -> "eng floor 2") until the person types their own.
+      if (!nameEdited) setName(chosen.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim().slice(0, MAX_NAME_LENGTH));
     }
   }
 
@@ -57,8 +64,14 @@ export default function Upload() {
 
   const viewers = parseViewerIds(viewerText);
 
+  const cleanedName = cleanMapName(name);
+
   async function upload() {
     if (!file) return;
+    if (name.trim() && !cleanedName) {
+      setUploadError(`Give the map a name of 1 to ${MAX_NAME_LENGTH} characters, or leave it empty.`);
+      return;
+    }
     if (visibility === "private" && viewers.invalid.length) {
       setUploadError(`These aren't valid account IDs: ${viewers.invalid.join(", ")}`);
       return;
@@ -72,6 +85,7 @@ export default function Upload() {
         file: file.file,
         format: file.format,
         visibility,
+        name: cleanedName ?? undefined,
         signal: controller.signal,
         onProgress: (progress) => setPhase({ step: "uploading", progress }),
       });
@@ -101,6 +115,8 @@ export default function Upload() {
     setFile(null);
     setFileProblem(null);
     setViewerText("");
+    setName("");
+    setNameEdited(false);
     setUploadError(null);
     setPhase({ step: "choose" });
     if (inputRef.current) inputRef.current.value = "";
@@ -128,7 +144,19 @@ export default function Upload() {
             sharePath={phase.result.sharePath}
             initialVisibility={phase.visibility}
             initialViewerIds={phase.viewerIds}
-            onUploadAnother={reset}
+            footer={
+              <div className="flex flex-wrap gap-x-6 gap-y-3">
+                <Link
+                  to={`/maps/${phase.result.shareId}`}
+                  className="font-bold text-rust underline underline-offset-4"
+                >
+                  Manage “{phase.result.name}”
+                </Link>
+                <button type="button" onClick={reset} className="font-bold text-rust underline underline-offset-4">
+                  Upload another scan
+                </button>
+              </div>
+            }
           />
         </div>
       ) : (
@@ -141,7 +169,7 @@ export default function Upload() {
         >
           <section className="grid gap-3">
             <h2 className="font-display text-xl font-extrabold">
-              <span className="text-rust">1</span> Choose your scan
+              <span aria-hidden="true" className="text-rust">1</span> Choose your scan
             </h2>
             <label
               htmlFor={inputId}
@@ -185,9 +213,33 @@ export default function Upload() {
             ) : null}
           </section>
 
+          <section className="grid gap-2">
+            <h2 className="font-display text-xl font-extrabold">
+              <label htmlFor={nameId}>
+                <span aria-hidden="true" className="text-rust">2</span> Name it
+              </label>
+            </h2>
+            <p id={`${nameId}-hint`} className="text-sm text-muted">
+              What people see on the map card, for example “Engineering building, 2nd floor”.
+            </p>
+            <input
+              id={nameId}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setNameEdited(true);
+              }}
+              disabled={uploading}
+              maxLength={MAX_NAME_LENGTH + 20}
+              placeholder="Untitled map"
+              aria-describedby={`${nameId}-hint`}
+              className="min-h-12 rounded-lg bg-surface px-3 ring-1 ring-forest/25 focus:ring-2 focus:ring-forest focus:outline-none"
+            />
+          </section>
+
           <fieldset className="grid gap-3" disabled={uploading}>
             <legend className="mb-3 font-display text-xl font-extrabold">
-              <span className="text-rust">2</span> Who can open it
+              <span aria-hidden="true" className="text-rust">3</span> Who can open it
             </legend>
             <VisibilityPicker name="upload-visibility" value={visibility} onChange={setVisibility} disabled={uploading} />
             {visibility === "private" ? (

@@ -45,8 +45,8 @@ export default function GuestView() {
   const resetView = useCallback(() => setResetToken((n) => n + 1), []);
 
   useEffect(() => {
-    document.title = "Shared scan · Path";
-  }, []);
+    document.title = state.phase === "ready" && state.meta.name ? `${state.meta.name} · Path` : "Shared map · Path";
+  }, [state]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -109,6 +109,7 @@ export default function GuestView() {
       {state.phase === "ready" ? (
         // Reading and Tab order: top bar, then the map, then the trip switch and Reset.
         <ViewerChrome
+          name={state.meta.name}
           showHint={!touched}
           onReset={resetView}
           avoidStairs={avoidStairs}
@@ -179,12 +180,15 @@ export default function GuestView() {
 }
 
 function ViewerChrome({
+  name,
   showHint,
   onReset,
   avoidStairs,
   onAvoidStairsChange,
   children,
 }: {
+  /** Map name from the API, if it sent one. */
+  name?: string;
   showHint: boolean;
   onReset: () => void;
   avoidStairs: boolean;
@@ -195,8 +199,8 @@ function ViewerChrome({
   const location = useLocation();
   const navigate = useNavigate();
   const origin = readMapOrigin(location.state);
-  // Names come from the card the map was opened from. The API has no map names yet (#3).
-  const mapName = origin?.mapName ?? "Shared map";
+  // The API's name wins. Older servers send none, so fall back to the card's name.
+  const mapName = name ?? origin?.mapName ?? "Shared map";
   // Going back through history keeps the previous page's filters and scroll position.
   // A map opened straight from a link or QR has no previous page in Path.
   const canGoBack = origin !== null && (window.history.state as { idx?: number } | null)?.idx !== 0;

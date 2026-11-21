@@ -1,5 +1,6 @@
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { parseViewerIds, shareUrl, updateSharing, UploadError, type Visibility } from "../lib/scans";
 import VisibilityPicker, { visibilityDetail, visibilityLabel } from "./VisibilityPicker";
 
@@ -15,13 +16,16 @@ export default function SharePanel({
   sharePath,
   initialVisibility,
   initialViewerIds,
-  onUploadAnother,
+  heading = "Your link is ready",
+  footer,
 }: {
   shareId: string;
   sharePath: string;
   initialVisibility: Visibility;
   initialViewerIds: string[];
-  onUploadAnother: () => void;
+  heading?: string;
+  /** Extra actions under the sharing controls, e.g. "Upload another scan". */
+  footer?: ReactNode;
 }) {
   const url = shareUrl(sharePath);
   const [saved, setSaved] = useState({ visibility: initialVisibility, viewerIds: initialViewerIds });
@@ -70,7 +74,8 @@ export default function SharePanel({
             ? ` You and ${result.viewerIds.join(", ")} can open it.`
             : " Only you can open it."
           : "";
-      setMessage({ tone: "ok", text: `Saved. This scan is now ${visibilityLabel(result.visibility)}.${who}` });
+      setMessage({ tone: "ok", text: `Saved. This map is now ${visibilityLabel(result.visibility)}.${who}` });
+      toast.success(`Now ${visibilityLabel(result.visibility)}`);
     } catch (error) {
       setMessage({ tone: "error", text: error instanceof UploadError ? error.message : "Couldn't save that change." });
     } finally {
@@ -82,7 +87,7 @@ export default function SharePanel({
     <section aria-labelledby="share-title" className="grid gap-6">
       <div className="rounded-2xl bg-surface p-5 shadow-sm ring-1 ring-forest/10">
         <h2 id="share-title" className="font-display text-2xl font-black">
-          Your link is ready
+          {heading}
         </h2>
         <p className="mt-1 text-muted">
           Currently <strong className="text-forest">{visibilityLabel(saved.visibility)}</strong>.{" "}
@@ -179,9 +184,7 @@ export default function SharePanel({
         ) : null}
       </fieldset>
 
-      <button type="button" onClick={onUploadAnother} className="justify-self-start font-bold text-rust underline underline-offset-4">
-        Upload another scan
-      </button>
+      {footer}
     </section>
   );
 }

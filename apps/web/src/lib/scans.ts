@@ -1,8 +1,11 @@
 /**
  * Owner-side calls (upload, sharing) from services/api/README.md.
  *
- *   POST  /api/scans?format=ply&visibility=unlisted  raw bytes -> 201 { shareId, sharePath }
- *   PATCH /api/scans/<shareId>  { visibility, viewerIds }    -> { shareId, visibility, viewerIds }
+ *   POST   /api/scans?format=ply&visibility=unlisted&name=…  raw bytes -> 201 { shareId, sharePath, name }
+ *   GET    /api/scans/mine     -> { scans: OwnedMap[] }    (your maps)
+ *   GET    /api/scans/shared   -> { scans: SharedMap[] }   (maps others added you to)
+ *   PATCH  /api/scans/<shareId>  any of { name, visibility, viewerIds } -> SharingState
+ *   DELETE /api/scans/<shareId>  -> 204
  *
  * Identity: the local mock reads an `X-Dev-User` header. In development we send one
  * (VITE_DEV_USER, default "demo-owner"). A production build sends none, because the
@@ -21,15 +24,46 @@ export const MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
 /** Account IDs the mock accepts for viewers (and for X-Dev-User). */
 export const VIEWER_ID_PATTERN = /^[a-zA-Z0-9_.@-]{1,64}$/;
 
+export const MAX_NAME_LENGTH = 80;
+export const DEFAULT_MAP_NAME = "Untitled map";
+
 export interface UploadResult {
   shareId: string;
   sharePath: string;
+  name: string;
 }
 
 export interface SharingState {
   shareId: string;
+  name: string;
   visibility: Visibility;
   viewerIds: string[];
+}
+
+/** One of your own maps, from GET /api/scans/mine. */
+export interface OwnedMap extends SharingState {
+  sharePath: string;
+  format: ScanFormat;
+  updatedAt: string;
+}
+
+/** A map someone else owns and added you to, from GET /api/scans/shared. */
+export interface SharedMap {
+  shareId: string;
+  sharePath: string;
+  name: string;
+  format: ScanFormat;
+  visibility: Visibility;
+  owner: string;
+  updatedAt: string;
+}
+
+/** Trims and collapses spaces like the API does. Returns null when the name isn't allowed. */
+export function cleanMapName(value: string): string | null {
+  const name = value.split(/\s+/).filter(Boolean).join(" ");
+  // eslint-disable-next-line no-control-regex
+  if (name.length < 1 || name.length > MAX_NAME_LENGTH || /[\u0000-\u001f\u007f]/.test(name)) return null;
+  return name;
 }
 
 export class UploadError extends Error {
@@ -119,13 +153,14 @@ export function uploadScan(options: {
   file: File;
   format: ScanFormat;
   visibility: Visibility;
+  name?: string;
   onProgress?: (fraction: number) => void;
   signal?: AbortSignal;
 }): Promise<UploadResult> {
-  const { file, format, visibility, onProgress, signal } = options;
+  const { file, format, visibility, name, onProgress, signal } = options;
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    const query = new URLSearchParams({ format, visibility });
+    const query = new URLSearchParams({ format, visibility, ...(name ? { name } : {}) });
     xhr.open("POST", `/api/scans?${query}`);
     xhr.setRequestHeader("Content-Type", "application/octet-stream");
     for (const [name, value] of Object.entries(ownerHeaders())) xhr.setRequestHeader(name, value);
@@ -138,7 +173,11 @@ export function uploadScan(options: {
         try {
           const body = JSON.parse(xhr.responseText) as Partial<UploadResult>;
           if (typeof body.shareId === "string" && typeof body.sharePath === "string") {
-            return resolve({ shareId: body.shareId, sharePath: body.sharePath });
+            return resolve({
+              shareId: body.shareId,
+              sharePath: body.sharePath,
+              name: typeof body.name === "string" ? body.name : (name ?? DEFAULT_MAP_NAME),
+            });
           }
         } catch {
           // fall through
@@ -155,31 +194,75 @@ export function uploadScan(options: {
   });
 }
 
-export async function updateSharing(shareId: string, visibility: Visibility, viewerIds: string[]): Promise<SharingState> {
+/** Changes any of a map's name, visibility and viewer list. Only the owner may. */
+export async function updateMap(
+  shareId: string,
+  change: Partial<Pick<SharingState, "name" | "visibility" | "viewerIds">>,
+): Promise<SharingState> {
+  const what = "name" in change && Object.keys(change).length === 1 ? "name" : "sharing setting";
   let response: Response;
   try {
     response = await fetch(`/api/scans/${encodeURIComponent(shareId)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...ownerHeaders() },
-      body: JSON.stringify({ visibility, viewerIds }),
+      body: JSON.stringify(change),
     });
   } catch {
-    throw new UploadError("Couldn't reach the Path server. Your sharing setting didn't change.");
+    throw new UploadError(`Couldn't reach the Path server. The ${what} didn't change.`);
   }
   if (response.status === 404) {
-    throw new UploadError("This scan no longer exists, or it was uploaded from a different account.", 404);
+    throw new UploadError("This map no longer exists, or it was uploaded from a different account.", 404);
   }
   if (!response.ok) {
     const error = readError(await response.text());
     throw new UploadError(
       response.status === 400 && error
         ? `The server rejected that change: ${error}.`
-        : `The server answered ${response.status}. Your sharing setting didn't change.`,
+        : `The server answered ${response.status}. The ${what} didn't change.`,
       response.status,
     );
   }
   return (await response.json()) as SharingState;
 }
+
+export function updateSharing(shareId: string, visibility: Visibility, viewerIds: string[]): Promise<SharingState> {
+  return updateMap(shareId, { visibility, viewerIds });
+}
+
+/** Deletes a map for good. Only the owner may. */
+export async function deleteMap(shareId: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/scans/${encodeURIComponent(shareId)}`, { method: "DELETE", headers: ownerHeaders() });
+  } catch {
+    throw new UploadError("Couldn't reach the Path server. The map wasn't deleted.");
+  }
+  if (response.status === 404) {
+    throw new UploadError("This map is already gone, or it was uploaded from a different account.", 404);
+  }
+  if (!response.ok) throw new UploadError(`The server answered ${response.status}. The map wasn't deleted.`, response.status);
+}
+
+/** Thrown when the server has no route for listing maps yet (the hosted API before #3 adds it). */
+export class ListUnavailableError extends Error {}
+
+async function fetchList<T>(path: string, signal?: AbortSignal): Promise<T[]> {
+  let response: Response;
+  try {
+    response = await fetch(path, { headers: ownerHeaders(), signal });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new UploadError("Couldn't reach the Path server.");
+  }
+  if (response.status === 404) throw new ListUnavailableError("This server can't list maps yet.");
+  if (response.status === 401) throw new UploadError("Sign in to see your maps.", 401);
+  if (!response.ok) throw new UploadError(`The server answered ${response.status}.`, response.status);
+  const body = (await response.json()) as { scans?: T[] };
+  return body.scans ?? [];
+}
+
+export const fetchMyMaps = (signal?: AbortSignal) => fetchList<OwnedMap>("/api/scans/mine", signal);
+export const fetchSharedMaps = (signal?: AbortSignal) => fetchList<SharedMap>("/api/scans/shared", signal);
 
 /** Splits "ana, sam  krish" into IDs and reports any the API would reject. */
 export function parseViewerIds(text: string): { ids: string[]; invalid: string[] } {

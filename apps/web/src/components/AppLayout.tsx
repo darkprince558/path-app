@@ -76,14 +76,13 @@ export default function AppLayout() {
         <Link to="/" className="font-display text-2xl font-black tracking-wide">
           Path
         </Link>
-        <Link
-          to="/settings"
-          className="-mr-2 flex min-h-11 items-center gap-2 rounded-full px-2 text-sm font-bold"
-          aria-label={`${user.name}, settings`}
-        >
-          <SettingsIcon className="size-5 text-muted" aria-hidden />
+        <div className="-mr-1 flex items-center gap-1">
+          <Link to="/settings" aria-label="Settings" className="grid size-11 place-items-center rounded-full text-muted">
+            <SettingsIcon className="size-5" aria-hidden />
+          </Link>
+          <span className="sr-only">Signed in as {user.name}</span>
           <Avatar initials={user.initials} className="size-8 text-sm" />
-        </Link>
+        </div>
       </header>
 
       <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 pt-4 pb-28 focus:outline-none md:px-10 md:pt-10 md:pb-12">

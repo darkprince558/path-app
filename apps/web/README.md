@@ -24,12 +24,14 @@ Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), c
 | `src/lib/ply.ts` | Parses ASCII or binary PLY with `PLYLoader`, rejects empty or non-finite scans, keeps at most 600k points. |
 | `src/components/ScanViewer.tsx` | Colored points on `night`, DPR capped at 2, orbit (one finger turns, two fingers zoom and pan), framed from behind the entrance (+Z). Loaded lazily alongside the metadata request. |
 | `src/components/AppLayout.tsx` | Signed-in shell: forest sidebar (My maps, Community, New map, account) on desktop, top bar and bottom tab bar on phones. |
-| `src/routes/MyMaps.tsx` | `/maps`: Your maps grid with All, Public, Unlisted, Private and Shared with me filters. Shows **sample cards** (`src/lib/maps.ts`) until the API can list an account's maps and their names. |
-| `src/routes/Community.tsx` | `/community`: real public maps from `GET /api/scans/public`, with loading, empty and error states. |
+| `src/routes/MyMaps.tsx` | `/maps`: your maps (`GET /api/scans/mine`) and maps shared with you (`GET /api/scans/shared`), with All, Public, Unlisted, Private and Shared with me filters. Each card's ⋯ menu offers Copy link, Manage map and Delete… (with a confirmation). |
+| `src/routes/ManageMap.tsx` | `/maps/:shareId`: rename, link and QR code, change who can open it, and delete. Only for the map's owner. |
+| `src/components/ConfirmDialog.tsx` | Modal confirmation on `<dialog>`: focus starts on Cancel, Escape cancels, focus returns afterward. |
+| `src/routes/Community.tsx` | `/community`: public maps from `GET /api/scans/public` with their names, and loading placeholders, empty and error states. |
 | `src/lib/session.ts` | Stand-in signed-in account for development (`VITE_DEV_USER`, `VITE_DEV_NAME`) until real sign-in exists. |
 | `src/lib/preferences.tsx` | Settings kept on the device (no account needed): text size, motion, and the "Avoid stairs" default. `useTripAvoidStairs` gives each map a per-trip switch that starts from the default and doesn't change it. |
 | `src/routes/Settings.tsx` | `/settings`: Text size (Default, Large, Extra large), Motion (Match my device, Reduce, Allow), Avoid stairs by default. |
-| `src/routes/Upload.tsx` | `/maps/new` (`/upload` redirects here): choose a PLY or GLB (checked for type, size and header before sending), pick Public, Unlisted or Private (with viewer IDs), upload with progress and cancel. |
+| `src/routes/Upload.tsx` | `/maps/new` (`/upload` redirects here): an optional name (suggested from the file name), choose a PLY or GLB (checked for type, size and header before sending), pick Public, Unlisted or Private (with viewer IDs), upload with progress and cancel. |
 | `src/components/SharePanel.tsx` | After upload: guest link, copy, QR code, preview, and visibility changes through `PATCH /api/scans/<id>`. Warns when the link is `localhost`, which a phone can't open. |
 | `src/lib/scans.ts` | Owner API client (upload, sharing) with readable messages for 400, 401, 413, 415 and network failures. |
 | `src/routes/GuestView.tsx` | `/s/:shareId` with loading, not-found/denied, download, parse-failure and unsupported-format (GLB) states. |

@@ -14,6 +14,8 @@ export interface ShareMetadata {
   shareId: string;
   format: ScanFormat;
   assetPath: string;
+  /** Map name. Older servers don't send it. */
+  name?: string;
 }
 
 export type ShareErrorKind = "not-found" | "network" | "server" | "bad-response";

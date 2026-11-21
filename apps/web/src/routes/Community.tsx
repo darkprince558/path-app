@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import MapCard from "../components/MapCard";
+import MapCard, { MapCardSkeleton } from "../components/MapCard";
 import type { MapSummary } from "../lib/maps";
 
 type State =
@@ -8,16 +8,24 @@ type State =
   | { phase: "ready"; maps: MapSummary[] }
   | { phase: "error"; message: string };
 
-/** Reads GET /api/scans/public. Maps have no names on the API yet, so cards use the short ID. */
+interface PublicScan {
+  shareId: string;
+  sharePath: string;
+  name?: string;
+  updatedAt?: string;
+}
+
+/** Reads GET /api/scans/public. Older servers send no names, so those cards use the short ID. */
 async function fetchPublicMaps(signal: AbortSignal): Promise<MapSummary[]> {
   const response = await fetch("/api/scans/public", { signal });
   if (!response.ok) throw new Error(`The server answered ${response.status}.`);
-  const body = (await response.json()) as { scans?: { shareId: string; sharePath: string }[] };
+  const body = (await response.json()) as { scans?: PublicScan[] };
   return (body.scans ?? []).map((scan) => ({
     id: scan.shareId,
-    name: `Untitled map ${scan.shareId.slice(0, 6)}`,
+    name: scan.name ?? `Untitled map ${scan.shareId.slice(0, 6)}`,
     visibility: "public",
     sharePath: scan.sharePath,
+    updated: scan.updatedAt,
   }));
 }
 
@@ -50,9 +58,16 @@ export default function Community() {
       <p className="mt-3 text-lg text-muted">Public maps anyone can open, no account needed.</p>
 
       {state.phase === "loading" ? (
-        <p role="status" className="mt-8 text-muted">
-          Loading public maps…
-        </p>
+        <div role="status" className="mt-6">
+          <span className="sr-only">Loading public maps…</span>
+          <ul className="grid grid-cols-2 gap-3 xl-text:max-sm:grid-cols-1 sm:grid-cols-3 md:gap-5 xl:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <li key={i}>
+                <MapCardSkeleton />
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {state.phase === "error" ? (
@@ -83,7 +98,7 @@ export default function Community() {
         <ul className="mt-6 grid grid-cols-2 gap-3 xl-text:max-sm:grid-cols-1 sm:grid-cols-3 md:gap-5 xl:grid-cols-4">
           {state.maps.map((map) => (
             <li key={map.id}>
-              <MapCard map={map} origin={{ path: "/community", label: "Community" }} />
+              <MapCard map={map} showMenu origin={{ path: "/community", label: "Community" }} />
             </li>
           ))}
         </ul>
