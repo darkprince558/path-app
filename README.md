@@ -1,6 +1,6 @@
 # Path App
 
-Path App is a collaborative 3D mapping and navigation project for Hack Western 13. Walk a route with a LiDAR-capable phone, turn the capture into an interactive 3D view, and send someone a link or QR code they can use to find their way.
+Path App is a collaborative 3D mapping and navigation project for Hack Western 13. The plan is to record a route with an ordinary phone camera, save the scan offline, then upload it and share a 3D view and directions through a link or QR code. [Offline website product plan](planning/offline-web-product.md)
 
 Visitors can see what a hallway, entrance, or turn looks like before they reach it. Event organizers can map rooms and booths, schools and companies can share routes across their campuses, and hikers can share trails they’ve walked. Capture can be handheld or hands-free with a custom 3D-printed wearable phone mount.
 
@@ -26,7 +26,7 @@ Run `make check` from the repo root with Python 3.9+ and Make. This checks a syn
 
 ## Hackathon MVP
 
-1. **Capture** a small venue section with a phone’s camera and LiDAR.
+1. **Capture** a small venue section with a phone video, including overlapping views of a recognizable turn.
 2. **Map** the scan into a viewable 3D scene using camera-colored point clouds. Organizers connect walkable waypoints, label destinations, and align contributed sections using manually verified anchors.
 3. **Publish** the event and scene assets in the cloud. Organizers approve contributed scans, then share the event via a link or QR code.
 4. **Navigate** from a QR-marked starting point to a selected destination. The browser computes a route on the waypoint graph with A* or Dijkstra and draws it over the 3D scene.

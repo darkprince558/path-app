@@ -4,6 +4,8 @@
 
 An organizer uploads a real venue scan as **Unlisted**. Someone on a second phone opens the link while signed out, rotates the scene, and recognizes the turn.
 
+Use one ordinary phone video for the first capture handoff. The [offline website product plan](offline-web-product.md) sequences the real 3D trial, offline recording, delayed upload, selectable on-device or live server previews, and accessible guest directions.
+
 [Edit this roadmap on GitHub](https://github.com/darkprince558/path-app/edit/main/planning/ROADMAP.md) · [Live team board and checkpoints](https://github.com/darkprince558/path-app/issues/8)
 
 ## Pick up work
@@ -24,6 +26,8 @@ The viewer, API, and capture trial can start in parallel. Claim your issue with 
 - [ ] **Give a visitor one useful direction.** Capture a recognizable junction and connect a QR start to two destinations on verified walkable paths. Generate a Gemini landmark cue from the captured frames, let an organizer approve it, and ask a first-time visitor to follow it. Record the source frame, decision and observed turn. [Gemini demo](../docs/gemini-demo.md)
 - [ ] **Publish a contribution.** Align one extra section to a known anchor. Open the guest event link before and after organizer approval and record which section appears. [Event architecture](../docs/architecture.md)
 - [ ] **Rehearse and submit.** Keep a previously uploaded scan and a recording of a successful walkthrough for a slow venue connection. Identify replayed steps during the demo. Save the working commit and demonstrated tracks, then submit before **Sunday, November 22 at 9 a.m. Toronto time**. [Prize plan](../docs/prize-plan.md) · [Devpost schedule](https://hack-western-13.devpost.com/details/dates)
+
+**Outdoor field trial.** After the first venue section passes, qualify a wooded fork with location recorded alongside the video and a public route pack opened offline by a second hiker. [Trail flow and acceptance test](offline-web-product.md#hiking-trails-and-downloaded-routes)
 
 ## Decisions at the next integration
 
