@@ -185,9 +185,9 @@ def test_fingerprint_is_deterministic_and_order_independent():
     d = request_dict()
     d["frames"] = list(reversed(d["frames"]))
     shuffled = LandmarkRequest.model_validate(d)
-    a = compute_fingerprint(req, "m", "landmark-v1")
-    assert a == compute_fingerprint(req, "m", "landmark-v1")
-    assert a == compute_fingerprint(shuffled, "m", "landmark-v1")
+    a = compute_fingerprint(req, "m", "landmark-v2")
+    assert a == compute_fingerprint(req, "m", "landmark-v2")
+    assert a == compute_fingerprint(shuffled, "m", "landmark-v2")
     assert a.startswith("sha256:") and len(a) == 7 + 64
 
 
@@ -204,13 +204,13 @@ def test_fingerprint_ignores_request_id():
         {"maneuver": "right"},
         {"frames": 2},
         {"frameId": "frame-000139"},
-        {"prompt": "landmark-v2"},
+        {"prompt": "landmark-v3"},
         {"model": "other-model"},
     ],
 )
 def test_fingerprint_changes_with_each_input(change):
-    base = compute_fingerprint(make_request(), "m", "landmark-v1")
-    model, prompt = change.pop("model", "m"), change.pop("prompt", "landmark-v1")
+    base = compute_fingerprint(make_request(), "m", "landmark-v2")
+    model, prompt = change.pop("model", "m"), change.pop("prompt", "landmark-v2")
     maneuver = change.pop("maneuver", "left")
     frames = change.pop("frames", 3)
     d = request_dict(frames, maneuver, **change.copy() if "frameId" not in change else {})

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "path-gemini"
-version = "0.1.0"
+version = "0.2.0"
 description = "Gemini landmark-cue drafts for verified Path App route turns"
 requires-python = ">=3.11"  # current google-genai requires 3.11+
 dependencies = [
@@ -13,8 +13,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=7", "pillow>=10"]
-tools = ["pillow>=10"]
+test = ["pytest>=7", "pillow>=10", "pillow-heif>=0.18"]
+tools = ["pillow>=10", "pillow-heif>=0.18"]
 
 [project.scripts]
 path-gemini-trial = "path_gemini.trial.cli:main"
