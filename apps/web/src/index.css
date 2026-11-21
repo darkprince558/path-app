@@ -246,6 +246,7 @@
   transform-box: fill-box;
   transform-origin: 50% 0;
   animation: pg-swing 0.32s ease-in-out 8 alternate;
+  animation-delay: var(--pg-delay, 0s);
 }
 .pg-walking .pg-swing-alt {
   animation-direction: alternate-reverse;
@@ -257,7 +258,7 @@
 }
 @keyframes pg-across {
   to {
-    transform: translateX(218px);
+    transform: translateX(var(--walk, 218px));
   }
 }
 @keyframes pg-swing {
