@@ -1,0 +1,11 @@
+Okay I like how you ended it with the rounded bottom corners but the content is still getting cutoff. Like the two modals are still cut off, and I saw you made the model smaller but I actually liked it bigger. If you make this: 
+
+<pasted_content id="f1f1">
+See the turn before you reach it.
+3D maps of real places, made by the people who know them. Open one from a link, with no app and no account.
+
+[Start mapping](http://localhost:5174/maps/new)
+[Explore community maps](http://localhost:5174/community)
+</pasted_content id="f1f1">
+
+   smaller then you can make room for everything.
