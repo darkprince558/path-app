@@ -58,6 +58,59 @@
   }
 }
 
+/* Landing page: small loops inside the phone mockup (stopped by reduced motion below). */
+.tour-scanline {
+  animation: tour-scan 2.4s ease-in-out infinite alternate;
+}
+.tour-route {
+  animation: tour-dash 0.9s linear infinite;
+}
+/* "Who it's for": sign figures walk (or roll) their route. */
+.pg-walker {
+  animation: pg-across 2.6s cubic-bezier(0.45, 0.05, 0.4, 1) forwards;
+}
+.pg-walking .pg-swing {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: pg-swing 0.32s ease-in-out 8 alternate;
+}
+.pg-walking .pg-swing-alt {
+  animation-direction: alternate-reverse;
+}
+.pg-rolling .pg-wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pg-spin 2.6s cubic-bezier(0.45, 0.05, 0.4, 1) forwards;
+}
+@keyframes pg-across {
+  to {
+    transform: translateX(218px);
+  }
+}
+@keyframes pg-swing {
+  from {
+    transform: rotate(22deg);
+  }
+  to {
+    transform: rotate(-22deg);
+  }
+}
+@keyframes pg-spin {
+  to {
+    transform: rotate(570deg);
+  }
+}
+@keyframes tour-scan {
+  to {
+    transform: translateY(78px);
+  }
+}
+@keyframes tour-dash {
+  to {
+    stroke-dashoffset: -6;
+  }
+}
+
 /*
  * Reduced motion: on when the person picks "Reduce motion" in Settings, or when they
  * keep "Match my device" and the device asks for it. "Allow motion" overrides the device.

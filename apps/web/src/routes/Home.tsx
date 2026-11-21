@@ -1,30 +1,31 @@
-import { Link } from "react-router";
+import { SkipLink } from "../components/AppLayout";
+import AppTour from "../landing/AppTour";
+import Creators from "../landing/Creators";
+import Hero from "../landing/Hero";
+import HowTo from "../landing/HowTo";
+import Join from "../landing/Join";
+import LandingNav from "../landing/LandingNav";
+import Problem from "../landing/Problem";
+import WhoUses from "../landing/WhoUses";
 
-/** Placeholder until the landing page (DESIGN.md P0: landing hero) is built. */
+/** Landing page at /. Sections and motion follow apps/web/DESIGN.md. */
 export default function Home() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center gap-4 px-4 py-12">
-      <h1 className="font-display text-5xl font-black tracking-wide">Path</h1>
-      <p className="text-lg leading-relaxed">
-        Scan a building, a campus or a trail, and share it as a 3D map anyone can find their way through.
-      </p>
-      <p className="text-muted">
-        Open a guest link at <span className="font-mono text-rust">/s/&lt;shareId&gt;</span> to view a shared scan.
-      </p>
-      <div className="mt-2 flex flex-wrap gap-3">
-        <Link
-          to="/maps"
-          className="inline-flex min-h-14 items-center justify-center rounded-full bg-coral px-6 text-lg font-bold text-ink"
-        >
-          Open my maps
-        </Link>
-        <Link
-          to="/community"
-          className="inline-flex min-h-14 items-center justify-center rounded-full px-6 text-lg font-bold text-forest ring-2 ring-forest"
-        >
-          Browse community maps
-        </Link>
-      </div>
-    </main>
+    <div className="relative min-h-dvh bg-paper">
+      <SkipLink />
+      <LandingNav />
+      <main id="main" tabIndex={-1} className="focus:outline-none">
+        <Hero />
+        <Problem />
+        <AppTour />
+        <WhoUses />
+        <HowTo />
+        <Creators />
+        <Join />
+      </main>
+      <footer data-surface="night" className="bg-night py-8 text-sage">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:pl-20">Path · Built at Hack Western 13</div>
+      </footer>
+    </div>
   );
 }
