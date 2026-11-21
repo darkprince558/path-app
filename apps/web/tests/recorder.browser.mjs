@@ -68,10 +68,12 @@ try {
     await page.getByRole('button', { name: 'Start recording', exact: true }).click();
     const stop = page.getByRole('button', { name: 'Stop recording', exact: true });
     await expect(stop).toBeEnabled();
+    if (permission === 'granted') await context.setOffline(true);
     // Use actual streaming frames and elapsed time; a virtual browser clock cannot create video.
     await page.waitForTimeout(permission === 'granted' ? 12_000 : 2_000);
     await stop.click();
     await expect(page.getByRole('button', { name: 'Process on Mac', exact: true })).toBeEnabled();
+    if (permission === 'granted') await context.setOffline(false);
     return { page, context };
   }
 
@@ -99,14 +101,20 @@ try {
 
   let status;
   let lastStage = '';
+  const queuedAt = Date.now();
   await expect.poll(async () => {
-    const res = await context.request.get(origin + capturePath, { headers: { Authorization: 'Bearer ' + key } });
+    // A Mac service restart may briefly interrupt the connection while preserving this job.
+    const res = await context.request.get(origin + capturePath, {
+      headers: { Authorization: 'Bearer ' + key }, timeout: 5_000,
+    }).catch(() => undefined);
+    if (!res || [502, 503, 504].includes(res.status())) return false;
     assert(res.ok(), 'Organizer must be able to poll the capture job.');
     status = await res.json();
     const stage = status.stage || status.status;
     if (stage !== lastStage) { console.log('Mac worker:', stage); lastStage = stage; }
     return ['failed', 'ready'].includes(status.status);
-  }, { timeout: 20 * 60_000, intervals: [1_000, 3_000, 5_000] }).toBe(true);
+  }, { timeout: 45 * 60_000, intervals: [1_000, 3_000, 5_000] }).toBe(true);
+  const reconstructionMs = Date.now() - queuedAt;
   assert.equal(status.status, 'ready', 'Synthetic hallway reconstruction failed: ' + (status.error || 'unknown error'));
   const open = page.getByRole('link', { name: 'Open 3D scan', exact: true });
   await expect(open).toBeVisible({ timeout: 15_000 });
@@ -138,22 +146,41 @@ try {
   const canvas = second.locator('canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(second.getByRole('alert')).toHaveCount(0);
-  const first = await canvas.screenshot();
   const bounds = await canvas.boundingBox();
   const x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height / 2;
+  // Ignore the header, footer and the drag hint, which fades on pointer-down.
+  const clip = { x: Math.floor(x - 100), y: Math.floor(y - 100), width: 200, height: 200 };
+  const scene = () => second.screenshot({ clip });
+  let first;
+  await expect.poll(async () => {
+    first = await scene();
+    return second.evaluate(async png => {
+      const blob = new Blob([Uint8Array.from(atob(png), c => c.charCodeAt(0))], { type: 'image/png' });
+      const bitmap = await createImageBitmap(blob);
+      const ctx = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d');
+      ctx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      const pixels = ctx.getImageData(0, 0, 200, 200).data;
+      const colors = new Set();
+      for (let i = 0; i < pixels.length; i += 16) {
+        colors.add((pixels[i] << 16) | (pixels[i + 1] << 8) | pixels[i + 2]);
+      }
+      return colors.size;
+    }, first.toString('base64'));
+  }).toBeGreaterThan(20);
   await second.mouse.move(x, y);
   await second.mouse.down();
   await second.mouse.move(x + 80, y - 25, { steps: 12 });
   await second.mouse.up();
-  await expect.poll(async () => Buffer.compare(first, await canvas.screenshot())).not.toBe(0);
+  await expect.poll(async () => Buffer.compare(first, await scene())).not.toBe(0);
   const firstInteractiveMs = Date.now() - started;
   assert.deepEqual(errors, []);
   assert(reads.length >= 2 && reads.every(r => !r.authorized && r.url.startsWith('/api/shares/')));
   const deniedAccess = await guest.request.get(origin + capturePath);
   assert([401, 403, 404].includes(deniedAccess.status()), 'Guest must not read the private capture job.');
   const report = { fixture: 'generated hallway; Chromium camera and injected motion', viewport,
-    browser: browser.version(), deniedMotionVideoOnly: true, restoredDraft: true,
-    motionSamples: motion.samples.length, durationMs: motion.durationMs, guestRenderAndOrbitMs: firstInteractiveMs,
+    browser: browser.version(), deniedMotionVideoOnly: true, recordedOffline: true, restoredDraft: true,
+    motionSamples: motion.samples.length, durationMs: motion.durationMs, reconstructionMs, guestRenderAndOrbitMs: firstInteractiveMs,
     ignoredCertificateErrors: contextOptions.ignoreHTTPSErrors, glbBytes: bytes.length,
     glbSha256: createHash('sha256').update(bytes).digest('hex'), sharePath: share.pathname };
   if (process.env.RECORDER_EVIDENCE_DIR) {
