@@ -1,6 +1,8 @@
 import { ArrowUpRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import anish from "../assets/team/anish.jpg";
 import arielle from "../assets/team/arielle.jpg";
+import krishna from "../assets/team/krishna.jpg";
 import sam from "../assets/team/sam.jpg";
 import { useReducedMotion } from "../lib/preferences";
 import { Container } from "./shared";
@@ -9,8 +11,8 @@ import { Container } from "./shared";
  * Creators. The four cards start as one pile in the middle and fan out into a row
  * when the section scrolls into view (no scroll pinning). Each card turns over to
  * its links on hover with a mouse, on tap on a phone, and when keyboard focus
- * reaches it. Photos are cropped to the same framing (3:4, face about a quarter of
- * the way down) so everyone looks the same size.
+ * reaches it. Photos are 600x800 and cropped to the same framing so everyone looks
+ * the same size: the eyes 240 px from the top and 85 px from eyes to chin.
  */
 
 interface Link {
@@ -68,6 +70,7 @@ const TEAM: Person[] = [
   {
     name: "Krishna",
     role: "Phone capture",
+    photo: krishna,
     initials: "KP",
     links: links(
       "https://github.com/Krishna-Panicker12",
@@ -79,6 +82,7 @@ const TEAM: Person[] = [
   {
     name: "Anish",
     role: "Phone capture and testing",
+    photo: anish,
     initials: "AJ",
     links: links(
       "https://github.com/darkprince558",
