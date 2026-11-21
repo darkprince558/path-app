@@ -146,7 +146,8 @@ try {
   const canvas = second.locator('canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(second.getByRole('alert')).toHaveCount(0);
-  const bounds = await canvas.boundingBox();
+  // A new WebGL canvas starts at the browser's 300×150 default until Three sizes it.
+  const bounds = await second.getByRole('main', { name: 'Shared venue scan' }).boundingBox();
   const x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height / 2;
   // Ignore the header, footer and the drag hint, which fades on pointer-down.
   const clip = { x: Math.floor(x - 100), y: Math.floor(y - 100), width: 200, height: 200 };
@@ -168,10 +169,13 @@ try {
       return colors.size;
     }, first.toString('base64'));
   }).toBeGreaterThan(20);
-  await second.mouse.move(x, y);
-  await second.mouse.down();
-  await second.mouse.move(x + 80, y - 25, { steps: 12 });
-  await second.mouse.up();
+  const touch = await guest.newCDPSession(second);
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] });
+  for (let step = 1; step <= 6; step++) {
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + step * 12, y: y - step * 3, id: 1 }] });
+  }
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await touch.detach();
   await expect.poll(async () => Buffer.compare(first, await scene())).not.toBe(0);
   const firstInteractiveMs = Date.now() - started;
   assert.deepEqual(errors, []);
