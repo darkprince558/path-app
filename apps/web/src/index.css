@@ -93,9 +93,9 @@
 }
 
 /* "The problem" loop. Each scene's end state is its finished picture, so reduced motion shows that. */
-.pb-progress {
-  height: 0;
-  animation-name: pb-progress;
+.pb-progress-x {
+  width: 0;
+  animation-name: pb-progress-x;
   animation-timing-function: linear;
   animation-fill-mode: forwards;
 }
@@ -140,9 +140,9 @@
 .pb-assemble {
   animation: pb-fade 0.9s ease-out both;
 }
-@keyframes pb-progress {
+@keyframes pb-progress-x {
   to {
-    height: 100%;
+    width: 100%;
   }
 }
 @keyframes pb-gps-move {
@@ -293,6 +293,7 @@
   :root:not([data-motion="full"]) *::before,
   :root:not([data-motion="full"]) *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
@@ -303,6 +304,7 @@
 :root[data-motion="reduce"] *::before,
 :root[data-motion="reduce"] *::after {
   animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;

@@ -16,8 +16,8 @@ import { buildVenueCloud } from "./venue";
 interface Point {
   id: string;
   tool: string;
-  title: string;
-  body: string;
+  /** One short line: where this one runs out. */
+  line: string;
   /** Seconds this scene plays before the next one. */
   seconds: number;
   scene: () => ReactNode;
@@ -120,9 +120,6 @@ function IndoorMapsScene() {
           </span>
         </div>
       ))}
-      <p className="pb-rise text-center font-mono text-xs text-sage" style={delay(1.2)}>
-        Added by the venue owner. Mostly airports and malls.
-      </p>
     </div>
   );
 }
@@ -143,8 +140,8 @@ function FloorPlanScene() {
         </g>
         <rect x="200" y="300" width="100" height="100" fill="url(#pb-hatch)" />
         <g fontFamily="Atkinson Hyperlegible Mono, monospace" fontSize="12" fill="#5E6B60">
-          <text x="40" y="350">RM 1.12</text>
-          <text x="330" y="345">RM 1.06</text>
+          <text x="40" y="350">RM 112</text>
+          <text x="330" y="345">RM 106</text>
           <text x="40" y="232">MECH</text>
           <text x="400" y="232">STOR.</text>
           <text x="216" y="290">STAIRS</text>
@@ -152,9 +149,9 @@ function FloorPlanScene() {
           <text x="210" y="30">ENTR. B</text>
           <text x="360" y="410" fontSize="10">REV. 2014 · NOT TO SCALE</text>
         </g>
-        <path className="pb-draw" d="M36 346 H100" stroke="#A8421F" strokeWidth="3" pathLength={1} style={delay(2)} />
+        <path className="pb-draw" d="M36 346 H96" stroke="#A8421F" strokeWidth="3" pathLength={1} style={delay(2)} />
         <text className="pb-pop-svg" x="40" y="376" fontFamily="Atkinson Hyperlegible Next, sans-serif" fontWeight="700" fontSize="16" fill="#A8421F" style={delay(2.3)}>
-          now 1.04?
+          now 140?
         </text>
       </svg>
     </div>
@@ -215,7 +212,6 @@ function PathScene() {
   const entrance = iso(0, 0, 0);
   const junction = iso(0, 0, -4);
   const room = iso(-3, 0, -4);
-  const stairs = iso(3, 0, -4);
   return (
     <>
       <svg viewBox="0 0 400 300" className="absolute inset-0 size-full" aria-hidden="true">
@@ -239,68 +235,33 @@ function PathScene() {
           <line x1={room.sx} y1={room.sy} x2={room.sx} y2={room.sy - 34} stroke="#F48057" strokeWidth="2.5" />
           <circle cx={room.sx} cy={room.sy - 38} r="7" fill="#F48057" />
         </g>
-        <g className="pb-pop-svg" style={delay(1.6)}>
-          <circle cx={stairs.sx} cy={stairs.sy - 18} r="11" fill="#121C16" stroke="#F48057" strokeWidth="2.5" />
-          <path d={`M${stairs.sx - 5} ${stairs.sy - 23} l10 10 m0 -10 l-10 10`} stroke="#F48057" strokeWidth="2.5" strokeLinecap="round" />
-        </g>
       </svg>
       <At x={room.sx} y={room.sy - 70} className="pb-pop -translate-x-1/2" style={delay(2.3)}>
         <Chip>Room 204</Chip>
       </At>
-      <At x={stairs.sx + 14} y={stairs.sy - 30} className="pb-pop" style={delay(1.7)}>
-        <Chip>Stairs skipped</Chip>
-      </At>
-      <At x={14} y={14} className="pb-rise right-[4%]" style={delay(2.6)}>
-        <div className="max-w-[17rem] rounded-xl bg-paper px-3.5 py-2.5 text-ink shadow-xl">
-          <p className="text-sm leading-tight font-bold">At the junction, turn left to the amber door</p>
-          <p className="mt-0.5 font-mono text-[0.7rem] text-muted">Approved by the map owner</p>
-        </div>
-      </At>
+      {/* What Path does that the others can't, one answer per problem. */}
+      <div className="absolute inset-x-[3%] bottom-[4%] flex flex-wrap justify-center gap-1.5 sm:gap-2">
+        {["Works indoors", "Anyone can map it", "Real 3D, kept current", "Skips the stairs"].map((label, i) => (
+          <span
+            key={label}
+            className="pb-pop inline-flex items-center gap-1.5 rounded-full bg-coral px-2.5 py-1 text-xs font-bold whitespace-nowrap text-ink shadow-lg sm:px-3 sm:py-1.5 sm:text-sm"
+            style={delay(2.6 + i * 0.35)}
+          >
+            <span aria-hidden="true">✓</span>
+            {label}
+          </span>
+        ))}
+      </div>
     </>
   );
 }
 
 const POINTS: Point[] = [
-  {
-    id: "map-apps",
-    tool: "Map apps",
-    title: "Google Maps and Apple Maps get you to the door.",
-    body: "Then the building is a grey box, and indoors the blue dot drifts.",
-    seconds: 5,
-    scene: () => <MapAppScene />,
-  },
-  {
-    id: "indoor",
-    tool: "Indoor maps",
-    title: "Only for the big venues.",
-    body: "Mostly airports and malls, added by the venue owner. Your lecture building or this weekend's venue usually isn't there.",
-    seconds: 4.5,
-    scene: () => <IndoorMapsScene />,
-  },
-  {
-    id: "plans",
-    tool: "Floor plans",
-    title: "Flat, and out of date.",
-    body: "A PDF or a board on the wall. Rooms get renamed, and you can't see what the turn looks like.",
-    seconds: 4.5,
-    scene: () => <FloorPlanScene />,
-  },
-  {
-    id: "checkmark",
-    tool: "“Accessible entrance ✓”",
-    title: "A checkmark, not a route.",
-    body: "It says yes or no. You find the stairs when you get to them.",
-    seconds: 4.5,
-    scene: () => <CheckmarkScene />,
-  },
-  {
-    id: "path",
-    tool: "Path",
-    title: "The real place, mapped by people who know it.",
-    body: "Scan it with a phone, label the rooms, share a link. Visitors see it in 3D and follow a route that can skip the stairs.",
-    seconds: 6.5,
-    scene: () => <PathScene />,
-  },
+  { id: "map-apps", tool: "Map apps", line: "Get you to the door. Inside, the blue dot drifts.", seconds: 5, scene: () => <MapAppScene /> },
+  { id: "indoor", tool: "Indoor maps", line: "Only for big venues like airports and malls.", seconds: 4.5, scene: () => <IndoorMapsScene /> },
+  { id: "plans", tool: "Floor plans", line: "Flat, out of date, and hard to read.", seconds: 4.5, scene: () => <FloorPlanScene /> },
+  { id: "checkmark", tool: "“Accessible” ✓", line: "A checkmark, not a route.", seconds: 4.5, scene: () => <CheckmarkScene /> },
+  { id: "path", tool: "Path", line: "The real place in 3D, mapped by people who know it.", seconds: 7.5, scene: () => <PathScene /> },
 ];
 
 /* -------------------------------------------------------------- section */
@@ -313,19 +274,23 @@ export default function Problem() {
   const [hovering, setHovering] = useState(false);
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(false);
-  const screen = useRef<HTMLDivElement>(null);
+  const player = useRef<HTMLDivElement>(null);
 
-  // Play only while the screen itself is mostly in view.
+  // Play only while the player is mostly in view.
   useEffect(() => {
-    const element = screen.current;
+    const element = player.current;
     if (!element) return;
-    const observer = new IntersectionObserver(([entry]) => setVisible((entry?.intersectionRatio ?? 0) >= 0.4), { threshold: [0, 0.4, 0.8] });
+    const observer = new IntersectionObserver(([entry]) => setVisible((entry?.intersectionRatio ?? 0) >= 0.5), {
+      threshold: [0, 0.5, 0.9],
+    });
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
 
   const autoplay = !reduce;
   const playing = autoplay && !paused && !hovering && !focused && visible;
+  const point = POINTS[active]!;
+  const isPath = point.id === "path";
 
   const choose = (index: number) => {
     setActive(index);
@@ -336,88 +301,107 @@ export default function Problem() {
   return (
     <section id="problem" aria-labelledby="problem-heading" className="bg-paper py-20 md:py-28">
       <Container>
-        <div className="mx-auto grid max-w-2xl gap-4 text-center">
+        <div className="mx-auto grid max-w-2xl gap-3 text-center">
           <h2 id="problem-heading" className="font-display text-[clamp(2rem,3.6vw,3rem)] leading-none font-black text-balance">
             Maps stop at the front door.
           </h2>
-          <p className="text-lg leading-relaxed text-muted">
-            Google Maps and Apple Maps are great at getting you to a building. Step inside and you're mostly on your own.
-            Here's what people use instead, and where each one runs out.
-          </p>
+          <p className="text-lg text-muted">Google and Apple Maps get you to the building. Inside, you&apos;re on your own.</p>
         </div>
 
         <div
+          ref={player}
           onPointerEnter={(e) => e.pointerType === "mouse" && setHovering(true)}
           onPointerLeave={() => setHovering(false)}
           onFocus={(e) => e.target.matches(":focus-visible") && setFocused(true)}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
           }}
-          className="mt-12 grid items-center gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12 xl-text:lg:grid-cols-1"
+          className="mx-auto mt-8 max-w-3xl"
         >
-          <ol className="grid gap-1.5 max-lg:order-last">
-            {POINTS.map((point, i) => {
+          {/* Steps, like story bars: the current one fills, then the next one starts. */}
+          <div role="group" aria-label="What people use today" className="grid grid-cols-5 gap-1.5 sm:gap-2">
+            {POINTS.map((p, i) => {
               const isActive = i === active;
-              const isPath = point.id === "path";
+              const done = autoplay && i < active;
+              const pathStep = p.id === "path";
               return (
-                <li key={point.id}>
-                  <button
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={() => choose(i)}
-                    className={`relative grid w-full gap-1 overflow-hidden rounded-2xl py-3.5 pr-4 pl-6 text-left transition-colors duration-300 ${
-                      isActive ? "bg-surface shadow-[0_12px_30px_-22px_rgb(18_28_22/0.6)] ring-1 ring-forest/15" : "hover:bg-surface/60"
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={isActive}
+                  aria-label={p.tool}
+                  onClick={() => choose(i)}
+                  className="group grid min-h-11 content-start gap-2 rounded-lg pt-2 text-left"
+                >
+                  <span aria-hidden="true" className="block h-1.5 overflow-hidden rounded-full bg-forest/15">
+                    {isActive && autoplay ? (
+                      <span
+                        key={run}
+                        className="pb-progress-x block h-full rounded-full bg-coral"
+                        style={{ animationDuration: `${p.seconds}s`, animationPlayState: playing ? "running" : "paused" }}
+                        onAnimationEnd={next}
+                      />
+                    ) : (
+                      <span className={`block h-full rounded-full ${isActive || done ? "w-full" : "w-0"} ${isActive ? "bg-coral" : "bg-forest/40"}`} />
+                    )}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={`text-xs leading-tight font-bold max-sm:hidden sm:text-sm ${
+                      isActive ? "text-forest" : pathStep ? "text-rust" : "text-muted group-hover:text-forest"
                     }`}
                   >
-                    {/* Progress line: fills while this point plays, then moves on. */}
-                    <span aria-hidden="true" className={`absolute top-3 bottom-3 left-2.5 w-1 rounded-full ${isActive ? "bg-forest/12" : "bg-transparent"}`}>
-                      {isActive ? (
-                        <span
-                          key={run}
-                          className={`block w-full rounded-full bg-coral ${autoplay ? "pb-progress" : "h-full"}`}
-                          style={autoplay ? { animationDuration: `${point.seconds}s`, animationPlayState: playing ? "running" : "paused" } : undefined}
-                          onAnimationEnd={autoplay ? next : undefined}
-                        />
-                      ) : null}
-                    </span>
-                    <span className={`font-mono text-sm tracking-wide uppercase ${isPath ? "text-rust" : "text-muted"}`}>{point.tool}</span>
-                    <span className="font-display text-xl leading-tight font-black">{point.title}</span>
-                    <span className="leading-snug text-muted">{point.body}</span>
-                  </button>
-                </li>
+                    {p.tool}
+                  </span>
+                </button>
               );
             })}
-          </ol>
+          </div>
 
+          {/* The player: the scene, with its one-line caption underneath so both are always in view. */}
           <div
-            ref={screen}
             data-surface="night"
-            className="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-night shadow-[0_40px_80px_-40px_rgb(18_28_22/0.9)]"
+            className={`mt-3 overflow-hidden rounded-[2rem] bg-night text-paper transition-shadow duration-500 ${
+              isPath
+                ? "shadow-[0_0_0_3px_#F48057,0_40px_90px_-30px_rgb(244_128_87/0.55)]"
+                : "shadow-[0_40px_80px_-40px_rgb(18_28_22/0.9)]"
+            }`}
           >
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_15%_0%,rgb(47_74_58/0.9),transparent_70%),radial-gradient(45%_40%_at_60%_95%,rgb(244_128_87/0.12),transparent_70%)]"
-            />
-            {POINTS.map((point, i) => (
+            <div className="relative aspect-[4/3] sm:aspect-video">
               <div
-                key={point.id}
                 aria-hidden="true"
-                className="absolute inset-0 transition-opacity duration-500"
-                style={{ opacity: i === active ? 1 : 0 }}
-              >
-                {i === active ? <div key={run} className="absolute inset-0">{point.scene()}</div> : null}
-              </div>
-            ))}
-            <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-3">
-              <span className="rounded-full bg-[#1B2A21]/80 px-3 py-1.5 font-mono text-xs text-sage ring-1 ring-sage/25 backdrop-blur">
-                {active + 1} / {POINTS.length} · {POINTS[active]!.tool}
-              </span>
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_15%_0%,rgb(47_74_58/0.9),transparent_70%),radial-gradient(45%_40%_at_60%_95%,rgb(244_128_87/0.12),transparent_70%)]"
+              />
+              {POINTS.map((p, i) => (
+                <div key={p.id} aria-hidden="true" className="absolute inset-0 transition-opacity duration-500" style={{ opacity: i === active ? 1 : 0 }}>
+                  {i === active ? (
+                    // Scenes are drawn for 4:3. On wider screens they sit centered in the 16:9 player.
+                    <div key={run} className="absolute inset-y-0 left-1/2 aspect-[4/3] h-full -translate-x-1/2">
+                      {p.scene()}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-4 border-t border-sage/15 px-5 py-4 sm:px-7">
+              <p className="min-w-0 flex-1" aria-live={autoplay ? "off" : "polite"}>
+                <span
+                  className={`mr-2 inline-block rounded-full px-2.5 py-0.5 align-middle font-mono text-xs font-bold tracking-wide uppercase ${
+                    isPath ? "bg-coral text-ink" : "bg-paper/10 text-sage"
+                  }`}
+                >
+                  {point.tool}
+                </span>
+                <span className={`align-middle font-display leading-tight font-black ${isPath ? "text-xl sm:text-2xl" : "text-lg sm:text-xl"}`}>
+                  {point.line}
+                </span>
+              </p>
               {autoplay ? (
                 <button
                   type="button"
                   onClick={() => setPaused((p) => !p)}
                   aria-label={paused ? "Play the comparison" : "Pause the comparison"}
-                  className="grid size-11 place-items-center rounded-full bg-paper text-ink shadow-lg"
+                  className="grid size-11 shrink-0 place-items-center rounded-full bg-paper text-ink"
                 >
                   {paused ? <Play className="size-4" aria-hidden /> : <Pause className="size-4" aria-hidden />}
                 </button>
