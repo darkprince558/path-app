@@ -28,6 +28,12 @@ The recorder link grants organizer access and contains a private key after `#`. 
 
 The recorder saves elapsed milliseconds, angular velocity in degrees/s, linear acceleration and acceleration including gravity in m/s². Missing vectors are recorded as null. Browser event times approximate video timing. The worker checks sample coverage and duration agreement. Sustained, well-observed rotation can select a denser set of camera frames for a turn. If tracking coverage is weak, the worker can try a second sampling rate and retain the successful result with the greater fraction of supported camera poses. Motion permission, gaps, selection reason, counts and missing camera intervals are recorded per job in `motion-summary.json`. The video still determines the geometry, in arbitrary units.
 
+## What was verified
+
+A mobile-sized Chromium browser recorded a 12-second synthetic hallway through MediaRecorder and sent 482 simulated readings for each motion channel. After a Mac worker restart, the same saved upload produced a 9,533,924-byte GLB with one embedded texture and 218,558 triangles. The Mac registered all 96 sampled camera views. Reconstruction on the local disk took about 15 minutes for this take.
+
+A fresh iPhone 16 Pro simulator running iOS 18.6 Safari opened the unlisted link over trusted local HTTPS and rotated the textured mesh by touch. A separate Safari recorder check used a generated camera feed and produced an H.264 MP4 that survived a page reload and passed the Mac's video intake. The physical two-phone check is to film a real hallway, confirm the sensor counters increase, and examine coverage around a turn from the guest phone.
+
 ## Repeat the checks
 
 Run the checks below from the repository root. `make check` covers all three guest access modes, the venue fixture and the recorder upload, restart and sharing contract. The HTTP tests bind local sockets.
