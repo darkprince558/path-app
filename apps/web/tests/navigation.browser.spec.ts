@@ -41,8 +41,8 @@ test("public GLB supports dynamic and saved routes, orbit, and isolated sharing"
   await ready(page);
   expect(downloads.length, "At least one authorized uploaded GLB must actually download").toBeGreaterThan(0);
 
-  const start = page.getByLabel("Start", { exact: true });
-  const destination = page.getByLabel("Destination", { exact: true });
+  const start = page.getByRole("combobox", { name: "Start", exact: true });
+  const destination = page.getByRole("combobox", { name: "Destination", exact: true });
   await start.selectOption(process.env.TEST_START_NODE_ID ?? { index: 1 });
   await destination.selectOption(process.env.TEST_END_NODE_ID ?? { index: 2 });
   await page.getByRole("button", { name: "Show route", exact: true }).click();
@@ -50,7 +50,7 @@ test("public GLB supports dynamic and saved routes, orbit, and isolated sharing"
   await expect(page.getByRole("alert")).toHaveCount(0);
   await page.screenshot({ path: info.outputPath("dynamic-route.png"), fullPage: true });
 
-  const graph = page.getByLabel("Show navigation graph", { exact: true });
+  const graph = page.getByRole("checkbox", { name: "Show navigation graph", exact: true });
   await graph.uncheck(); await expect(graph).not.toBeChecked();
   await graph.check(); await expect(graph).toBeChecked();
   const canvas = page.locator("canvas");
@@ -64,7 +64,7 @@ test("public GLB supports dynamic and saved routes, orbit, and isolated sharing"
   await expect.poll(async () => Buffer.compare(initialView, await canvas.screenshot())).not.toBe(0);
   await page.getByRole("button", { name: "Reset view", exact: true }).click();
 
-  await page.getByLabel("Saved route", { exact: true }).selectOption(savedPathId);
+  await page.getByRole("combobox", { name: "Saved route", exact: true }).selectOption(savedPathId);
   await expect(page.getByText(/\d+ connected segments/)).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
   await page.screenshot({ path: info.outputPath("saved-route.png"), fullPage: true });
