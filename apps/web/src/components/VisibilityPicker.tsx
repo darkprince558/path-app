@@ -1,7 +1,7 @@
 import type { Visibility } from "../lib/scans";
 
 const OPTIONS: { value: Visibility; label: string; detail: string }[] = [
-  { value: "public", label: "Public", detail: "Anyone can find it in Explore and open it." },
+  { value: "public", label: "Public", detail: "Anyone can find it in Community and open it." },
   { value: "unlisted", label: "Unlisted", detail: "Only people with the link or QR code can open it." },
   { value: "private", label: "Private", detail: "Only you and the people you add can open it." },
 ];

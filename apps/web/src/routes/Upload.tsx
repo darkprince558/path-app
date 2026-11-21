@@ -32,7 +32,7 @@ export default function Upload() {
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
-    document.title = "Share a scan · Path";
+    document.title = "New map · Path";
     return () => abortRef.current?.abort();
   }, []);
 
@@ -109,14 +109,11 @@ export default function Upload() {
   const uploading = phase.step === "uploading";
 
   return (
-    <main className="mx-auto min-h-dvh max-w-lg px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-16">
-      <header className="flex items-center justify-between">
-        <Link to="/" className="font-display text-2xl font-black tracking-wide">
-          Path
-        </Link>
-      </header>
-
-      <h1 className="mt-8 font-display text-4xl leading-none font-black">Share a scan</h1>
+    <div className="mx-auto max-w-lg">
+      <Link to="/maps" className="text-sm font-bold text-rust underline underline-offset-4">
+        ← Your maps
+      </Link>
+      <h1 className="mt-4 font-display text-4xl leading-none font-black">New map</h1>
       <p className="mt-3 text-lg text-muted">Upload a scan of a building, campus or trail. Choose who can open it, then share the link or QR code.</p>
 
       {phase.step === "done" ? (
@@ -252,6 +249,6 @@ export default function Upload() {
           </div>
         </form>
       )}
-    </main>
+    </div>
   );
 }

@@ -11,12 +11,20 @@ export default function Home() {
       <p className="text-muted">
         Open a guest link at <span className="font-mono text-rust">/s/&lt;shareId&gt;</span> to view a shared scan.
       </p>
-      <Link
-        to="/upload"
-        className="mt-2 inline-flex min-h-14 items-center justify-center self-start rounded-full bg-coral px-6 text-lg font-bold text-ink"
-      >
-        Share a scan
-      </Link>
+      <div className="mt-2 flex flex-wrap gap-3">
+        <Link
+          to="/maps"
+          className="inline-flex min-h-14 items-center justify-center rounded-full bg-coral px-6 text-lg font-bold text-ink"
+        >
+          Open my maps
+        </Link>
+        <Link
+          to="/community"
+          className="inline-flex min-h-14 items-center justify-center rounded-full px-6 text-lg font-bold text-forest ring-2 ring-forest"
+        >
+          Browse community maps
+        </Link>
+      </div>
     </main>
   );
 }

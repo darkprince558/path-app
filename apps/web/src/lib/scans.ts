@@ -1,14 +1,15 @@
 /**
- * Organizer-side calls from services/api/README.md.
+ * Owner-side calls (upload, sharing) from services/api/README.md.
  *
  *   POST  /api/scans?format=ply&visibility=unlisted  raw bytes -> 201 { shareId, sharePath }
  *   PATCH /api/scans/<shareId>  { visibility, viewerIds }    -> { shareId, visibility, viewerIds }
  *
  * Identity: the local mock reads an `X-Dev-User` header. In development we send one
- * (VITE_DEV_USER, default "organizer"). A production build sends none, because the
+ * (VITE_DEV_USER, default "demo-owner"). A production build sends none, because the
  * hosted API derives identity from the signed-in session instead.
  */
 
+import { currentUser } from "./session";
 import type { ScanFormat } from "./shares";
 
 export type { ScanFormat };
@@ -42,7 +43,7 @@ export class UploadError extends Error {
 
 export function ownerHeaders(): Record<string, string> {
   if (!import.meta.env.DEV) return {};
-  return { "X-Dev-User": import.meta.env.VITE_DEV_USER || "organizer" };
+  return { "X-Dev-User": currentUser().id };
 }
 
 /** Builds the link a guest opens. Uses this site's origin so links stay on the website. */
