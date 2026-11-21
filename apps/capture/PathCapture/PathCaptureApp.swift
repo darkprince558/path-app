@@ -111,6 +111,7 @@ private struct ScanDetail: View {
   @Environment(\.dismiss) var dismiss
   @State private var pairing = false
   @State private var busy = false
+  @State private var retryVideo = false
   @State private var status = ""
   var model: URL { record.folder.appendingPathComponent("scene.glb") }
   var body: some View {
@@ -150,8 +151,7 @@ private struct ScanDetail: View {
             }
             if record.hasVideo && record.videoGuestURL == nil {
               Button(
-                record.videoJob == nil
-                  ? "Reconstruct camera video on Mac" : "Check camera reconstruction"
+                retryVideo ? "Retry camera reconstruction" : (record.videoJob == nil ? "Reconstruct camera video on Mac" : "Check camera reconstruction")
               ) { run(true) }
             }
           }
@@ -197,9 +197,10 @@ private struct ScanDetail: View {
         do { result = try await client.request(prefix) } catch let error as NSError
           where error.domain == "PathMac" && error.code == 404
         { result = try await client.beginVideo(record, id: id) }
-        if result.status == "uploading" || result.status == "failed" {
+        if result.status == "uploading" || (result.status == "failed" && retryVideo) {
           result = try await client.beginVideo(record, id: id)
         }
+        retryVideo = result.status == "failed"
         if let path = result.sharePath {
           record.videoGuestURL = try mac.guest(path)
           try record.persist()

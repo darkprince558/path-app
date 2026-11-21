@@ -41,6 +41,7 @@ struct ScanPhoto {
 struct ScanVertex {
   var p: SIMD3<Float>
   var color: SIMD3<UInt8>
+  var classification: UInt8 = 0
   var uv: SIMD2<Float>
 }
 
@@ -62,13 +63,13 @@ struct NativeGLB {
     return views.count - 1
   }
   private mutating func attribute(
-    _ data: Data, type: String, count: Int, bytes: Bool = false,
+    _ data: Data, type: String, count: Int, bytes: Bool = false, normalized: Bool = true,
     minimum: [Float]? = nil, maximum: [Float]? = nil
   ) -> Int {
     var entry: [String: Any] = [
       "bufferView": view(data), "componentType": bytes ? 5121 : 5126, "count": count, "type": type,
     ]
-    if bytes { entry["normalized"] = true }
+    if bytes && normalized { entry["normalized"] = true }
     if let minimum, let maximum {
       entry["min"] = minimum
       entry["max"] = maximum
@@ -117,7 +118,8 @@ struct NativeGLB {
         }
         for (i, p) in [a, b, c].enumerated() {
           let color = chosen < 0 ? cloud.nearbyColor(p) : SIMD3<UInt8>(repeating: 255)
-          groups[chosen, default: []].append(ScanVertex(p: p, color: color, uv: uvs[i]))
+          groups[chosen, default: []].append(
+            ScanVertex(p: p, color: color, classification: f.classification, uv: uvs[i]))
         }
         result.triangles += 1
         result.classes[Self.label(f.classification), default: 0] += 1
@@ -137,6 +139,7 @@ struct NativeGLB {
       var xyz = Data()
       var rgb = Data()
       var uv = Data()
+      var classes = Data()
       xyz.reserveCapacity(verts.count * 12)
       var low = verts[0].p
       var high = low
@@ -146,6 +149,7 @@ struct NativeGLB {
           rgb.append(v.color[i])
         }
         rgb.append(255)
+        if result.triangles > 0 { classes.appendLE(UInt32(v.classification)) }
         if n >= 0 {
           uv.appendLE(v.uv.x.bitPattern)
           uv.appendLE(v.uv.y.bitPattern)
@@ -157,6 +161,10 @@ struct NativeGLB {
         xyz, type: "VEC3", count: verts.count, minimum: [low.x, low.y, low.z],
         maximum: [high.x, high.y, high.z])
       var attrs = ["POSITION": pos]
+      if result.triangles > 0 {
+        attrs["_AR_CLASSIFICATION"] = attribute(
+          classes, type: "VEC4", count: verts.count, bytes: true, normalized: false)
+      }
       var pbr: [String: Any] = ["metallicFactor": 0, "roughnessFactor": 1]
       if n >= 0 {
         let iv = view(try Data(contentsOf: photos[n].url))
@@ -177,7 +185,8 @@ struct NativeGLB {
     }
     var gltf: [String: Any] = [
       "asset": ["version": "2.0", "generator": "Path Capture"], "scene": 0,
-      "scenes": [["nodes": [0]]], "nodes": [["mesh": 0]], "meshes": [["primitives": primitives]],
+      "scenes": [["nodes": [0]]], "nodes": [["mesh": 0]],
+      "meshes": [["primitives": primitives, "extras": ["classificationNames": Self.labels]]],
       "materials": materials, "extensionsUsed": ["KHR_materials_unlit"], "accessors": accessors,
       "bufferViews": views, "buffers": [["byteLength": binary.count]],
     ]

@@ -10,9 +10,13 @@ struct MacAddress: Codable {
       c.scheme?.lowercased() == "https", let host = c.host, c.user == nil, c.password == nil,
       c.query == nil, ["/record", "/record/"].contains(c.path), let fragment = c.fragment
     else { throw ScanFailure.badPair }
-    let octets = host.split(separator: ".").compactMap { UInt8($0) }
+    let labels = host.split(separator: ".", omittingEmptySubsequences: false)
+    let octets = labels.compactMap { part -> UInt8? in
+      guard let value = UInt8(part), String(value) == part else { return nil }
+      return value
+    }
     let localIP =
-      octets.count == 4
+      labels.count == 4 && octets.count == 4
       && (octets[0] == 10 || (octets[0] == 192 && octets[1] == 168)
         || (octets[0] == 172 && (16...31).contains(octets[1])))
     guard host.lowercased().hasSuffix(".local") || localIP, fragment.hasPrefix("key=") else {

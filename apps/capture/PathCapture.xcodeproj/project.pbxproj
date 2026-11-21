@@ -26,7 +26,7 @@
 		};
 		100000000000000000000003 /* PathCapture sources */ = {
 			isa = PBXGroup;
-			children = (100000000000000000000010, 100000000000000000000011, 100000000000000000000012, 100000000000000000000100, 100000000000000000000101, 100000000000000000000102, 100000000000000000000103);
+			children = (100000000000000000000010, 100000000000000000000011, 100000000000000000000012, 100000000000000000000100, 100000000000000000000101, 100000000000000000000102, 100000000000000000000103, 100000000000000000000104);
 			path = PathCapture;
 			sourceTree = "<group>";
 		};
@@ -62,7 +62,7 @@
 		100000000000000000000008 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (100000000000000000000014, 100000000000000000000015, 100000000000000000000016, 100000000000000000000200, 100000000000000000000201, 100000000000000000000202, 100000000000000000000203);
+			files = (100000000000000000000014, 100000000000000000000015, 100000000000000000000016, 100000000000000000000200, 100000000000000000000201, 100000000000000000000202, 100000000000000000000203, 100000000000000000000204);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 
@@ -81,6 +81,8 @@
 		100000000000000000000202 = { isa = PBXBuildFile; fileRef = 100000000000000000000102; };
 		100000000000000000000103 /* ModelPreview.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPreview.swift; sourceTree = "<group>"; };
 		100000000000000000000203 = { isa = PBXBuildFile; fileRef = 100000000000000000000103; };
+		100000000000000000000104 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanRecord.swift; sourceTree = "<group>"; };
+		100000000000000000000204 = { isa = PBXBuildFile; fileRef = 100000000000000000000104; };
 		100000000000000000000020 /* Debug project */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -106,6 +108,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_FILE = PathCapture/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Path Capture";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Record the hallway and align its camera images with the 3D scan.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Record gyro and acceleration alongside your hallway scan.";
@@ -129,6 +132,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_FILE = PathCapture/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Path Capture";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Record the hallway and align its camera images with the 3D scan.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Record gyro and acceleration alongside your hallway scan.";

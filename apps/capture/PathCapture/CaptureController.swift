@@ -111,7 +111,7 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate {
     duration = take.seconds
     tracking = quality.capitalized
     instruction = guide
-    if duration >= 85 || faceCount >= 220_000 || cloud.isFull { stop() }
+    if duration >= 85 || faceCount >= 220_000 { stop() }
   }
   func stop(interrupted: Bool = false) {
     if phase == .requestingCamera {
@@ -134,34 +134,46 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate {
       do {
         let media = try await take.endMedia()
         let record = try await Task.detached(priority: .userInitiated) { () throws -> ScanRecord in
-          let chunks = anchors.compactMap(Self.geometry)
-          var glb = NativeGLB()
-          var meshInfo = MeshExport()
-          if !chunks.isEmpty || cloud.count > 0 {
-            meshInfo = try glb.write(
-              chunks: chunks, cloud: cloud, photos: take.photos,
-              to: take.directory.appendingPathComponent("scene.glb"))
-          }
-          guard meshInfo.triangles > 0 || cloud.count > 0 || media.hasVideo else {
-            throw ScanFailure.empty
-          }
+          var record = ScanRecord(
+            id: take.id, created: take.created, duration: take.seconds, mode: mode,
+            pointCount: 0, triangles: 0, photoFaces: 0, poseCount: take.poseCount,
+            gyroCount: media.motion, classes: [:], hasVideo: media.hasVideo, partial: true)
+          // The library can recover the video if iOS suspends a long mesh export.
+          if media.hasVideo { try record.persist() }
           if cloud.count > 0 {
             try cloud.binaryPLY().write(
               to: take.directory.appendingPathComponent("points.ply"), options: .atomic)
+            record.pointCount = cloud.count
+            try record.persist()
           }
-          let record = ScanRecord(
-            id: take.id, created: take.created, duration: take.seconds, mode: mode,
-            pointCount: cloud.count, triangles: meshInfo.triangles,
-            photoFaces: meshInfo.texturedTriangles, poseCount: take.poseCount,
-            gyroCount: media.motion, classes: meshInfo.classes, hasVideo: media.hasVideo,
-            partial: interrupted)
+          let chunks = anchors.compactMap(Self.geometry)
+          if !chunks.isEmpty || cloud.count > 0 {
+            var glb = NativeGLB()
+            let info = try glb.write(
+              chunks: chunks, cloud: cloud, photos: take.photos,
+              to: take.directory.appendingPathComponent("scene.glb"))
+            record.triangles = info.triangles
+            record.photoFaces = info.texturedTriangles
+            record.classes = info.classes
+          }
+          guard record.triangles > 0 || record.pointCount > 0 || record.hasVideo else {
+            throw ScanFailure.empty
+          }
+          record.partial = interrupted
           try record.persist()
           return record
         }.value
         reload()
         selected = record
         instruction = "Scan saved on this phone."
-      } catch { instruction = "Couldn’t finish this scan. \(error.localizedDescription)" }
+      } catch {
+        reload()
+        selected = library.first { $0.id == take.id }
+        instruction =
+          selected == nil
+          ? "Couldn’t save the scan. \(error.localizedDescription)"
+          : "Saved the available files. Surface export was interrupted."
+      }
       self.cloud = PointCloud()
       phase = .finished
     }

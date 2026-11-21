@@ -11,7 +11,7 @@ struct MotionReading: Codable {
   let acceleration, accelerationIncludingGravity: MotionAxis
   let rotationRate: MotionRotation
 }
-struct MotionFile: Codable {
+struct MotionFile: Encodable {
   let version = 1
   let timebase = "recording-start-ms"
   let permission: String
@@ -25,38 +25,6 @@ struct CameraSample: Codable {
   let imageWidth, imageHeight: Int
   let tracking: String
 }
-struct ScanRecord: Codable, Identifiable {
-  let id: UUID
-  let created: Date
-  let duration: Double
-  let mode: String
-  let pointCount, triangles, photoFaces, poseCount, gyroCount: Int
-  let classes: [String: Int]
-  let hasVideo: Bool
-  let partial: Bool
-  var guestURL: URL?
-  var videoJob: UUID?
-  var videoGuestURL: URL?
-  var folder: URL { Self.library.appendingPathComponent(id.uuidString, isDirectory: true) }
-  static var library: URL {
-    FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-      .appendingPathComponent("Scans", isDirectory: true)
-  }
-  func persist() throws {
-    try JSONEncoder().encode(self).write(
-      to: folder.appendingPathComponent("scan.json"), options: .atomic)
-  }
-  static func all() -> [Self] {
-    let dirs =
-      (try? FileManager.default.contentsOfDirectory(at: library, includingPropertiesForKeys: nil))
-      ?? []
-    return dirs.compactMap {
-      try? JSONDecoder().decode(
-        Self.self, from: Data(contentsOf: $0.appendingPathComponent("scan.json")))
-    }.sorted { $0.created > $1.created }
-  }
-}
-
 final class TakeRecorder {
   let id = UUID()
   let created = Date()
@@ -67,6 +35,8 @@ final class TakeRecorder {
   private let lock = NSLock()
   private var poses: [CameraSample] = []
   private let context = CIContext(options: [.cacheIntermediates: false])
+  private var photoInterval = 0.8
+  private var nextPhotoID = 0
   private var lastPhotoPose: simd_float4x4?
   private(set) var photos: [ScanPhoto] = []
   private(set) var origin: Double?
@@ -125,6 +95,20 @@ final class TakeRecorder {
             AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: 6_000_000],
           ])
         writerInput.expectsMediaDataInRealTime = true
+        let orientation =
+          UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first {
+            $0.activationState == .foregroundActive
+          }?.interfaceOrientation ?? .portrait
+        let outputSize =
+          orientation.isPortrait ? CGSize(width: h, height: w) : CGSize(width: w, height: h)
+        let transform = f.displayTransform(for: orientation, viewportSize: outputSize)
+        writerInput.transform = CGAffineTransform(
+          a: transform.a * outputSize.width / CGFloat(w),
+          b: transform.b * outputSize.height / CGFloat(w),
+          c: transform.c * outputSize.width / CGFloat(h),
+          d: transform.d * outputSize.height / CGFloat(h), tx: transform.tx * outputSize.width,
+          ty: transform.ty * outputSize.height)
+        writer.movieFragmentInterval = CMTime(seconds: 2, preferredTimescale: 600)
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(
           assetWriterInput: writerInput, sourcePixelBufferAttributes: nil)
         if writer.canAdd(writerInput) {
@@ -158,7 +142,7 @@ final class TakeRecorder {
           tracking: tracking))
       lastPose = t
     }
-    guard usePhotos, tracking == "normal", photos.count < 32, t - lastPhoto >= 0.8 else { return }
+    guard usePhotos, tracking == "normal", t - lastPhoto >= photoInterval else { return }
     let tf = f.camera.transform
     if let old = lastPhotoPose, simd_distance(old.columns.3, tf.columns.3) < 0.23,
       simd_dot(old.columns.2, tf.columns.2) > 0.965
@@ -167,7 +151,7 @@ final class TakeRecorder {
     }
     let image = CIImage(cvPixelBuffer: f.capturedImage)
     let scale = min(1, 768 / image.extent.width)
-    let url = directory.appendingPathComponent("photo-\(photos.count).jpg")
+    let url = directory.appendingPathComponent("photo-\(nextPhotoID).jpg")
     guard
       let jpeg = context.jpegRepresentation(
         of: image.transformed(by: CGAffineTransform(scaleX: scale, y: scale)),
@@ -192,6 +176,12 @@ final class TakeRecorder {
         }
       }
     }
+    // Thin previously saved views in time, keeping room for the next part of the walk.
+    if photos.count == 32 {
+      photos = photos.enumerated().compactMap { $0.offset.isMultiple(of: 2) ? $0.element : nil }
+      photoInterval *= 2
+    }
+    nextPhotoID += 1
     photos.append(
       ScanPhoto(
         url: url, worldToCamera: tf.inverse, intrinsics: f.camera.intrinsics,
