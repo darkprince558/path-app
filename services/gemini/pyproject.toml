@@ -13,7 +13,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=7"]
+test = ["pytest>=7", "pillow>=10"]
+tools = ["pillow>=10"]
+
+[project.scripts]
+path-gemini-trial = "path_gemini.trial.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
