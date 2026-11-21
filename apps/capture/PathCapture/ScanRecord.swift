@@ -1,5 +1,19 @@
 import Foundation
 
+struct CameraSample: Codable {
+  let t: Double
+  let cameraToWorld: [Float]
+  let intrinsics: [Float]
+  let imageWidth, imageHeight: Int
+  let tracking: String
+}
+struct CalibratedFrame: Codable {
+  let camera: CameraSample
+  let jpeg: String
+  let depthMetersFloat32LE, confidenceUInt8: String?
+  let depthWidth, depthHeight: Int?
+}
+
 struct ScanRecord: Codable, Identifiable {
   let id: UUID
   let created: Date

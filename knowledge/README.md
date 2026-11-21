@@ -14,6 +14,8 @@ Use this folder for knowledge a teammate will still need after your branch merge
 | Keep the phone recorder queue and OpenMVS working files in local Application Support on the Mac. | During browser capture verification, macOS evicted active depth maps in cloud-managed Documents. The same class of reconstruction ran on local storage. | [Phone recorder setup and acceptance check](../docs/phone-recorder.md) |
 | Use the same guest viewer for the native LiDAR mesh and the sparse non-LiDAR model. | The Swift exporter produced a metric, textured wall fixture and a separate point model. The local recorder accepted both exports and served their original bytes to signed-out guests. Both opened in a phone-sized browser and dragging rotated the textured wall. | [Reproducible checks](../docs/ios-scanner.md#verify) · [Implementation and test results](https://github.com/darkprince558/path-app/pull/27) |
 
+Krishna’s landmark tester and Sam’s LiDAR worker can use the same exported `capture/frames.json`. Select photos by their capture-local IDs and use the camera intrinsics in exported JPEG pixels. [Scanner export and verification](../docs/ios-scanner.md#export-a-lidar-upload-bundle) · [Gemini photo tester](https://github.com/darkprince558/path-app/pull/34)
+
 ## Add a finding
 
 Create a short Markdown file here such as `capture-export.md` for a finding worth reusing. Use the real device, command or example that produced it. Link to the implementation PR or issue and add a link to the note here. If the result changes the first supported format or another team decision, update the linked architecture or plan as part of the same PR.

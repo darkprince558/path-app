@@ -111,11 +111,13 @@ func fixturePose(_ x: Float, _ t: Double, _ tracking: String) -> [String: Any] {
   matrix.columns.3.x = x
   return [
     "t": t, "tracking": tracking,
+    "imageWidth": 128, "imageHeight": 128,
+    "intrinsics": [96, 0, 0, 0, 100, 0, 60, 66, 1],
     "cameraToWorld": (0..<4).flatMap { c in (0..<4).map { matrix[c][$0] } },
   ]
 }
 let poses = [
-  fixturePose(0, 0, "limited"), fixturePose(0, 0.25, "normal"), fixturePose(0.2, 1.25, "normal"),
+  fixturePose(0, 0, "limited"), fixturePose(0, 0.25, "normal"), fixturePose(0.2, 1.2504, "normal"),
 ]
 try JSONSerialization.data(withJSONObject: poses).write(
   to: take.appendingPathComponent("camera-poses.json"))

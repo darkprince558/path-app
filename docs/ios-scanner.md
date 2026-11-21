@@ -37,6 +37,10 @@ Use **Prepare complete scan archive**, then **Share complete scan archive** to s
 
 In Scan Review, enter the capture UUID issued by Sam’s backend under **LiDAR upload bundle**. Tap **Prepare LiDAR bundle**, then **Share LiDAR bundle**. The ZIP contains a `capture/` directory with the mesh, colored cloud, selected JPEGs, camera poses, preview and SHA-256 manifest. Recording can happen offline before the server allocates the UUID. Keep original camera frames in private storage.
 
+For Krishna’s landmark trial, unzip the bundle and point `python -m path_gemini.trial list` at the extracted `capture/` directory. Each record in `frames.json` has a stable capture-local `frameId` (for example, `frame-0007`), `imagePath` relative to that directory, `mimeType`, `timestampSeconds` from the first AR frame, `trackingState`, and the JPEG’s pixel `width` and `height`. Select two or three approved frames for one verified turn.
+
+The `intrinsics` values (`fx`, `fy`, `cx`, `cy`) are in pixels of the unrotated exported JPEG. `cameraToWorld` maps from the camera to the ARKit scan frame in metres, in column-major order. `manifest.json` records the entrance pose for alignment. Sam’s worker can continue reading `path`, `timestampMs` and `cameraPose` from the same records.
+
 To send the simulator export directly through the CPU processor, pass the installed worker executable as a second argument to `scripts/check-ios-scanner.sh`.
 
 ## Verify
