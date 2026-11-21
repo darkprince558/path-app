@@ -28,7 +28,9 @@ export default function MyMaps() {
       <div
         role="group"
         aria-label="Filter maps"
-        className="-mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0"
+        // A scrolling row clips anything outside its box, so the vertical padding leaves
+        // room for the pills' outline and the 3px focus ring.
+        className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
       >
         {MAP_FILTERS.map(({ value, label }) => {
           const active = value === filter;
