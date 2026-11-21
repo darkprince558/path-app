@@ -1,0 +1,17 @@
+Yes, push them
+
+---
+
+Yes, open PRs
+
+---
+
+okay what's next?
+
+---
+
+uhh I feel like that's not my job right now. How about the accessibility stuff and other features of the software frontend UI/UX?
+
+---
+
+Okay let's do that. Also it's nice to have the step-free routes in the settings page but also how about if you are with a friend who is using a wheelchair, you dont personally need it but they do, so should their be a switch or something. and maybe sometimes you just don't want to use the stairs but elevator instead say you went to the gym and are tired?
