@@ -7,7 +7,7 @@ final class PathCaptureUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Scan a space"].waitForExistence(timeout: 15))
     let fixture = app.buttons.containing(
       NSPredicate(format: "label CONTAINS %@", "Synthetic wall fixture")
-    ).first
+    ).firstMatch
     XCTAssertTrue(
       fixture.exists, "Run scripts/check-ios-scanner.sh to seed the exported Swift fixture.")
     fixture.tap()
