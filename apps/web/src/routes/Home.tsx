@@ -24,7 +24,7 @@ export default function Home() {
       </main>
       <BackToTop />
       <footer data-surface="night" className="bg-night py-8 text-sage">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:pl-20">Path · Built at Hack Western 13</div>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">Path · Built at Hack Western 13</div>
       </footer>
     </div>
   );

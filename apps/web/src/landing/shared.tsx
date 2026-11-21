@@ -2,12 +2,9 @@ import { QRCodeSVG } from "qrcode.react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
-/**
- * Page width. The extra left padding on large screens leaves room for the footprint
- * trail in the margin (see Trail.tsx).
- */
+/** Page width, centered. */
 export function Container({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`mx-auto w-full max-w-6xl px-4 sm:px-6 lg:pl-20 ${className}`}>{children}</div>;
+  return <div className={`mx-auto w-full max-w-6xl px-4 sm:px-6 ${className}`}>{children}</div>;
 }
 
 /** Small mono label above a section heading. */

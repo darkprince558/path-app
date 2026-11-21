@@ -123,6 +123,8 @@ function SignArrow({ direction, x, y }: { direction: Direction; x: number; y: nu
 
 /** Scene units: 260 × 146, route at y = 136. The figure walks from x = 36 to x = 136, stopping short of the post. */
 const WALK = 100;
+/** Seconds one walk takes (matches .pg-walker in index.css). On a laptop each person starts when the one before arrives. */
+const WALK_SECONDS = 2.6;
 
 function Scene({ person, run, delay }: { person: Person; run: number; delay: number }) {
   const textWidth = person.sign.length * 8.4;
@@ -130,8 +132,8 @@ function Scene({ person, run, delay }: { person: Person; run: number; delay: num
   const style = { "--walk": `${WALK}px`, "--pg-delay": `${delay}s`, animationDelay: `${delay}s` } as CSSProperties;
   return (
     <svg viewBox="0 0 260 146" className="w-full overflow-visible text-forest" aria-hidden="true">
-      {/* The shared route: edge to edge, so the scenes join into one line. */}
-      <line x1="0" y1="138" x2="260" y2="138" stroke={CORAL} strokeWidth="4" strokeLinecap="round" strokeDasharray="2 10" />
+      {/* The shared route runs past both edges, so it stays one line across the gaps between people. */}
+      <line x1="-24" y1="138" x2="284" y2="138" stroke={CORAL} strokeWidth="4" strokeLinecap="round" strokeDasharray="2 10" />
       {/* Sign on a post. */}
       <line x1="236" y1="28" x2="236" y2="136" stroke="currentColor" strokeWidth="4" />
       <g transform={`translate(${256 - signWidth} 0)`}>
@@ -161,7 +163,7 @@ function PersonStop({ person, index }: { person: Person; index: number }) {
   const [first, setFirst] = useState(true);
 
   // Walk once when this person comes into view. Side by side on a laptop they all
-  // arrive together, so each waits its turn (a little parade).
+  // come into view together, so each one starts when the one before arrives.
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
@@ -188,7 +190,7 @@ function PersonStop({ person, index }: { person: Person; index: number }) {
       }}
       className={`grid w-[80%] content-start gap-3 lg:w-auto ${index % 2 ? "justify-self-end" : "justify-self-start"} lg:justify-self-auto`}
     >
-      <Scene person={person} run={run} delay={first && wide ? index * 0.45 : 0} />
+      <Scene person={person} run={run} delay={first && wide ? index * WALK_SECONDS : 0} />
       <div className="px-2 text-center lg:px-4">
         <h3 className="font-display text-2xl leading-tight font-black">{person.who}</h3>
         <p className="mt-1.5 text-lg leading-snug text-balance text-muted">{person.line}</p>
@@ -223,7 +225,7 @@ export default function WhoUses() {
         <h2 id="who-heading" className="text-center font-display text-[clamp(2rem,3.6vw,3rem)] leading-none font-black text-balance">
           One app. A lot of different trips.
         </h2>
-        <ul className="mx-auto mt-16 grid max-w-md lg:mt-20 lg:max-w-none lg:grid-cols-4 xl-text:lg:max-w-md xl-text:lg:grid-cols-1">
+        <ul className="mx-auto mt-16 grid max-w-md lg:mt-20 lg:max-w-none lg:grid-cols-4 lg:gap-10 xl-text:lg:max-w-md xl-text:lg:grid-cols-1">
           {PEOPLE.map((person, i) => (
             <Fragment key={person.who}>
               <PersonStop person={person} index={i} />
