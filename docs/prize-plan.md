@@ -2,6 +2,8 @@
 
 Build the first demo around one question a visitor actually asks at Hack Western, such as “How do I get from check-in to the hardware lab?” Pick a real, approved stretch with a recognizable turn. The first milestone is an organizer uploading that scan and a guest opening its unlisted link on a second phone. Then add one Gemini-generated cue that helps the guest recognize where to turn.
 
+Devpost lists 16 award categories, including first, second and third overall. Aim the same end-to-end walk at the overall judging criteria and the two tracks below. The next most natural entry is PCBWay if the printed mount produces the scan used in the demo. [Official prize list](https://hack-western-13.devpost.com/#prizes)
+
 ## Two primary tracks
 
 | Priority | Who builds what | What to put in front of a judge |
@@ -26,8 +28,23 @@ The overall judges assess creativity, technical complexity, completeness, and de
 - **PCBWay hardware prototype.** Krishna and Anish can enter if they fabricate the wearable, scan the same stretch while wearing it, and show a design change they would fabricate next. Bring the actual mount and its resulting scan. A lens obstruction, tilt, or attachment problem from the first test gives the redesign a concrete purpose.
 - **MLH Best Use of Auth0.** If Sam chooses Auth0 for private sharing, use an Auth0 API for real sign-in. Demonstrate the same private scan opening for an invited account and denying another account access to its raw asset. Finish the unlisted guest flow first.
 - **MLH Best Use of Entire.** If the team adopts Entire, checkpoint one Claude or Codex task in Sessions and have a second teammate use the checkpoint and Graph to continue it. Keep the code change, tests, and actual token counts from comparable runs. Report a percentage only with a measured baseline and denominator.
+- **MLH Best Use of Vultr.** If Sam chooses Vultr to run scan processing or host the shared viewer, show an actual phone upload passing through that deployment and the guest opening the result. Time the upload-to-view flow on the venue network. This is worth considering while hosting is still open.
 
 These are independent entry decisions. Each sponsor describes its own expectations. [Official track descriptions](https://hack-western-13.devpost.com/)
+
+## Remaining prize categories
+
+| Award | Fit with this weekend’s build |
+| --- | --- |
+| Best Health Hack by Sun Life | A clinic-wayfinding version could fit if the team can demonstrate a specific patient problem and impact. The current demo is event discovery. |
+| Best Use of QNX | The sponsor calls for a working QNX system with one of its open-source AI modules. The team has chosen phone capture. |
+| The Canada Life Future Me Challenge | The challenge concerns young adults’ financial futures. It would require a separate product direction. |
+| Hire Your First AI Employee by TinyFish | A fit would require a meaningful browser job running end to end on live sites using TinyFish, plus a public demo post tagging the sponsor. The current capture workflow runs on the phone. |
+| MLH Best Use of Solana | The navigation and scan-sharing flows have no on-chain transaction requirement. |
+| MLH Best Use of Tiger Data | Consider it if timestamped capture quality becomes a real feature, such as helping a mapper identify sections to rescan. Basic scan metadata alone offers little to demonstrate. |
+| MLH Best Domain Name from GoDaddy Registry | Consider it if the team already wants to register a memorable share domain through GoDaddy Registry. |
+
+The hardware, auth, agent workflow and hosting decisions above overlap existing team responsibilities. Invest extra time in these other categories only if there is a feature a visitor or mapper would use during the demo. [Sponsor descriptions](https://hack-western-13.devpost.com/#prizes)
 
 ## Submission
 
