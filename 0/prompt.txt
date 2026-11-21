@@ -1,0 +1,1 @@
+For desktop, is there a way we can make those steps trail behind the cursor? like you move the cursor and footprints follow it, just for that last section?
