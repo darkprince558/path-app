@@ -1,4 +1,7 @@
+import CoreGraphics
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 import simd
 
 // The native and guest viewers share ARKit's right-handed, Y-up world in metres.
@@ -76,6 +79,45 @@ struct NativeGLB {
     }
     accessors.append(entry)
     return accessors.count - 1
+  }
+  // A guest can extract a GLB image. Keep only photo pixels covering published faces.
+  private static func surfaceTexture(_ url: URL, vertices: [ScanVertex]) throws -> Data {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+      let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+      let context = CGContext(
+        data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { throw ScanFailure.photo }
+    let w = CGFloat(image.width)
+    let h = CGFloat(image.height)
+    let rect = CGRect(x: 0, y: 0, width: w, height: h)
+    context.setFillColor(gray: 0.55, alpha: 1)
+    context.fill(rect)
+    func point(_ uv: SIMD2<Float>) -> CGPoint {
+      CGPoint(x: CGFloat(uv.x) * w, y: (1 - CGFloat(uv.y)) * h)
+    }
+    context.beginPath()
+    for n in stride(from: 0, to: vertices.count, by: 3) {
+      let a = point(vertices[n].uv)
+      let b = point(vertices[n + 1].uv)
+      let c = point(vertices[n + 2].uv)
+      let positive = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) >= 0
+      context.move(to: a)
+      context.addLine(to: positive ? b : c)
+      context.addLine(to: positive ? c : b)
+      context.closePath()
+    }
+    context.clip(using: .winding)
+    context.draw(image, in: rect)
+    let data = NSMutableData()
+    guard let pixels = context.makeImage(),
+      let dest = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil)
+    else { throw ScanFailure.photo }
+    CGImageDestinationAddImage(
+      dest, pixels, [kCGImageDestinationLossyCompressionQuality: 0.88] as CFDictionary)
+    guard CGImageDestinationFinalize(dest) else { throw ScanFailure.photo }
+    return data as Data
   }
   static let labels = [
     "unclassified", "wall", "floor", "ceiling", "table", "seat", "window", "door",
@@ -167,7 +209,7 @@ struct NativeGLB {
       }
       var pbr: [String: Any] = ["metallicFactor": 0, "roughnessFactor": 1]
       if n >= 0 {
-        let iv = view(try Data(contentsOf: photos[n].url))
+        let iv = view(try Self.surfaceTexture(photos[n].url, vertices: verts))
         images.append(["bufferView": iv, "mimeType": "image/jpeg"])
         textures.append(["source": images.count - 1])
         pbr["baseColorTexture"] = ["index": textures.count - 1]
@@ -217,15 +259,14 @@ extension Data {
   }
 }
 enum ScanFailure: LocalizedError {
-  case empty, cameraVideo, badPair, tooLarge
+  case empty, photo, badPair
   var errorDescription: String? {
     switch self {
     case .empty:
       return "No geometry was recorded. Keep a textured feature in view until tracking is normal."
-    case .cameraVideo: return "The camera video could not be saved."
+    case .photo: return "A camera texture could not be prepared."
     case .badPair: return "Scan or paste the HTTPS organizer link from the Mac pairing page."
-    case .tooLarge:
-      return "This scan exceeds the local mesh budget. Save this section and start another."
+
     }
   }
 }

@@ -95,7 +95,9 @@ private struct CameraPreview: UIViewRepresentable {
   let mesh: Bool
   func makeUIView(context: Context) -> ARView {
     let v = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: false)
+    let scanDelegate = session.delegate
     v.session = session
+    session.delegate = scanDelegate
     if mesh {
       v.debugOptions.insert(.showSceneUnderstanding)
     } else {
