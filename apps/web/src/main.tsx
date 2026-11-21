@@ -4,6 +4,7 @@ import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import "./index.css";
 import Home from "./routes/Home";
+import Record from "./routes/Record";
 import GuestView from "./routes/GuestView";
 import NotFound from "./routes/NotFound";
 import Spaces from "./routes/Spaces";
@@ -12,6 +13,7 @@ import EventView from "./routes/EventView";
 
 const router = createBrowserRouter([
   { path: "/", element: <Home /> },
+  { path: "/record", element: <Record /> },
   { path: "/s/:shareId", element: <GuestView /> },
   { path: "/spaces", element: <Spaces /> },
   { path: "/spaces/:spaceId", element: <SpaceView /> },
