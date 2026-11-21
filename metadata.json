@@ -1,0 +1,75 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M7ZTS0NTC5XHB52HF0D4ZSWK",
+  "strategy": "manual-commit",
+  "branch": "feature/lidar-pipeline",
+  "checkpoints_count": 3,
+  "files_touched": [
+    ".gitignore",
+    "docs/capture-api.md",
+    "docs/capture-processing.md",
+    "fixtures/lidar-capture/README.md",
+    "fixtures/lidar-capture/frames.json",
+    "fixtures/lidar-capture/frames/junction-02.jpg",
+    "fixtures/lidar-capture/manifest.json",
+    "fixtures/lidar-capture/points.ply",
+    "fixtures/lidar-capture/preview.jpg",
+    "fixtures/lidar-capture/source.glb",
+    "knowledge/README.md",
+    "knowledge/lidar-ingestion.md",
+    "services/api/.env.local.example",
+    "services/api/README.md",
+    "services/api/drizzle/0003_durable_capture_processing.sql",
+    "services/api/drizzle/meta/0003_snapshot.json",
+    "services/api/drizzle/meta/_journal.json",
+    "services/api/package.json",
+    "services/api/scripts/capture-worker.ts",
+    "services/api/src/app/api/captures/[captureId]/finalize/route.ts",
+    "services/api/src/app/api/captures/[captureId]/uploads/route.ts",
+    "services/api/src/app/api/captures/route.ts",
+    "services/api/src/app/api/jobs/[jobId]/route.ts",
+    "services/api/src/db/schema.ts",
+    "services/api/src/lib/api/captures.test.ts",
+    "services/api/src/lib/api/captures.ts",
+    "services/api/src/lib/api/fixtures/crash-worker.ts",
+    "services/api/src/lib/api/jobs.ts",
+    "services/api/src/lib/api/lidar-schema.test.ts",
+    "services/api/src/lib/api/processing.test.ts",
+    "services/api/src/lib/capture/contract.ts",
+    "services/api/src/lib/processing/processor.ts",
+    "services/api/src/lib/processing/queue.ts",
+    "services/api/src/lib/processing/worker.ts",
+    "services/api/src/lib/storage/captures.ts",
+    "services/api/src/lib/storage/revisions.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 83261,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 9395200,
+    "output_tokens": 62827,
+    "api_call_count": 50
+  },
+  "redaction": {
+    "replacements": 204,
+    "layers": {
+      "betterleaks": 109,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 105,
+      "credentialed_uri": 64,
+      "entropy": 41,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
