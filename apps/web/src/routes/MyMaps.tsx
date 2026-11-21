@@ -43,7 +43,7 @@ export default function MyMaps() {
     if (!toDelete) return;
     setDeleting(true);
     try {
-      await deleteMap(toDelete.id);
+      await deleteMap(toDelete.editId ?? toDelete.id);
       setState((current) =>
         current.phase === "ready" ? { ...current, maps: current.maps.filter((m) => m.id !== toDelete.id) } : current,
       );

@@ -42,9 +42,26 @@ export interface SharingState {
 
 /** One of your own maps, from GET /api/scans/mine. */
 export interface OwnedMap extends SharingState {
+  /** The scan's own ID, used to edit and delete it. The Next.js API sends it; the local mock doesn't. */
+  id?: string;
   sharePath: string;
   format: ScanFormat;
   updatedAt: string;
+  /** People added to a private map, with names to show. The local mock sends only viewerIds. */
+  viewers?: { id: string; displayName: string }[];
+}
+
+/**
+ * The ID that PATCH and DELETE /api/scans/<id> expect: the scan's own ID on the Next.js API,
+ * or the share ID on the local mock (which has no separate scan ID).
+ */
+export function mapEditId(map: { id?: string; shareId: string }): string {
+  return map.id ?? map.shareId;
+}
+
+/** Names to show for the people who can open a private map. */
+export function viewerNames(map: OwnedMap): string[] {
+  return map.viewers?.map((viewer) => viewer.displayName) ?? map.viewerIds;
 }
 
 /** A map someone else owns and added you to, from GET /api/scans/shared. */
@@ -139,14 +156,20 @@ function messageFor(status: number, serverError: string | undefined, format: Sca
   }
 }
 
+/** Reads the mock's `{error: "..."}` and the Next.js API's `{error: {code, message}}`. */
 function readError(text: string): string | undefined {
   try {
     const body = JSON.parse(text) as { error?: unknown };
-    return typeof body.error === "string" ? body.error : undefined;
+    if (typeof body.error === "string") return body.error;
+    const message = (body.error as { message?: unknown } | undefined)?.message;
+    return typeof message === "string" ? message : undefined;
   } catch {
     return undefined;
   }
 }
+
+/** The Next.js API keeps a public map inside a public space and refuses otherwise. */
+const PUBLIC_SPACE_RULE = /public scan requires a public space/i;
 
 /** Uploads with XMLHttpRequest because fetch can't report upload progress. */
 export function uploadScan(options: {
@@ -194,15 +217,19 @@ export function uploadScan(options: {
   });
 }
 
-/** Changes any of a map's name, visibility and viewer list. Only the owner may. */
+/**
+ * Changes a map's name or visibility. Only the owner may. `mapId` comes from mapEditId().
+ * Adding or removing viewers isn't offered yet: the Next.js API keeps grants by account
+ * UUID, and a proper people picker comes after the demo.
+ */
 export async function updateMap(
-  shareId: string,
-  change: Partial<Pick<SharingState, "name" | "visibility" | "viewerIds">>,
-): Promise<SharingState> {
+  mapId: string,
+  change: Partial<Pick<SharingState, "name" | "visibility">>,
+): Promise<Pick<SharingState, "shareId" | "name" | "visibility">> {
   const what = "name" in change && Object.keys(change).length === 1 ? "name" : "sharing setting";
   let response: Response;
   try {
-    response = await fetch(`/api/scans/${encodeURIComponent(shareId)}`, {
+    response = await fetch(`/api/scans/${encodeURIComponent(mapId)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...ownerHeaders() },
       body: JSON.stringify(change),
@@ -216,24 +243,32 @@ export async function updateMap(
   if (!response.ok) {
     const error = readError(await response.text());
     throw new UploadError(
-      response.status === 400 && error
-        ? `The server rejected that change: ${error}.`
-        : `The server answered ${response.status}. The ${what} didn't change.`,
+      response.status === 400 && error && PUBLIC_SPACE_RULE.test(error)
+        ? "To make this map public, its parent space must also be public."
+        : response.status === 400 && error
+          ? `The server rejected that change: ${error}.`
+          : `The server answered ${response.status}. The ${what} didn't change.`,
       response.status,
     );
   }
-  return (await response.json()) as SharingState;
+  // The mock answers with the sharing state; the Next.js API wraps the scan as {scan}.
+  const body = (await response.json()) as Partial<SharingState> & { scan?: Partial<SharingState> };
+  const state = body.scan ?? body;
+  if (typeof state.shareId !== "string" || typeof state.name !== "string" || typeof state.visibility !== "string") {
+    throw new UploadError(`The change was saved, but the server's reply was missing details. Reload to see it.`);
+  }
+  return { shareId: state.shareId, name: state.name, visibility: state.visibility };
 }
 
-export function updateSharing(shareId: string, visibility: Visibility, viewerIds: string[]): Promise<SharingState> {
-  return updateMap(shareId, { visibility, viewerIds });
+export function updateSharing(mapId: string, visibility: Visibility) {
+  return updateMap(mapId, { visibility });
 }
 
-/** Deletes a map for good. Only the owner may. */
-export async function deleteMap(shareId: string): Promise<void> {
+/** Deletes a map for good. Only the owner may. `mapId` comes from mapEditId(). */
+export async function deleteMap(mapId: string): Promise<void> {
   let response: Response;
   try {
-    response = await fetch(`/api/scans/${encodeURIComponent(shareId)}`, { method: "DELETE", headers: ownerHeaders() });
+    response = await fetch(`/api/scans/${encodeURIComponent(mapId)}`, { method: "DELETE", headers: ownerHeaders() });
   } catch {
     throw new UploadError("Couldn't reach the server. The map wasn't deleted.");
   }
@@ -264,10 +299,3 @@ async function fetchList<T>(path: string, signal?: AbortSignal): Promise<T[]> {
 export const fetchMyMaps = (signal?: AbortSignal) => fetchList<OwnedMap>("/api/scans/mine", signal);
 export const fetchSharedMaps = (signal?: AbortSignal) => fetchList<SharedMap>("/api/scans/shared", signal);
 
-/** Splits "ana, sam  krish" into IDs and reports any the API would reject. */
-export function parseViewerIds(text: string): { ids: string[]; invalid: string[] } {
-  const parts = text.split(/[\s,]+/).filter(Boolean);
-  const ids = [...new Set(parts.filter((p) => VIEWER_ID_PATTERN.test(p)))];
-  const invalid = parts.filter((p) => !VIEWER_ID_PATTERN.test(p));
-  return { ids, invalid };
-}

@@ -1,8 +1,11 @@
-import type { OwnedMap, SharedMap, Visibility } from "./scans";
+import { mapEditId, type OwnedMap, type SharedMap, type Visibility } from "./scans";
 
 /** One card in "Your maps" or "Community". */
 export interface MapSummary {
+  /** Share ID: the guest link and /maps/<id> use it. */
   id: string;
+  /** For your own maps, the ID that edit and delete calls take (see mapEditId). */
+  editId?: string;
   name: string;
   visibility: Visibility;
   /** Guest link. */
@@ -20,6 +23,7 @@ export interface MapSummary {
 export function fromOwned(map: OwnedMap): MapSummary {
   return {
     id: map.shareId,
+    editId: mapEditId(map),
     name: map.name,
     visibility: map.visibility,
     sharePath: map.sharePath,

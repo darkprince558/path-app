@@ -12,6 +12,9 @@ Capture and frontend teams share the [GLB and navigation coordinate contract](sc
 | `GET /api/scans/:id/file` | Authorized GLB bytes, `model/gltf-binary`, with `Cache-Control: private, no-store`. |
 | `PATCH /api/scans/:id` | Owner changes `name`, `visibility`, `transform` or `metadata`; returns `{scan}`. |
 | `DELETE /api/scans/:id` | Owner removes the row and local object; returns 204. |
+| `GET /api/scans/mine` | Signed-in account's own readable scans, newest first: `{scans: [{id, shareId, sharePath, name, format, visibility, status, viewerIds, viewers: [{id, displayName}], updatedAt}]}`. 401 when signed out. The website edits and deletes with `id`. |
+| `GET /api/scans/public` | Ready public scans that a signed-out visitor may read (the space must be public too), newest first: `{scans: [{shareId, sharePath, name, updatedAt}]}`. |
+| `GET /api/scans/shared` | Other accounts' scans with a `scan_viewers` grant for this account, newest first: `{scans: [{shareId, sharePath, name, format, visibility, owner, updatedAt}]}`, where `owner` is the display name. No viewer lists. 401 when signed out. |
 
 `scan` includes `id`, `spaceId`, `ownerId`, `name`, `visibility`, `format` (`glb`), `byteSize`, `status` (`ready`), `transform`, `metadata`, timestamps and `downloadPath`. It omits the internal `objectKey`. The existing database `shareId` is present but this phase does not provide an unlisted link route. Public scans require a public space; private scans require ownership or an explicit `scan_viewers` grant **and** access to the parent space. Event membership alone does not reveal private scans. Pending seed scans are visible only to their owner and have `downloadPath: null`. Inaccessible IDs return 404. Writes require Auth0 and return 401 when signed out.
 

@@ -1,7 +1,7 @@
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { parseViewerIds, shareUrl, updateSharing, UploadError, type Visibility } from "../lib/scans";
+import { shareUrl, updateSharing, UploadError, type Visibility } from "../lib/scans";
 import VisibilityPicker, { visibilityDetail, visibilityLabel } from "./VisibilityPicker";
 
 const FOREST = "#2F4A3A";
@@ -12,25 +12,29 @@ function isLocalHost(): boolean {
 }
 
 export default function SharePanel({
-  shareId,
+  mapId,
   sharePath,
   initialVisibility,
-  initialViewerIds,
+  viewers = [],
   heading = "Your link is ready",
   footer,
 }: {
-  shareId: string;
+  /** The ID edit calls take (mapEditId). */
+  mapId: string;
   sharePath: string;
   initialVisibility: Visibility;
-  initialViewerIds: string[];
+  /**
+   * Names of people already added to a private map. Shown, not edited: adding and removing
+   * people waits for a proper people picker after the demo.
+   */
+  viewers?: string[];
   heading?: string;
   /** Extra actions under the sharing controls, e.g. "Upload another scan". */
   footer?: ReactNode;
 }) {
   const url = shareUrl(sharePath);
-  const [saved, setSaved] = useState({ visibility: initialVisibility, viewerIds: initialViewerIds });
+  const [saved, setSaved] = useState(initialVisibility);
   const [visibility, setVisibility] = useState<Visibility>(initialVisibility);
-  const [viewerText, setViewerText] = useState(initialViewerIds.join(", "));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -42,10 +46,7 @@ export default function SharePanel({
     return () => clearTimeout(timer);
   }, [copied]);
 
-  const viewers = parseViewerIds(viewerText);
-  const pendingViewers = visibility === "private" ? viewers.ids : [];
-  const dirty =
-    visibility !== saved.visibility || pendingViewers.slice().sort().join() !== saved.viewerIds.slice().sort().join();
+  const dirty = visibility !== saved;
 
   async function copy() {
     try {
@@ -59,19 +60,15 @@ export default function SharePanel({
   }
 
   async function save() {
-    if (viewers.invalid.length && visibility === "private") {
-      setMessage({ tone: "error", text: `These aren't valid account IDs: ${viewers.invalid.join(", ")}` });
-      return;
-    }
     setSaving(true);
     setMessage(null);
     try {
-      const result = await updateSharing(shareId, visibility, pendingViewers);
-      setSaved({ visibility: result.visibility, viewerIds: result.viewerIds });
+      const result = await updateSharing(mapId, visibility);
+      setSaved(result.visibility);
       const who =
         result.visibility === "private"
-          ? result.viewerIds.length
-            ? ` You and ${result.viewerIds.join(", ")} can open it.`
+          ? viewers.length
+            ? ` You and ${viewers.join(", ")} can open it.`
             : " Only you can open it."
           : "";
       setMessage({ tone: "ok", text: `Saved. This map is now ${visibilityLabel(result.visibility)}.${who}` });
@@ -90,8 +87,8 @@ export default function SharePanel({
           {heading}
         </h2>
         <p className="mt-1 text-muted">
-          Currently <strong className="text-forest">{visibilityLabel(saved.visibility)}</strong>.{" "}
-          {visibilityDetail(saved.visibility)}
+          Currently <strong className="text-forest">{visibilityLabel(saved)}</strong>.{" "}
+          {visibilityDetail(saved)}
         </p>
 
         <label htmlFor="share-url" className="sr-only">
@@ -155,19 +152,21 @@ export default function SharePanel({
         <legend className="mb-2 font-display text-xl font-extrabold">Change who can open it</legend>
         <VisibilityPicker name="share-visibility" value={visibility} onChange={setVisibility} disabled={saving} />
         {visibility === "private" ? (
-          <label className="grid gap-1">
-            <span className="font-bold">People who can view</span>
-            <span className="text-sm text-muted">Account IDs, separated by commas. Leave empty for just you.</span>
-            <input
-              value={viewerText}
-              onChange={(e) => setViewerText(e.target.value)}
-              placeholder="sam, anish"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              className="min-h-12 rounded-lg bg-surface px-3 font-mono ring-1 ring-forest/25 focus:ring-2 focus:ring-forest focus:outline-none"
-            />
-          </label>
+          <div className="grid gap-1 rounded-lg bg-surface px-4 py-3 ring-1 ring-forest/15">
+            <p className="font-bold">People who can view</p>
+            {viewers.length ? (
+              <ul className="flex flex-wrap gap-2">
+                {viewers.map((viewer) => (
+                  <li key={viewer} className="rounded-full bg-paper px-3 py-1 text-sm ring-1 ring-forest/20">
+                    {viewer}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>Just you.</p>
+            )}
+            <p className="text-sm text-muted">Adding and removing people is coming soon.</p>
+          </div>
         ) : null}
         <button
           type="button"

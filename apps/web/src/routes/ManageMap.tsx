@@ -9,9 +9,11 @@ import {
   deleteMap,
   fetchMyMaps,
   ListUnavailableError,
+  mapEditId,
   MAX_NAME_LENGTH,
   updateMap,
   UploadError,
+  viewerNames,
   type OwnedMap,
 } from "../lib/scans";
 
@@ -118,7 +120,7 @@ function ManageReady({
     setSavingName(true);
     setNameError(null);
     try {
-      const result = await updateMap(map.shareId, { name: cleaned });
+      const result = await updateMap(mapEditId(map), { name: cleaned });
       onRenamed(result.name);
       setName(result.name);
       toast.success("Name saved", { description: result.name });
@@ -132,7 +134,7 @@ function ManageReady({
   async function confirmDelete() {
     setDeleting(true);
     try {
-      await deleteMap(map.shareId);
+      await deleteMap(mapEditId(map));
       toast.success("Map deleted", { description: map.name });
       onDeleted();
     } catch (error) {
@@ -182,10 +184,10 @@ function ManageReady({
       </form>
 
       <SharePanel
-        shareId={map.shareId}
+        mapId={mapEditId(map)}
         sharePath={map.sharePath}
         initialVisibility={map.visibility}
-        initialViewerIds={map.viewerIds}
+        viewers={viewerNames(map)}
         heading="Link and QR code"
       />
 

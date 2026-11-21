@@ -7,8 +7,6 @@ import {
   cleanMapName,
   formatBytes,
   MAX_NAME_LENGTH,
-  parseViewerIds,
-  updateSharing,
   uploadScan,
   UploadError,
   type ScanFormat,
@@ -19,7 +17,7 @@ import {
 type Phase =
   | { step: "choose" }
   | { step: "uploading"; progress: number }
-  | { step: "done"; result: UploadResult; visibility: Visibility; viewerIds: string[]; warning?: string };
+  | { step: "done"; result: UploadResult; visibility: Visibility };
 
 export default function Upload() {
   const inputId = useId();
@@ -28,7 +26,6 @@ export default function Upload() {
   const [file, setFile] = useState<{ file: File; format: ScanFormat } | null>(null);
   const [fileProblem, setFileProblem] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<Visibility>("unlisted");
-  const [viewerText, setViewerText] = useState("");
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
   const nameId = useId();
@@ -62,18 +59,12 @@ export default function Upload() {
     void choose(event.dataTransfer.files[0]);
   }
 
-  const viewers = parseViewerIds(viewerText);
-
   const cleanedName = cleanMapName(name);
 
   async function upload() {
     if (!file) return;
     if (name.trim() && !cleanedName) {
       setUploadError(`Give the map a name of 1 to ${MAX_NAME_LENGTH} characters, or leave it empty.`);
-      return;
-    }
-    if (visibility === "private" && viewers.invalid.length) {
-      setUploadError(`These aren't valid account IDs: ${viewers.invalid.join(", ")}`);
       return;
     }
     const controller = new AbortController();
@@ -89,16 +80,7 @@ export default function Upload() {
         signal: controller.signal,
         onProgress: (progress) => setPhase({ step: "uploading", progress }),
       });
-      let viewerIds: string[] = [];
-      let warning: string | undefined;
-      if (visibility === "private" && viewers.ids.length) {
-        try {
-          viewerIds = (await updateSharing(result.shareId, "private", viewers.ids)).viewerIds;
-        } catch (error) {
-          warning = `Uploaded, but adding viewers failed: ${(error as Error).message} Try again below.`;
-        }
-      }
-      setPhase({ step: "done", result, visibility, viewerIds, warning });
+      setPhase({ step: "done", result, visibility });
     } catch (error) {
       if (controller.signal.aborted) {
         setPhase({ step: "choose" });
@@ -114,7 +96,6 @@ export default function Upload() {
   function reset() {
     setFile(null);
     setFileProblem(null);
-    setViewerText("");
     setName("");
     setNameEdited(false);
     setUploadError(null);
@@ -134,16 +115,10 @@ export default function Upload() {
 
       {phase.step === "done" ? (
         <div className="mt-8">
-          {phase.warning ? (
-            <p role="alert" className="mb-4 rounded-lg bg-surface px-4 py-3 text-rust ring-1 ring-rust/30">
-              {phase.warning}
-            </p>
-          ) : null}
           <SharePanel
-            shareId={phase.result.shareId}
+            mapId={phase.result.shareId}
             sharePath={phase.result.sharePath}
             initialVisibility={phase.visibility}
-            initialViewerIds={phase.viewerIds}
             footer={
               <div className="flex flex-wrap gap-x-6 gap-y-3">
                 <Link
@@ -242,21 +217,6 @@ export default function Upload() {
               <span aria-hidden="true" className="text-rust">3</span> Who can open it
             </legend>
             <VisibilityPicker name="upload-visibility" value={visibility} onChange={setVisibility} disabled={uploading} />
-            {visibility === "private" ? (
-              <label className="grid gap-1">
-                <span className="font-bold">People who can view</span>
-                <span className="text-sm text-muted">Account IDs, separated by commas. Leave empty for just you.</span>
-                <input
-                  value={viewerText}
-                  onChange={(e) => setViewerText(e.target.value)}
-                  placeholder="sam, anish"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  className="min-h-12 rounded-lg bg-surface px-3 font-mono ring-1 ring-forest/25 focus:ring-2 focus:ring-forest focus:outline-none"
-                />
-              </label>
-            ) : null}
           </fieldset>
 
           <div className="grid gap-3">
