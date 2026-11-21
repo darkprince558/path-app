@@ -4,7 +4,7 @@ Open the [roadmap](ROADMAP.md) to see the next demonstration, who owns each part
 
 | If you are… | Go here |
 | --- | --- |
-| Picking up work | [Open issues](https://github.com/darkprince558/path-app/issues) — claim a ticket with your name, branch and scope. |
+| Picking up work | [Live team board](https://github.com/darkprince558/path-app/issues/8) · [Create a task, claim one or post a checkpoint](../docs/tasks.md). |
 | Designing a change | [Architecture](../docs/architecture.md), [capture format trial](../docs/scan-formats.md), or [deployment plan](../docs/deployment.md). Put a new proposal in this folder when it needs its own discussion. |
 | Preparing the demo | [Gemini landmark flow](../docs/gemini-demo.md) and [prize demo plan](../docs/prize-plan.md). |
 | Looking up why we made a choice | [Team notebook](../knowledge/README.md). |

@@ -1,0 +1,22 @@
+name: Hackathon task
+description: Put one outcome on the team’s list, ready to claim.
+labels: ["task:ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Give the task a short title someone can act on, such as **Open an unlisted scan on a second phone**. If you’re starting now, assign yourself and switch the label from **task:ready** to **task:active** after creating the issue.
+  - type: textarea
+    id: check
+    attributes:
+      label: How will we know it works?
+      description: Give a teammate one check they can repeat.
+      placeholder: Open the unlisted URL in a signed-out browser on a second phone. The scan’s colored junction should be visible.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and dependencies
+      description: Which files will you edit? Link any task, example or decision you need to start.
+      placeholder: I’ll edit apps/web/. I need a sample share response from Sam.
