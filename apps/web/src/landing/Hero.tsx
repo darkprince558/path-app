@@ -92,7 +92,7 @@ export default function Hero() {
     <section
       aria-labelledby="hero-heading"
       data-surface="night"
-      className="relative isolate -mt-[4.25rem] flex flex-col overflow-hidden rounded-b-[2.5rem] bg-night pt-[4.25rem] pb-10 text-paper md:h-dvh md:min-h-[36rem] md:rounded-b-[4rem] md:pb-0"
+      className="relative isolate -mt-[4.25rem] flex flex-col overflow-hidden rounded-b-[2.5rem] bg-night pt-[4.25rem] pb-10 text-paper md:h-[calc(100dvh+4.5rem)] md:min-h-[40.5rem] md:rounded-b-[4rem] md:pb-[4.5rem]"
     >
       {/* Soft light: forest from the top left, a coral warmth where the route lives. */}
       <div
