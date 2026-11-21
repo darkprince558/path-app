@@ -30,10 +30,10 @@ The recorder saves elapsed milliseconds, angular velocity in degrees/s, linear a
 
 ## Repeat the checks
 
-Run `make check` for the shared API and venue fixture, and run the component checks below from the repository root. The HTTP test binds a local socket.
+Run the checks below from the repository root. `make check` covers all three guest access modes, the venue fixture and the recorder upload, restart and sharing contract. The HTTP tests bind local sockets.
 
 ```sh
-python3 -B tools/test_recorder_server.py
+make check
 python3 -B apps/capture/video3d/testdata/check_recorded_take.py
 (cd apps/web && pnpm build && pnpm test)
 ```

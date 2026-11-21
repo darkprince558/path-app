@@ -7,6 +7,7 @@ API_PORT ?= 8001
 check:
 	$(PYTHON) scripts/check_fixture.py fixtures/venue/manifest.json
 	$(PYTHON) -B tools/smoke_scan_mock.py
+	$(PYTHON) -B tools/test_recorder_server.py
 
 dev-api:
 	$(PYTHON) -B tools/scan_mock.py --port $(API_PORT)
