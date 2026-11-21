@@ -12,7 +12,9 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000`, then use Sign up or Log in. The SDK handles `/auth/login`, `/auth/callback` and `/auth/logout`; the home page reads the server session and shows the signed-in identity. Google sign-in requires enabling the Google connection in Auth0. Auth0 user-to-database sync and resource authorization are the next Phase 2 work; this shell does not grant database access based on login alone.
+Open `http://localhost:3000`, then use Sign up or Log in. The SDK handles `/auth/login`, `/auth/callback` and `/auth/logout`; the home page reads the server session and shows the signed-in identity. Google sign-in requires enabling the Google connection in Auth0.
+
+Set `AUTH0_AUDIENCE=https://api.not404.app` in `services/api/.env.local`, matching the Auth0 API identifier exactly; the API must use RS256 signing. In the Auth0 API's Application Access settings, authorize the regular web application for user-delegated access. Restart `npm run dev` after changing environment variables. The SDK requests this audience on login. `GET /api/users/me` accepts either the SDK session cookie or an `Authorization: Bearer <access-token>` header, verifies the API access token against Auth0's keys and claims, then upserts the `users` row by `auth0_sub`. A missing or invalid token returns 401. The response is `{ "user": { "id", "username", "displayName", "createdAt", "updatedAt" } }`. Other resource routes must call the same authentication helper and apply owner or membership checks before returning data. The SDK's browser access-token endpoint is disabled; client secrets stay server-side.
 
 ## Stage 1 database foundation
 

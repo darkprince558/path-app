@@ -70,6 +70,7 @@ export const navEdges = pgTable('nav_edges', {
   foreignKey({ columns: [t.toNodeId, t.spaceId], foreignColumns: [navNodes.id, navNodes.spaceId] }),
   index('nav_edges_space_idx').on(t.spaceId), index('nav_edges_from_idx').on(t.fromNodeId),
   index('nav_edges_to_idx').on(t.toNodeId),
+  index('nav_edges_space_endpoints_idx').on(t.spaceId, t.fromNodeId, t.toNodeId),
   check('nav_edges_distance_check', sql`${t.distance} > 0 AND ${t.distance} < 'Infinity'::float8`),
   check('nav_edges_distinct_nodes_check', sql`${t.fromNodeId} <> ${t.toNodeId}`),
 ]);
