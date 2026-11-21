@@ -4,7 +4,7 @@ import { LogoMark } from "./shared";
 
 const SECTIONS = [
   { href: "#problem", label: "Why Path" },
-  { href: "#tour", label: "Features" },
+  { href: "#tour", label: "How it works" },
   { href: "#who", label: "Who it's for" },
   { href: "#team", label: "Team" },
 ];

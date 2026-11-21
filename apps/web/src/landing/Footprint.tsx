@@ -55,3 +55,37 @@ export function printsAlong(d: string, stride: number, offset = 7, margin = 0): 
   path.setAttribute("d", d);
   return placePrints(path, stride, offset, margin);
 }
+
+/**
+ * Footprints walking along a path, measured from the path data. Kept from the old
+ * "How to use" section for the Join section's looping trail.
+ */
+export function FootprintTrail({
+  d,
+  viewBox,
+  stride,
+  className,
+  color = "#2F4A3A",
+}: {
+  d: string;
+  viewBox: string;
+  stride: number;
+  className?: string;
+  color?: string;
+}) {
+  const prints = printsAlong(d, stride, 7, 14);
+  return (
+    <svg viewBox={viewBox} className={className} aria-hidden="true">
+      <path d={d} fill="none" stroke={color} strokeOpacity="0.18" strokeWidth="2" strokeDasharray="2 8" />
+      <g fill={color}>
+        {prints.map((p, i) => (
+          <g key={i} transform={`translate(${p.x} ${p.y}) rotate(${p.angle}) scale(${p.left ? -1.3 : 1.3} 1.3)`}>
+            <g data-part="print" opacity="0.55">
+              <FootprintShape />
+            </g>
+          </g>
+        ))}
+      </g>
+    </svg>
+  );
+}

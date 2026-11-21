@@ -1,37 +1,25 @@
 import { QRCodeSVG } from "qrcode.react";
-import { useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion } from "../lib/preferences";
-import { gsap, useGSAP, WIDE } from "./motion";
-import { Container, Eyebrow } from "./shared";
+import { Container } from "./shared";
 
 /*
- * "What you can do in Path": a phone (drawn in CSS 3D, no model file) turns as you
- * scroll while its screen steps through the real app: scan, add waypoints, share,
- * Community, follow a route. The steps sit on a transit-line stepper whose coral
- * line fills as you go. Screens are small HTML versions of the app's pages.
+ * "How it works": a phone (drawn in CSS 3D, no model file) shows the real app one
+ * step at a time: scan, add waypoints, share, Community, follow a route. Nothing is
+ * pinned, so the page always scrolls freely.
+ *   Laptop: the phone stays beside the steps (CSS sticky) and turns to the step in
+ *   the middle of the screen.
+ *   Phone: each step is a row with its own small phone, alternating sides, and the
+ *   rows slide in as you reach them.
+ * Screens are small HTML versions of the app's pages.
  */
 
 const STEPS = [
-  {
-    title: "Scan a place",
-    body: "Walk it with a LiDAR iPhone. The scan becomes a 3D point cloud you upload as a new map.",
-  },
-  {
-    title: "Add waypoints and name rooms",
-    body: "Drop waypoints along the walkable paths and label what matters: Workshop room, Room 204, Elevator.",
-  },
-  {
-    title: "Share it your way",
-    body: "Public lists it in Community, Unlisted works for anyone with the link, Private is only for people you invite. Share a link or a QR code.",
-  },
-  {
-    title: "Explore Community",
-    body: "Open maps other people have shared: campuses, buildings, trails and event venues. No account needed to look.",
-  },
-  {
-    title: "Follow the route",
-    body: "Pick a destination and follow the coral line. Switch on Avoid stairs for this trip and it takes the elevator or ramp.",
-  },
+  { title: "Scan a place", body: "Log in and walk it with a LiDAR iPhone." },
+  { title: "Add waypoints", body: "Pin the rooms that matter: Room 204, Elevator, Workshop." },
+  { title: "Share it", body: "Public, Unlisted or Private, by link or QR code." },
+  { title: "Explore Community", body: "Open maps other people have shared. No account needed." },
+  { title: "Follow the route", body: "Pick a room. Switch on Avoid stairs if you need to." },
 ];
 
 /** How the phone is turned for each step (degrees). */
@@ -190,8 +178,7 @@ function RouteScreen() {
         <circle cx="50" cy="102" r="3" fill="#78D296" />
       </svg>
       <div className="absolute inset-x-3 top-20 rounded-xl bg-paper px-3 py-2 text-ink shadow-lg">
-        <p className="text-[0.7rem] leading-tight font-bold">Take the elevator, then turn left at the amber door</p>
-        <p className="font-mono text-[0.55rem] text-muted">Approved by the map owner</p>
+        <p className="text-[0.7rem] leading-tight font-bold">Turn left at the amber door</p>
       </div>
       <div className="absolute inset-x-0 bottom-0 grid gap-1.5 rounded-t-2xl bg-paper px-3 pt-2 pb-4 text-ink">
         <span className="mx-auto h-1 w-8 rounded-full bg-ink/25" />
@@ -214,153 +201,208 @@ const SCREENS: ReactNode[] = [<ScanScreen />, <WaypointScreen />, <ShareScreen /
 
 /* ------------------------------------------------------------- phone */
 
-function Phone({ animate }: { animate: boolean }) {
-  const pose = POSES[POSES.length - 1]!;
+/** Phone size the screens are drawn for. Smaller phones are this, scaled down. */
+const PHONE_REM = 15;
+
+function usePose(step: number, side?: "left" | "right") {
+  const pose = POSES[step] ?? POSES[0]!;
+  // On the phone layout, each little phone turns toward its text.
+  const rotateY = side ? (side === "left" ? 12 : -12) : pose.rotateY;
+  return `rotateY(${rotateY}deg) rotateX(${pose.rotateX}deg) rotateZ(${side ? 0 : pose.rotateZ}deg)`;
+}
+
+/**
+ * The phone. `step` picks the screen; screens cross-fade and the phone turns, both
+ * with CSS transitions (instant under Reduce motion). It fills its box's width,
+ * scaling the 15rem design down when the box is narrower.
+ */
+function Phone({ step, side }: { step: number; side?: "left" | "right" }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const transform = usePose(step, side);
+
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (!element) return;
+    const measure = () => {
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      setScale(Math.min(1, element.clientWidth / (PHONE_REM * rem)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="[perspective:1400px]">
+    <div ref={box} className="w-full [perspective:1400px]" style={{ height: `calc(${PHONE_REM * (19 / 9) * scale}rem + 0px)` }}>
       <div
-        data-part="phone"
-        className="relative mx-auto aspect-[9/19] w-[min(16rem,62vw)] rounded-[2.6rem] bg-[#0A100C] p-2.5 shadow-[0_40px_80px_-30px_rgb(0_0_0/0.75),inset_0_0_0_1px_rgb(169_196_174/0.25)] [transform-style:preserve-3d] max-md:w-[min(13rem,46vw)]"
-        style={{ transform: `rotateY(${pose.rotateY}deg) rotateX(${pose.rotateX}deg) rotateZ(${pose.rotateZ}deg)` }}
+        className="relative aspect-[9/19] origin-top-left rounded-[2.6rem] bg-[#0A100C] p-2.5 shadow-[0_40px_80px_-30px_rgb(0_0_0/0.75),inset_0_0_0_1px_rgb(169_196_174/0.25)] transition-transform duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] [transform-style:preserve-3d]"
+        style={{ width: `${PHONE_REM}rem`, transform: `${scale < 1 ? `scale(${scale}) ` : ""}${transform}` }}
       >
-        {/* Side edge so the turn reads as a solid object. */}
         <div className="absolute inset-y-6 -left-1 w-1.5 rounded-l-full bg-[#1B2A21]" aria-hidden="true" />
         <div className="relative size-full overflow-hidden rounded-[2rem] bg-night" aria-hidden="true">
-          {SCREENS.map((screen, i) => (
-            <div
-              key={i}
-              data-part="screen"
-              className="absolute inset-0"
-              style={animate ? undefined : { opacity: i === SCREENS.length - 1 ? 1 : 0 }}
-            >
-              {screen}
-            </div>
-          ))}
+          {SCREENS.map((screen, i) =>
+            side && i !== step ? null : (
+              <div
+                key={i}
+                className="absolute inset-0 transition-[opacity,translate] duration-500"
+                style={{ opacity: i === step ? 1 : 0, translate: i === step ? "0 0" : i < step ? "-10% 0" : "10% 0" }}
+              >
+                {screen}
+              </div>
+            ),
+          )}
           <div className="absolute top-2 left-1/2 h-5 w-20 -translate-x-1/2 rounded-full bg-black" />
-          {/* Glare that slides across as the phone turns. */}
-          <div data-part="glare" className="pointer-events-none absolute -inset-1/2 bg-[linear-gradient(115deg,transparent_40%,rgb(255_255_255/0.09)_50%,transparent_60%)]" />
+          <div className="pointer-events-none absolute -inset-1/2 bg-[linear-gradient(115deg,transparent_40%,rgb(255_255_255/0.08)_50%,transparent_60%)]" />
         </div>
       </div>
     </div>
   );
 }
 
-export default function AppTour() {
-  const reduce = useReducedMotion();
-  const animate = !reduce;
-  const root = useRef<HTMLElement>(null);
+/* -------------------------------------------------------- laptop layout */
 
-  useGSAP(
-    () => {
-      if (!animate || !root.current) return;
-      const q = gsap.utils.selector(root);
-      const phone = q("[data-part=phone]")[0];
-      const screens = q("[data-part=screen]");
-      const steps = q("[data-part=step]");
-      const fill = q("[data-part=line-fill]");
-      const stations = q("[data-part=station]");
-      const stationsM = q("[data-part=station-m]");
-      if (!phone) return;
-      const navOffset = () => document.querySelector("header")?.getBoundingClientRect().height ?? 0;
-      const mm = gsap.matchMedia();
+/** Steps on the left scroll past; the phone on the right stays and shows the one in the middle. */
+function WideTour() {
+  const [active, setActive] = useState(0);
+  const items = useRef<(HTMLLIElement | null)[]>([]);
 
-      mm.add({ wide: WIDE, narrow: "(max-width: 767.98px)" }, (context) => {
-        const wide = Boolean(context.conditions?.wide);
-        const off = wide ? { opacity: 0.35 } : { autoAlpha: 0, y: 14 };
-        const on = wide ? { opacity: 1 } : { autoAlpha: 1, y: 0 };
-
-        gsap.set(screens, { autoAlpha: (i: number) => (i === 0 ? 1 : 0), xPercent: 0 });
-        gsap.set(steps.slice(1), off);
-        gsap.set(steps[0]!, on);
-        gsap.set(phone, POSES[0]!);
-        gsap.set(fill, { scaleY: 0, scaleX: 0 });
-        gsap.set([...stations, ...stationsM], { backgroundColor: "#3A4A40" });
-        gsap.set([stations[0]!, stationsM[0]!], { backgroundColor: "#F48057" });
-        gsap.set(q("[data-part=glare]"), { xPercent: -40 });
-
-        const tl = gsap.timeline({
-          defaults: { ease: "none" },
-          scrollTrigger: {
-            trigger: root.current,
-            start: () => `top ${navOffset()}`,
-            end: `+=${STEPS.length * 70}%`,
-            pin: true,
-            scrub: 0.7,
-            invalidateOnRefresh: true,
-          },
-        });
-
-        for (let i = 1; i < STEPS.length; i++) {
-          const at = i;
-          tl.to(phone, { ...POSES[i]!, duration: 0.6, ease: "power2.inOut" }, at - 0.1)
-            .to(q("[data-part=glare]"), { xPercent: i % 2 ? 40 : -40, duration: 0.6, ease: "power1.inOut" }, at - 0.1)
-            .to(screens[i - 1]!, { autoAlpha: 0, xPercent: -12, duration: 0.3 }, at)
-            .fromTo(screens[i]!, { autoAlpha: 0, xPercent: 12 }, { autoAlpha: 1, xPercent: 0, duration: 0.3 }, at)
-            .to(steps[i - 1]!, { ...off, duration: 0.3 }, at)
-            .to(steps[i]!, { ...on, duration: 0.3 }, at)
-            .to([stations[i]!, stationsM[i]!], { backgroundColor: "#F48057", duration: 0.1 }, at + 0.2);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) setActive(Number((entry.target as HTMLElement).dataset.step));
         }
-        tl.to(fill, wide ? { scaleY: 1, duration: STEPS.length - 1 } : { scaleX: 1, duration: STEPS.length - 1 }, 0.2);
-        tl.to({}, { duration: 0.5 });
-      });
-    },
-    { scope: root, dependencies: [animate], revertOnUpdate: true },
-  );
+      },
+      // A thin band across the middle of the screen: whichever step crosses it is current.
+      { rootMargin: "-48% 0px -48% 0px" },
+    );
+    items.current.forEach((item) => item && observer.observe(item));
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <section
-      ref={root}
-      id="tour"
-      aria-labelledby="tour-heading"
-      data-surface="night"
-      className="relative overflow-hidden bg-night py-16 text-paper md:flex md:min-h-[calc(100dvh-4.5rem)] md:items-center md:py-10"
-    >
-      <Container className="grid items-center gap-8 md:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] md:gap-14">
-        <div className="grid gap-6">
-          <div className="grid gap-2">
-            <Eyebrow tone="dark">What you can do in Path</Eyebrow>
-            <h2 id="tour-heading" className="font-display text-4xl leading-none font-black text-balance md:text-5xl">
-              Make a map. Share it. Follow it.
-            </h2>
-          </div>
-
-          <div className="relative">
-            {/* Transit line: on wide screens it runs down beside the steps, on phones across the top. */}
-            <div className="absolute top-3 bottom-3 left-[0.6875rem] w-1 rounded-full bg-sage/25 max-md:hidden" aria-hidden="true">
-              <div data-part="line-fill" className="h-full w-full origin-top rounded-full bg-coral" />
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-12">
+      <ol className="py-[18vh]">
+        {STEPS.map((step, i) => (
+          <li
+            key={step.title}
+            ref={(el) => {
+              items.current[i] = el;
+            }}
+            data-step={i}
+            className="flex min-h-[42vh] items-center"
+          >
+            <div className={`transition-opacity duration-500 ${i === active ? "opacity-100" : "opacity-60"}`}>
+              <p className="font-mono text-sm text-sage">0{i + 1}</p>
+              <h3 className="mt-1 font-display text-4xl leading-tight font-black">{step.title}</h3>
+              <p className="mt-2 max-w-md text-xl leading-snug text-paper/90">{step.body}</p>
             </div>
-            <div className="relative mb-4 flex items-center justify-between md:hidden" aria-hidden="true">
-              <div className="absolute inset-x-1 top-1/2 h-1 -translate-y-1/2 rounded-full bg-sage/25">
-                <div data-part="line-fill" className="h-full w-full origin-left rounded-full bg-coral" />
-              </div>
-              {STEPS.map((s) => (
-                <span key={s.title} data-part="station-m" className="relative size-4 rounded-full bg-coral ring-4 ring-night" />
-              ))}
-            </div>
-            <ol className={animate ? "grid max-md:[&>li]:col-start-1 max-md:[&>li]:row-start-1 md:gap-5" : "grid gap-5"}>
-              {STEPS.map((step, i) => (
-                <li key={step.title} data-part="step" className="relative grid grid-cols-[1.5rem_1fr] gap-4 max-md:grid-cols-1">
-                  <span
-                    data-part="station"
-                    aria-hidden="true"
-                    className="relative mt-1 size-6 rounded-full bg-coral ring-4 ring-night max-md:hidden"
-                  />
-                  <div>
-                    <h3 className="font-display text-2xl leading-tight font-black">
-                      <span className="mr-2 font-mono text-base font-normal text-sage">0{i + 1}</span>
-                      {step.title}
-                    </h3>
-                    <p className="mt-1 max-w-prose text-lg leading-snug text-paper/85">{step.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
+          </li>
+        ))}
+      </ol>
+      <div>
+        <div className="sticky top-[max(5.5rem,calc(50vh-17rem))] mx-auto w-[15rem]">
+          <Phone step={active} />
         </div>
+      </div>
+    </div>
+  );
+}
 
-        <div className="max-md:order-first">
-          <Phone animate={animate} />
+/* --------------------------------------------------------- phone layout */
+
+/** One row per step, alternating sides, sliding in from its own side when reached. */
+function StackedTour({ reduce }: { reduce: boolean }) {
+  return (
+    <ol className="grid gap-10">
+      {STEPS.map((step, i) => (
+        <StackedRow key={step.title} index={i} reduce={reduce} />
+      ))}
+    </ol>
+  );
+}
+
+function StackedRow({ index, reduce }: { index: number; reduce: boolean }) {
+  const step = STEPS[index]!;
+  const textLeft = index % 2 === 1;
+  const ref = useRef<HTMLLIElement>(null);
+  const [shown, setShown] = useState(reduce);
+
+  useEffect(() => {
+    if (reduce) {
+      setShown(true);
+      return;
+    }
+    const element = ref.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setShown(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "0px 0px -15% 0px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [reduce]);
+
+  const from = textLeft ? "-2rem" : "2rem";
+  return (
+    <li ref={ref} className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center gap-5 xl-text:grid-cols-1">
+      <div
+        className={`transition-[opacity,translate] duration-700 ease-out ${textLeft ? "order-last xl-text:order-none" : ""}`}
+        style={{ opacity: shown ? 1 : 0, translate: shown ? "0 0" : `${textLeft ? "2rem" : "-2rem"} 0` }}
+      >
+        <Phone step={index} side={textLeft ? "left" : "right"} />
+      </div>
+      <div
+        className={`transition-[opacity,translate] delay-150 duration-700 ease-out ${textLeft ? "text-right xl-text:text-left" : ""}`}
+        style={{ opacity: shown ? 1 : 0, translate: shown ? "0 0" : `${from} 0` }}
+      >
+        <p className="font-mono text-sm text-sage">0{index + 1}</p>
+        <h3 className="mt-1 font-display text-2xl leading-tight font-black">{step.title}</h3>
+        <p className="mt-1.5 text-lg leading-snug text-paper/90">{step.body}</p>
+      </div>
+    </li>
+  );
+}
+
+/* -------------------------------------------------------------- section */
+
+function useWide() {
+  const query = "(min-width: 1024px)";
+  const [wide, setWide] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const onChange = () => setWide(media.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+  return wide;
+}
+
+export default function AppTour() {
+  const reduce = useReducedMotion();
+  const wide = useWide();
+
+  return (
+    <section id="tour" aria-labelledby="tour-heading" data-surface="night" className="relative bg-night py-20 text-paper md:py-28">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_30%_at_10%_0%,rgb(47_74_58/0.8),transparent_70%),radial-gradient(40%_25%_at_90%_60%,rgb(47_74_58/0.45),transparent_70%)]"
+      />
+      <Container className="relative">
+        <div className="mx-auto grid max-w-2xl gap-3 text-center">
+          <h2 id="tour-heading" className="font-display text-[clamp(2rem,3.6vw,3rem)] leading-none font-black text-balance">
+            Make a map. Share it. Follow it.
+          </h2>
+          <p className="text-lg text-sage">Everything happens in the app, from the first scan to the last turn.</p>
         </div>
+        <div className="mt-14">{wide ? <WideTour /> : <StackedTour reduce={reduce} />}</div>
       </Container>
     </section>
   );

@@ -1,8 +1,8 @@
 import { SkipLink } from "../components/AppLayout";
 import AppTour from "../landing/AppTour";
+import BackToTop from "../landing/BackToTop";
 import Creators from "../landing/Creators";
 import Hero from "../landing/Hero";
-import HowTo from "../landing/HowTo";
 import Join from "../landing/Join";
 import LandingNav from "../landing/LandingNav";
 import Problem from "../landing/Problem";
@@ -19,10 +19,10 @@ export default function Home() {
         <Problem />
         <AppTour />
         <WhoUses />
-        <HowTo />
         <Creators />
         <Join />
       </main>
+      <BackToTop />
       <footer data-surface="night" className="bg-night py-8 text-sage">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:pl-20">Path · Built at Hack Western 13</div>
       </footer>
