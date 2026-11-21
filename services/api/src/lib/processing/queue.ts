@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { connectDatabase } from '../../db/client';
 import { captures, processingJobs } from '../../db/schema';
-import { DEFAULT_PROCESSOR } from './processor';
+import { selectedProcessor } from './selection';
 
 type Db = ReturnType<typeof connectDatabase>['db'];
 export function queuedJobResponse(job: typeof processingJobs.$inferSelect) {
@@ -11,10 +11,11 @@ export function queuedJobResponse(job: typeof processingJobs.$inferSelect) {
 // Called in the same transaction as capture finalization, under its existing row lock.
 export async function enqueueCapture(db: Pick<Db, 'insert' | 'select'>, capture: typeof captures.$inferSelect) {
   const key = 'initial-processing-v1';
+  const processor = selectedProcessor();
   const [inserted] = await db.insert(processingJobs).values({
     captureId: capture.id, jobType: 'capture', idempotencyKey: key,
-    inputSha256: capture.manifestSha256, processorVersion: DEFAULT_PROCESSOR.version,
-    configuration: { processorId: DEFAULT_PROCESSOR.id },
+    inputSha256: capture.manifestSha256, processorVersion: processor.version,
+    configuration: { processorId: processor.id },
   }).onConflictDoNothing({ target: [processingJobs.captureId, processingJobs.idempotencyKey] }).returning();
   const job = inserted ?? (await db.select().from(processingJobs).where(and(
     eq(processingJobs.captureId, capture.id), eq(processingJobs.idempotencyKey, key),

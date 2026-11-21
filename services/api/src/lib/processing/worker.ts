@@ -11,8 +11,9 @@ import { captureObjectKey, type CaptureStorage } from '../storage/captures';
 import type { RevisionStorage } from '../storage/revisions';
 import { identityTransform } from '../api/scans';
 import { ProcessingFailure, type CaptureProcessor } from './processor';
+import { CAPTURE_WORKER_LOCK, CAPTURE_CPU_LOCK } from './locks';
 
-export const CAPTURE_WORKER_LOCK = 4042026;
+export { CAPTURE_WORKER_LOCK } from './locks';
 const MAX_ATTEMPTS = 3;
 type Job = typeof processingJobs.$inferSelect;
 const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -25,6 +26,7 @@ function errorMetadata(job: Job, code: string, message: string) {
 export class CaptureWorker {
   constructor(private readonly options: {
     databaseUrl: string; captures: CaptureStorage; revisions: RevisionStorage; processor: CaptureProcessor;
+    processors?: CaptureProcessor[];
     signal?: AbortSignal; heartbeatMs?: number; timeoutMs?: number;
   }) {}
 
@@ -39,6 +41,11 @@ export class CaptureWorker {
       const [lock] = await connection`SELECT pg_try_advisory_lock(${CAPTURE_WORKER_LOCK}) AS acquired, pg_backend_pid() AS pid`;
       locked = lock.acquired;
       if (!locked) return { state: 'busy' };
+      // An orphan CPU process can outlive a SIGKILLed parent. Its own session lock
+      // prevents recovery/retry until that process exits (including its parent-pipe watchdog).
+      const [cpu] = await connection`SELECT pg_try_advisory_lock(${CAPTURE_CPU_LOCK}) AS acquired`;
+      if (!cpu.acquired) return { state: 'busy' };
+      await connection`SELECT pg_advisory_unlock(${CAPTURE_CPU_LOCK})`;
       const pid = Number(lock.pid);
       const db = drizzle(connection);
       // Never steal work on lease expiry alone. This session lock proves no compliant worker owns it.
@@ -91,8 +98,9 @@ export class CaptureWorker {
           if (!rows.length) throw new ProcessingFailure('WORKER_SESSION_LOST', 'Worker no longer owns this job');
           currentStage = stage;
         };
-        const processor = this.options.processor;
-        if (job.processorVersion !== processor.version || job.configuration.processorId !== processor.id) {
+        const processor = [this.options.processor, ...(this.options.processors ?? [])].find(adapter =>
+          job.processorVersion === adapter.version && job.configuration.processorId === adapter.id);
+        if (!processor) {
           throw new ProcessingFailure('PROCESSOR_UNAVAILABLE', 'Queued processor version is not available in this worker');
         }
         const [capture] = await db.select().from(captures).where(eq(captures.id, job.captureId));

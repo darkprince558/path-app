@@ -1,9 +1,10 @@
 # Asynchronous capture processing
 
 Human owner: Sam. Processor producer: Anish. Uses the existing Tiger Data PostgreSQL
-connection, Auth0 and private capture storage. The current **mock** copies synthetic
-bytes. It does not reconstruct LiDAR, verify alignment/walkability, invoke Gemini,
-publish navigation or change the frontend.
+connection, Auth0 and private capture storage. `CAPTURE_PROCESSOR=cpu` selects Anish's
+real CPU cleanup/simplification CLI; `mock` retains the synthetic copy adapter.
+Neither verifies physical alignment/walkability, invokes Gemini, publishes navigation
+or changes the frontend. See the [real CPU workflow](lidar-cpu-processing.md).
 
 ## Run and inspect
 
@@ -60,14 +61,20 @@ exposing arbitrary subprocess output. `processorId: "mock-lidar"` identifies the
   for abandoned running capture jobs and requeues them. Three interrupted attempts
   exhaust the recovery budget and persist a failure. Interrupted work is never
   directly converted to success.
+- Before recovery or claiming, every worker also probes the CPU lifetime advisory
+  lock. The actual CLI process holds this lock through a watchdog thread. If a
+  parent is SIGKILLed, the thread detects pipe EOF and kills the CLI process group,
+  including synchronous CPU work. Recovery stays busy until that process releases
+  its lock. Run API/workers from the same release; older workers lack this probe.
 - Processor/validation failures become terminal failed jobs with saved code,
   message, attempt, stage and time; they do not retry automatically. SIGINT/SIGTERM
   aborts and records failure when possible. SIGKILL leaves running state visible
   until a replacement worker recovers it. A supervisor must restart crashed workers.
 - Writes are fenced by job state, lease token and backend PID. Losing the database
-  session prevents that attempt from committing success. The mock has a five-minute
-  AbortSignal deadline. Replacement adapters must honor abort and stop children
-  before returning; this is part of the adapter contract.
+  session prevents that attempt from committing success. Processing has a configurable
+  five-minute default deadline. The CPU adapter sends process-group SIGTERM, then
+  SIGKILL after one second, and awaits process/stdio closure before returning.
+  Its independent watchdog also enforces a hard deadline and kills on lost DB session.
 - Success and the revision row commit together only after validated, checksummed
   outputs are stored. Before that commit, a crash leaves a running job. After it,
   both success and revision persist and the job is not repeated.
@@ -79,17 +86,20 @@ worker materializes a private bundle and rechecks every input hash, including th
 manifest, against the queued input digest. Each attempt gets a separate workspace.
 Queued processor ID/version are pinned; unavailable versions fail explicitly.
 
-Anish's future adapter can invoke this command using an argument array, exit-code
-checks and cancellation, with the queue preset and worker adapter updated together:
+The CPU adapter invokes the Node CLI in a guarded child process with an argument
+array, no shell, exit-code checks and cancellation. It supplies the device UUID:
 
 ```text
-process_lidar_capture --input <bundle> --output <revision>
+process_lidar_capture --input <bundle> --output <absent-revision> --expected-capture-id <device-uuid>
 ```
 
 Expected files are master.glb, scene.glb, optional scene.ply, preview.jpg and
 report.json. The mock copies source.glb into both GLBs, points.ply into scene.ply,
 and the preview unchanged, then writes a report identifying the mock and lack of
-physical verification. The real executable is not included or invoked.
+physical verification. The CPU adapter invokes the real implementation in
+`apps/capture/processor/cli.mjs`; its output is validated independently before storage.
+The worker's empty output directory is retained: the CLI first writes to a fresh
+`cpu-result/` child, then the adapter validates/moves completed files into that parent.
 
 Output validation rejects unsupported/missing files, symlinks, empty/oversized
 assets, invalid self-contained GLB containers, malformed JSON reports and invalid

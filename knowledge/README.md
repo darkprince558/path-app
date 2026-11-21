@@ -17,6 +17,9 @@ implemented backend example and native capture checks still required.
 The [contract integration handoff](../docs/lidar-contract-compatibility.md) records
 the device/database UUID distinction, generated CPU validators and separate native fixture.
 
+The [CPU worker handoff](../docs/lidar-cpu-processing.md) records the real adapter,
+child-owned lifetime lock, process cancellation and targeted local workflow.
+
 The [publishing runbook](../docs/lidar-publishing.md) records Task 5's approved
 revision-to-scan link, owner-only frames and verified synthetic viewer handoff.
 

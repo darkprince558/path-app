@@ -1,7 +1,8 @@
 import { copyFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { MOCK_PROCESSOR } from './selection';
 
-export const DEFAULT_PROCESSOR = { id: 'mock-lidar', version: '1' } as const;
+export const DEFAULT_PROCESSOR = MOCK_PROCESSOR;
 export class ProcessingFailure extends Error {
   constructor(readonly code: string, message: string) { super(message); }
 }
@@ -9,7 +10,7 @@ export class ProcessingFailure extends Error {
 export interface CaptureProcessor {
   readonly id: string;
   readonly version: string;
-  // A future CLI adapter maps these directories to --input/--output without a shell.
+  // The CLI adapter maps these directories to --input/--output without a shell.
   // It must stop its child process on abort and resolve only after the child has exited.
   process(options: { inputDir: string; outputDir: string; signal: AbortSignal }): Promise<void>;
 }
