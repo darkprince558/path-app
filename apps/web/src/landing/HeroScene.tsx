@@ -320,7 +320,7 @@ function Route({
  * bottom edge. On a square phone frame it stands further back to fit the whole T.
  */
 function framingFor(aspect: number) {
-  if (aspect >= 1.6) return { target: new Vector3(0, 2.3, -2.4), distance: 9.4, pitch: 0.5 };
+  if (aspect >= 1.6) return { target: new Vector3(0, 1.0, -2.4), distance: 10.4, pitch: 0.52 };
   if (aspect >= 1.1) return { target: new Vector3(0, 0.8, -2.4), distance: 8.6, pitch: 0.58 };
   return { target: new Vector3(0, 0.4, -2.3), distance: 12, pitch: 0.66 };
 }
