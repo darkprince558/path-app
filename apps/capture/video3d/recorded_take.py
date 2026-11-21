@@ -164,7 +164,7 @@ def _run(pipeline, video, parent, preset, progress):
     run = parent / f"fps-{fps}-cap-{cap}"
     options = [str(pipeline), str(video), "--surface", "mesh", "--no-preview",
                "--fps", str(fps), "--max-frames", str(cap), "--output", str(run)]
-    with (parent / (run.name + ".log")).open("w") as log:
+    with (parent / (run.name + ".log")).open("w", buffering=1) as log:
         with subprocess.Popen(options, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               text=True, errors="replace") as proc:
             for line in proc.stdout:
@@ -209,15 +209,20 @@ def process_capture(job, pipeline, progress):
     _write_summary(summary_path, summary)
     try:
         trial = _run(pipeline, video, attempt, preset, progress)
-        summary["trials"].append(trial)
-        # Compare equal-time coverage of triangulation-supported cameras across rates,
-        # rather than counting registered poses, including unsupported ones.
-        if trial["status"] == "failed" or trial["supportedFraction"] < 0.95:
-            progress("Checking camera coverage with another keyframe budget")
-            alternate = DEFAULT if preset == DENSE else DENSE
-            summary["trials"].append(_run(pipeline, video, attempt, alternate, progress))
     except OSError as exc:
         raise CaptureError("The Mac could not start or save the reconstruction. Check its local tools and storage.") from exc
+    summary["trials"].append(trial)
+    _write_summary(summary_path, summary)
+    # Compare equal-time coverage of triangulation-supported cameras across rates.
+    if trial["status"] == "failed" or trial["supportedFraction"] < 0.95:
+        progress("Checking camera coverage with another keyframe budget")
+        alternate = DEFAULT if preset == DENSE else DENSE
+        try:
+            retried = _run(pipeline, video, attempt, alternate, progress)
+        except OSError:
+            # The first mesh is still usable if the alternate cannot be started.
+            retried = {"run": f"fps-{alternate[0]}-cap-{alternate[1]}", "status": "failed"}
+        summary["trials"].append(retried)
     successful = [r for r in summary["trials"] if r["status"] == "ready"]
     if not successful:
         _write_summary(summary_path, summary)
