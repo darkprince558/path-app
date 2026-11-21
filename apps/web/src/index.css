@@ -263,6 +263,32 @@
   transform: rotateY(180deg);
 }
 
+/* Join us: footprints step across on a loop. Each print lights up in turn, then fades behind the walker. */
+.print-step {
+  opacity: 0;
+  animation-name: print-step;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+}
+@keyframes print-step {
+  0% {
+    opacity: 0;
+  }
+  2% {
+    opacity: 0.55;
+  }
+  18% {
+    opacity: 0.4;
+  }
+  40% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* "Who it's for": sign figures walk (or roll) their route. */
 .pg-walker {
   animation: pg-across 2.6s cubic-bezier(0.45, 0.05, 0.4, 1) forwards;

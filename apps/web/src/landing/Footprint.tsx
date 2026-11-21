@@ -1,3 +1,5 @@
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+
 /** One footprint, pointing up (−y), about 14 × 26 units. Toes, sole and heel. */
 export function FootprintShape() {
   return (
@@ -56,33 +58,69 @@ export function printsAlong(d: string, stride: number, offset = 7, margin = 0): 
   return placePrints(path, stride, offset, margin);
 }
 
+/** Seconds between one step and the next on the looping trail. */
+const STEP_SECONDS = 0.38;
+/** Pause after the walker leaves before the next one starts. */
+const LOOP_PAUSE_SECONDS = 1.6;
+
+/** SVG units per CSS pixel of height for the walking trail (the trail is drawn 140 units tall). */
+const TRAIL_UNITS_TALL = 140;
+
+/** A gentle wave from just off the left edge to just off the right edge of a `width`-unit-wide box. */
+function waveAcross(width: number): string {
+  const y = 70;
+  const lift = 42;
+  const segment = 560;
+  const count = Math.max(1, Math.ceil((width + 80) / segment));
+  const step = (width + 80) / count;
+  let d = `M-40 ${y}`;
+  for (let i = 0; i < count; i++) {
+    const x0 = -40 + i * step;
+    const up = i % 2 === 0 ? -lift : lift;
+    d += ` C ${x0 + step * 0.35} ${y + up}, ${x0 + step * 0.65} ${y + up}, ${x0 + step} ${y}`;
+  }
+  return d;
+}
+
 /**
- * Footprints walking along a path, measured from the path data. Kept from the old
- * "How to use" section for the Join section's looping trail.
+ * Footprints that keep walking across the full width, one step at a time, on a
+ * loop. The trail is drawn to the box's measured width, so on any screen a walker
+ * crosses edge to edge. Each print fades in when it's "stepped on" and fades out
+ * behind the walker. With Reduce motion the whole trail just sits there, faint.
  */
-export function FootprintTrail({
-  d,
-  viewBox,
-  stride,
-  className,
-  color = "#2F4A3A",
-}: {
-  d: string;
-  viewBox: string;
-  stride: number;
-  className?: string;
-  color?: string;
-}) {
-  const prints = printsAlong(d, stride, 7, 14);
+export function WalkingPrints({ reduce, className, color = "#2F4A3A" }: { reduce: boolean; className?: string; color?: string }) {
+  const box = useRef<SVGSVGElement>(null);
+  const [width, setWidth] = useState(1920);
+
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (!element) return;
+    const measure = () => {
+      const rect = element.getBoundingClientRect();
+      if (rect.height > 0) setWidth(Math.round((rect.width / rect.height) * TRAIL_UNITS_TALL));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const prints = useMemo(() => printsAlong(waveAcross(width), 64, 12, 10), [width]);
+  const period = prints.length * STEP_SECONDS + LOOP_PAUSE_SECONDS;
   return (
-    <svg viewBox={viewBox} className={className} aria-hidden="true">
-      <path d={d} fill="none" stroke={color} strokeOpacity="0.18" strokeWidth="2" strokeDasharray="2 8" />
+    <svg ref={box} viewBox={`0 0 ${width} ${TRAIL_UNITS_TALL}`} className={className} aria-hidden="true">
       <g fill={color}>
         {prints.map((p, i) => (
-          <g key={i} transform={`translate(${p.x} ${p.y}) rotate(${p.angle}) scale(${p.left ? -1.3 : 1.3} 1.3)`}>
-            <g data-part="print" opacity="0.55">
-              <FootprintShape />
-            </g>
+          <g key={i} transform={`translate(${p.x} ${p.y}) rotate(${p.angle}) scale(${p.left ? -2.2 : 2.2} 2.2)`}>
+            {reduce ? (
+              <g opacity="0.3">
+                <FootprintShape />
+              </g>
+            ) : (
+              <g className="print-step" style={{ animationDuration: `${period}s`, animationDelay: `${i * STEP_SECONDS}s` }}>
+                <FootprintShape />
+              </g>
+            )}
           </g>
         ))}
       </g>

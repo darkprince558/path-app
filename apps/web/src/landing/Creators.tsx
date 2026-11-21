@@ -63,7 +63,7 @@ const TEAM: Person[] = [
     role: "Backend and sharing",
     photo: sam,
     initials: "SD",
-    links: links("https://github.com/samdeitz", undefined, "/resumes/sam-deitz.pdf", "https://samdeitz.ca/"),
+    links: links("https://github.com/samdeitz", "https://www.linkedin.com/in/samdeitz/", "/resumes/sam-deitz.pdf", "https://samdeitz.ca/"),
   },
   {
     name: "Krishna",
