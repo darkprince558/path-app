@@ -84,9 +84,9 @@ export default function GuestView() {
       await yieldToPaint();
       if (signal.aborted) return;
       if (meta.format === "glb") {
-        // Legacy share metadata has no space alignment. Production space views
-        // pass the persisted scan-to-space matrix to the same renderer.
-        setState({ phase: "ready-glb", meta, models: [{ id: meta.shareId, bytes: buffer, transform: IDENTITY }] });
+        // Older mock shares omit alignment; approved backend shares preserve it.
+        setState({ phase: "ready-glb", meta, models: [{ id: meta.scanId ?? meta.shareId,
+          name: meta.name, bytes: buffer, transform: meta.transform ?? IDENTITY }] });
         return;
       }
       try {

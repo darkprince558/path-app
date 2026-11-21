@@ -2,8 +2,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Mesh, MeshStandardMaterial, Vector3 } from "three";
 import { parseGlb, scanMatrix, validateGlb } from "../src/lib/glb.ts";
+import { fetchShare, ShareError } from "../src/lib/shares.ts";
 
 const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+test("share metadata preserves approved alignment and accepts legacy mock responses", async t => {
+  let payload: object = { shareId: 'legacy', format: 'glb', assetPath: '/api/shares/legacy/asset' };
+  t.mock.method(globalThis, 'fetch', async () => Response.json(payload));
+  const signal = new AbortController().signal;
+  assert.equal((await fetchShare('legacy', signal)).transform, undefined);
+  const matrix = [...identity]; matrix[12] = 10;
+  payload = { ...payload, transform: matrix, metadata: { coordinateSystem: { units: 'metres', upAxis: 'Y', calibrated: true } } };
+  assert.deepEqual((await fetchShare('approved', signal)).transform, matrix);
+  payload = { ...payload, transform: [1, 2] };
+  await assert.rejects(fetchShare('broken', signal), error => error instanceof ShareError && error.kind === 'bad-response');
+});
 function glb(json: object, binary?: Float32Array): ArrayBuffer {
   const jsonBytes = new TextEncoder().encode(JSON.stringify(json));
   const jsonLength = Math.ceil(jsonBytes.length / 4) * 4;

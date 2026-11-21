@@ -1,0 +1,3 @@
+ALTER TABLE "scans" ADD COLUMN "source_revision_id" uuid;--> statement-breakpoint
+ALTER TABLE "scans" ADD CONSTRAINT "scans_source_revision_id_scan_revisions_id_fk" FOREIGN KEY ("source_revision_id") REFERENCES "public"."scan_revisions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "scans" ADD CONSTRAINT "scans_source_revision_id_unique" UNIQUE("source_revision_id");

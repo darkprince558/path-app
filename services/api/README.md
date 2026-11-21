@@ -5,6 +5,8 @@ Local GLB upload, metadata and authorized download routes are documented in [Sca
 LiDAR registration, per-file upload and finalization are documented in the [Capture API contract](../../docs/capture-api.md).
 The [processing worker runbook](../../docs/capture-processing.md) covers queued jobs,
 `GET /api/jobs/:jobId`, mock outputs, immutable revisions and restart recovery.
+The [publishing runbook](../../docs/lidar-publishing.md) covers revision approval,
+protected share assets and the complete Task 5 local workflow.
 
 ## Auth0 login shell
 

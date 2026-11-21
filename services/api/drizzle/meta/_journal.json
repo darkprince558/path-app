@@ -29,6 +29,13 @@
       "when": 1795289563050,
       "tag": "0003_durable_capture_processing",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795291070513,
+      "tag": "0004_approved_revision_scans",
+      "breakpoints": true
     }
   ]
 }

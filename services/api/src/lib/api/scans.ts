@@ -1,14 +1,15 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { connectDatabase } from '../../db/client';
-import { scans, scanViewers, spaces } from '../../db/schema';
+import { scans, scanViewers, spaces, scanRevisions } from '../../db/schema';
 import type { AppUser } from '../auth/user-sync';
 import { requireOwner } from '../auth/authorization';
 import type { ScanStorage } from '../storage';
 import { canReadSpace, readSpace } from './access';
 import { ApiError, badRequest, conflict, notFound } from './http';
 import { metadata, name, uuid, visibility } from './validation';
+import { isApprovedScan } from './approved-scans';
 
 type Db = ReturnType<typeof connectDatabase>['db'];
 type Scan = typeof scans.$inferSelect;
@@ -118,6 +119,7 @@ export function validateGlb(bytes: Uint8Array, filename: string) {
 }
 
 export async function canReadScan(db: Db, user: AppUser | null, scan: Scan) {
+  if (!(await isApprovedScan(db, scan))) return false;
   const [space] = await db.select().from(spaces).where(eq(spaces.id, scan.spaceId)).limit(1);
   if (!space || !(await canReadSpace(db, user, space))) return false;
   if (scan.ownerId === user?.id) return true;
@@ -191,5 +193,12 @@ export async function downloadScan(db: Db, storage: ScanStorage, user: AppUser |
   const scan = await readScan(db, user, id);
   if (scan.status !== 'ready') throw conflict('Scan is not ready for download');
   if (!(await storage.exists(scan.objectKey))) throw notFound();
-  return { scan, bytes: await storage.get(scan.objectKey) };
+  const bytes = await storage.get(scan.objectKey);
+  if (scan.sourceRevisionId) {
+    const [revision] = await db.select({ sha256: scanRevisions.outputSha256 }).from(scanRevisions).where(eq(scanRevisions.id, scan.sourceRevisionId));
+    if (!revision || bytes.byteLength !== scan.byteSize || createHash('sha256').update(bytes).digest('hex') !== revision.sha256) {
+      throw conflict('Approved model is missing or corrupt');
+    }
+  }
+  return { scan, bytes };
 }

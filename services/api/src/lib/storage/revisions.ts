@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { constants } from 'node:fs';
 import { lstat, mkdir, mkdtemp, open, readFile, readdir, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
@@ -10,11 +11,39 @@ const allowed = [...required, 'scene.ply'];
 export type RevisionFile = { path: string; objectKey: string; byteSize: number; sha256: string };
 export interface RevisionStorage {
   publish(outputDir: string, revisionId: string): Promise<{ files: RevisionFile[]; report: Record<string, unknown> }>;
+  readVerified(revisionId: string, filename: string, expected: { byteSize: number; sha256: string }): Promise<Uint8Array>;
 }
 
 // Each attempt gets a fresh revision UUID. No update/overwrite operation is exposed.
 export class LocalRevisionStorage implements RevisionStorage {
   constructor(readonly root: string) {}
+  async readVerified(revisionId: string, filename: string, expected: { byteSize: number; sha256: string }) {
+    z.uuid().parse(revisionId);
+    if (!allowed.includes(filename) || expected.byteSize <= 0 || expected.byteSize > MAX_GLB_BYTES) {
+      throw new ProcessingFailure('INVALID_OUTPUT', 'Invalid revision file reference');
+    }
+    let handle;
+    try {
+      for (const directory of [this.root, path.join(this.root, revisionId)]) {
+        const info = await lstat(directory);
+        if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('Unsafe revision directory');
+      }
+      handle = await open(path.join(this.root, revisionId, filename), constants.O_RDONLY | constants.O_NOFOLLOW);
+      const info = await handle.stat();
+      if (!info.isFile() || info.size !== expected.byteSize) throw new Error('Invalid revision file size');
+      const parts: Buffer[] = [];
+      let size = 0;
+      const hash = createHash('sha256');
+      for await (const part of handle.createReadStream()) {
+        size += part.length;
+        if (size > expected.byteSize) throw new Error('Revision file exceeds expected size');
+        hash.update(part); parts.push(part);
+      }
+      if (size !== expected.byteSize || hash.digest('hex') !== expected.sha256) throw new Error('Revision checksum mismatch');
+      return Buffer.concat(parts, size);
+    } catch { throw new ProcessingFailure('INVALID_OUTPUT', 'Revision file is missing, unsafe or corrupt'); }
+    finally { await handle?.close().catch(() => {}); }
+  }
   async publish(outputDir: string, revisionId: string) {
     z.uuid().parse(revisionId);
     const names = await readdir(outputDir);

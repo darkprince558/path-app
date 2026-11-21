@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean, check, doublePrecision, foreignKey, index, integer, jsonb,
-  pgEnum, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid,
+  pgEnum, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid, type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 export const visibility = pgEnum('visibility', ['private', 'unlisted', 'public']);
@@ -39,6 +39,7 @@ export const scans = pgTable('scans', {
   ownerId: uuid('owner_id').notNull().references(() => users.id),
   name: text('name').notNull(), objectKey: text('object_key').notNull().unique(),
   shareId: uuid('share_id').defaultRandom().notNull().unique(),
+  sourceRevisionId: uuid('source_revision_id').unique().references((): AnyPgColumn => scanRevisions.id),
   format: scanFormat('format').notNull(), status: scanStatus('status').default('pending').notNull(),
   byteSize: integer('byte_size'),
   transform: jsonb('transform').$type<number[]>().notNull(),
