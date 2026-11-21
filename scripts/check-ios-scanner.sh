@@ -9,11 +9,24 @@ src=apps/capture/PathCapture
 xcrun swiftc -O "$src/PointCloud.swift" "$src/ScanGeometry.swift" "$src/ScanRecord.swift" "$src/CaptureBundle.swift" "$src/MacConnection.swift" apps/capture/native-tests/main.swift -o "$check_dir/export"
 "$check_dir/export" "$check_dir/fixture"
 python3 - "$check_dir/fixture" <<'PY'
+import json
 from pathlib import Path
 import sys
 sys.path.insert(0,'tools')
 from native_scan_asset import validate_native_model
 for name in ['scene.glb','sparse.glb']:validate_native_model(Path(sys.argv[1])/name)
+capture = Path(sys.argv[1]) / 'capture'
+frames = json.loads((capture / 'frames.json').read_text())['frames']
+assert [f['frameId'] for f in frames] == ['frame-0000', 'frame-0007']
+for f, number, seconds in zip(frames, [0, 7], [0.25, 1.2504]):
+    assert f['imagePath'] == f['path'] == f"frames/{f['frameId']}.jpg"
+    assert (capture / f['imagePath']).read_bytes() == (capture.parent / 'bundle-take' / f'photo-{number}.jpg').read_bytes()
+    assert f['mimeType'] == 'image/jpeg' and (f['width'], f['height']) == (64, 64)
+    assert f['trackingState'] == 'normal'
+    assert f['timestampSeconds'] == seconds and f['timestampMs'] == round(seconds * 1000)
+    assert f['cameraToWorld'] == f['cameraPose'] and len(f['cameraToWorld']) == 16
+    assert f['intrinsics'] == {'fx': 48, 'fy': 50, 'cx': 30, 'cy': 33}
+assert abs(frames[1]['cameraToWorld'][12] - 0.2) < 1e-6
 PY
 args=(-project apps/capture/PathCapture.xcodeproj -scheme PathCapture -destination "platform=iOS Simulator,id=$1" -derivedDataPath "$check_dir/build")
 xcodebuild -quiet "${args[@]}" build

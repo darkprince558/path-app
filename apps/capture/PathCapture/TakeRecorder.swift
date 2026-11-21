@@ -18,19 +18,6 @@ struct MotionFile: Encodable {
   let durationMs: Double
   let samples: [MotionReading]
 }
-struct CameraSample: Codable {
-  let t: Double
-  let cameraToWorld: [Float]
-  let intrinsics: [Float]
-  let imageWidth, imageHeight: Int
-  let tracking: String
-}
-struct CalibratedFrame: Encodable {
-  let camera: CameraSample
-  let jpeg: String
-  let depthMetersFloat32LE, confidenceUInt8: String?
-  let depthWidth, depthHeight: Int?
-}
 final class TakeRecorder {
   let id = UUID()
   let created = Date()
