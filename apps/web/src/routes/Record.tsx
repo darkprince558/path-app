@@ -3,7 +3,7 @@ import {
   MAX_DURATION_MS, startRecording, type CaptureMeter, type Recording, type Take,
 } from "../lib/phone-recording";
 import {
-  CaptureRequestError, captureRequest, clearTake, organizerKey, readTake, savedJob, saveJob,
+  CaptureRequestError, captureRequest, clearTake, forgetJob, organizerKey, readTake, savedJob, saveJob,
   shareUrl, writeTake, type CaptureStatus,
 } from "../lib/recording-session";
 import "./record.css";
@@ -79,9 +79,9 @@ export default function Record() {
       setPhase("idle");
       return () => session.abort();
     }
-    const id = savedJob();
     void readTake().catch(() => undefined).then((draft) => {
       if (session.signal.aborted) return;
+      const id = savedJob(draft?.id);
       setTake(draft);
       if (id && credential.current) { setJob(id); setPhase("job"); }
       else setPhase(draft ? "review" : "idle");
@@ -102,7 +102,7 @@ export default function Record() {
         setResult(state);
         if (state.status === "ready" || state.status === "failed") return;
         if (state.status === "uploading") {
-          saveJob("");
+          forgetJob(job);
           setPhase(take ? "review" : "idle");
           setProblem(take ? "The upload is incomplete. Send this take again." : "The upload is incomplete. Start a new recording.");
           return;
@@ -111,7 +111,7 @@ export default function Record() {
       } catch (error) {
         if (controller.signal.aborted) return;
         if (error instanceof CaptureRequestError && error.status === 404) {
-          saveJob("");
+          forgetJob(job);
           setPhase(take ? "review" : "idle");
           setProblem("This Mac no longer has that job.");
           return;
@@ -186,11 +186,11 @@ export default function Record() {
     if (phase === "review" && !window.confirm("Discard this take from this phone?")) return;
     busy.current = true;
     try {
-      if (take) await clearTake();
+      if (take || job) await clearTake(take?.id || job);
     } catch {
       if (!storageNote) { setProblem("Could not remove the saved take from this phone. Try again."); return; }
     } finally { busy.current = false; }
-    saveJob(""); setJob(""); setResult(undefined); setTake(undefined); setMeter(emptyMeter);
+    forgetJob(take?.id || job); setJob(""); setResult(undefined); setTake(undefined); setMeter(emptyMeter);
     setCopyStatus(""); setProblem(""); setStorageNote(""); setPhase("idle");
   }
   const guest = result?.status === "ready" ? shareUrl(result.sharePath) : "";

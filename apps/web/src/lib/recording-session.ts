@@ -2,6 +2,7 @@ import type { Take } from "./phone-recording";
 
 const KEY = "path.recorder.key";
 const JOB = "path.recorder.job";
+const TAKE = "path.recorder.take";
 
 export function organizerKey(): string {
   const fromLink = new URLSearchParams(location.hash.slice(1)).get("key");
@@ -12,20 +13,47 @@ export function organizerKey(): string {
   }
   try { return sessionStorage.getItem(KEY) || ""; } catch { return ""; }
 }
-export function savedJob(): string {
-  try { return localStorage.getItem(JOB) || ""; } catch { return ""; }
+function tabTake(): string | null {
+  try { return sessionStorage.getItem(TAKE); } catch { return null; }
+}
+function selectTake(id: string) {
+  try { sessionStorage.setItem(TAKE, id); } catch { /* Keep working in memory. */ }
+}
+export function savedJob(draftId?: string): string {
+  try {
+    const id = draftId ?? tabTake();
+    // A previous version kept one shared job pointer.
+    const legacy = localStorage.getItem(JOB) || "";
+    if (id === null) return legacy;
+    return id && (localStorage.getItem(JOB + "." + id) || legacy === id) ? id : "";
+  } catch { return ""; }
 }
 export function saveJob(id: string) {
+  selectTake(id);
+  try { localStorage.setItem(JOB + "." + id, "1"); } catch { /* The page can still track the job. */ }
+}
+export function forgetJob(id: string) {
   try {
-    if (id) localStorage.setItem(JOB, id);
-    else localStorage.removeItem(JOB);
-  } catch { /* The current page can still track the job. */ }
+    localStorage.removeItem(JOB + "." + id);
+    if (localStorage.getItem(JOB) === id) localStorage.removeItem(JOB);
+  } catch { /* Storage can be unavailable in private browsing. */ }
 }
 
 async function draftStore<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
-    const open = indexedDB.open("path-recorder", 1);
-    open.onupgradeneeded = () => open.result.createObjectStore("drafts");
+    const open = indexedDB.open("path-recorder", 2);
+    open.onupgradeneeded = (event) => {
+      const store = event.oldVersion ? open.transaction!.objectStore("drafts") : open.result.createObjectStore("drafts");
+      store.createIndex("savedAt", "savedAt");
+      if (event.oldVersion === 1) {
+        const legacy = store.get("current");
+        legacy.onsuccess = () => {
+          if (!legacy.result) return;
+          store.put({ ...legacy.result, savedAt: Date.now() }, legacy.result.id);
+          store.delete("current");
+        };
+      }
+    };
     open.onsuccess = () => resolve(open.result);
     open.onerror = () => reject(open.error);
   });
@@ -40,14 +68,21 @@ async function draftStore<T>(mode: IDBTransactionMode, action: (store: IDBObject
     db.close();
   }
 }
-export function readTake(): Promise<Take | undefined> {
-  return draftStore("readonly", (store) => store.get("current"));
+export async function readTake(): Promise<Take | undefined> {
+  const id = tabTake();
+  if (id === "") return;
+  if (id) return draftStore("readonly", (store) => store.get(id));
+  const latest = await draftStore("readonly", (store) => store.index("savedAt").openCursor(null, "prev"));
+  if (latest) selectTake(latest.value.id);
+  return latest?.value;
 }
-export function writeTake(take: Take) {
-  return draftStore("readwrite", (store) => store.put(take, "current"));
+export async function writeTake(take: Take) {
+  selectTake(take.id);
+  await draftStore("readwrite", (store) => store.put({ ...take, savedAt: Date.now() }, take.id));
 }
-export function clearTake() {
-  return draftStore("readwrite", (store) => store.delete("current"));
+export async function clearTake(id: string) {
+  await draftStore("readwrite", (store) => store.delete(id));
+  selectTake("");
 }
 
 export interface CaptureStatus {
