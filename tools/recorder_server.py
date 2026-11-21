@@ -22,6 +22,7 @@ from urllib.parse import urlsplit
 
 VIDEO3D = Path(__file__).resolve().parents[1] / "apps/capture/video3d"
 sys.path.insert(0, str(VIDEO3D))
+from native_scan_asset import validate_native_model
 from preview import check_glb
 from recorded_take import CaptureError, process_capture, validate_motion
 
@@ -77,6 +78,9 @@ class Captures:
             id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'uploading',
             video TEXT, motion TEXT, motion_summary TEXT, stage TEXT, error TEXT,
             asset TEXT, share TEXT UNIQUE)""")
+        self.native = self.data / "native-models"
+        self.native.mkdir(mode=0o700, exist_ok=True)
+        self.db.execute("CREATE TABLE IF NOT EXISTS native_scans (id TEXT PRIMARY KEY, digest TEXT NOT NULL, share TEXT UNIQUE NOT NULL)")
         # A solver interrupted by a reboot gets a fresh attempt, using the same inputs.
         self.db.execute("UPDATE captures SET status='queued', stage='Waiting to resume' WHERE status='processing'")
         self.thread = threading.Thread(target=self._work, name="reconstruction", daemon=True)
@@ -149,12 +153,33 @@ class Captures:
                 self.changed.notify()
             return self._status(self._row(capture_id))
 
+    def publish_native(self, capture_id, upload, digest):
+        try:
+            validate_native_model(upload)
+        except (ValueError, KeyError, TypeError, IndexError, AttributeError, OverflowError, RecursionError) as exc:
+            raise RequestError(400, "Expected a self-contained native scan GLB.") from exc
+        with self.changed:
+            row = self.db.execute("SELECT digest,share FROM native_scans WHERE id=?", (capture_id,)).fetchone()
+            if row and row['digest'] != digest:
+                raise RequestError(409, "A different model is already published for this scan.")
+            token = row['share'] if row else secrets.token_hex(16)
+            target = self.native / (capture_id + '.glb')
+            if not row or not target.is_file():
+                os.replace(upload, target)
+            if not row:
+                self.db.execute("INSERT INTO native_scans(id,digest,share) VALUES(?,?,?)", (capture_id,digest,token))
+            return {"status": "ready", "sharePath": "/s/" + token}
+
     def shared_asset(self, share_id):
         with self.changed:
             row = self.db.execute("SELECT id,asset FROM captures WHERE share=? AND status='ready'", (share_id,)).fetchone()
-        if not row:
+            native = None if row else self.db.execute("SELECT id FROM native_scans WHERE share=?",(share_id,)).fetchone()
+        if row:
+            path = self.jobs / row["id"] / row["asset"]
+        elif native:
+            path = self.native / (native['id'] + '.glb')
+        else:
             raise RequestError(404, "Scan not found.")
-        path = self.jobs / row["id"] / row["asset"]
         if not path.is_file():
             raise RequestError(404, "Scan file unavailable on this Mac.")
         return path
@@ -263,9 +288,9 @@ class RecorderHandler(BaseHTTPRequestHandler):
     def receive(self, capture_id, kind):
         media = self.headers.get_content_type()
         allowed = ("video/mp4", "video/quicktime", "video/webm", "application/octet-stream")
-        if (kind == "motion" and media != "application/json") or (kind == "video" and media not in allowed):
+        if (kind == "model" and media != "model/gltf-binary") or (kind == "motion" and media != "application/json") or (kind == "video" and media not in allowed):
             raise RequestError(415, "Unsupported recording content type.")
-        size = self.length(VIDEO_LIMIT if kind == "video" else MOTION_LIMIT)
+        size = self.length({"model": 64 * 1024 * 1024, "video": VIDEO_LIMIT, "motion": MOTION_LIMIT}[kind])
         if not size:
             raise RequestError(400, "Empty upload.")
         captures = self.server.captures
@@ -287,6 +312,8 @@ class RecorderHandler(BaseHTTPRequestHandler):
                         remaining -= len(part)
                     f.flush()
                     os.fsync(f.fileno())
+                if kind == "model":
+                    return captures.publish_native(capture_id, path, digest.hexdigest())
                 summary = None
                 if kind == "video":
                     with path.open("rb") as f:
@@ -309,6 +336,10 @@ class RecorderHandler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         read = self.command in ("GET", "HEAD")
         captures = self.server.captures
+        native = re.fullmatch(rf"/api/native-scans/({UUID})", path)
+        if native and self.command == "PUT":
+            self.require_organizer()
+            return self.json_reply(self.receive(native.group(1), "model"))
         if path.startswith("/api/captures/"):
             self.require_organizer()
             match = re.fullmatch(rf"/api/captures/({UUID})(?:/(video|motion|process))?", path)

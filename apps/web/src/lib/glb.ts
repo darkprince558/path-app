@@ -1,4 +1,4 @@
-import { Box3, Group, LoadingManager, Material, Matrix4, Mesh, Texture } from "three";
+import { Box3, Group, LoadingManager, Material, Matrix4, Mesh, Points, PointsMaterial, Texture } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export class ModelParseError extends Error {
@@ -80,7 +80,7 @@ export function disposeModel(root: Group): void {
   const materials = new Set<Material>();
   const textures = new Set<Texture>();
   root.traverse((object) => {
-    if (!(object instanceof Mesh)) return;
+    if (!(object instanceof Mesh || object instanceof Points)) return;
     object.geometry.dispose();
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       materials.add(material);
@@ -117,7 +117,11 @@ export async function parseGlb(buffer: ArrayBuffer, transform: readonly number[]
     if (resourceFailed) throw new ModelParseError("An embedded texture or buffer could not be decoded. Re-export the GLB with valid embedded resources.");
     let vertices = 0;
     object.traverse((child) => {
-      if (!(child instanceof Mesh)) return;
+      if (!(child instanceof Mesh || child instanceof Points)) return;
+      if (child instanceof Points && child.material instanceof PointsMaterial) {
+        child.material.size = 0.035;
+        child.material.sizeAttenuation = true;
+      }
       const positions = child.geometry.getAttribute("position");
       if (!positions) return;
       vertices += positions.count;
