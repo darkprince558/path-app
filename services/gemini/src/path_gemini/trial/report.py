@@ -62,7 +62,8 @@ def render(run_dir: Path) -> str:
            "<title>Landmark trial</title><style>{}</style></head><body><main>".format(CSS)]
     out.append("<h1>{}</h1>".format(_e(run.get("label") or "Landmark trial")))
     out.append('<div class="card verified"><div class="muted">Verified route fact (from the route, not Gemini)</div>'
-               '<div class="instr">Maneuver: {}</div></div>'.format(_e(run.get("maneuver"))))
+               '<div class="instr">Maneuver: {}{}</div></div>'.format(
+                   _e(run.get("maneuver")), " (turn {})".format(_e(run["side"])) if run.get("side") else ""))
 
     if result is not None:
         status = ("Suggestions", "b-ok") if not result.get("abstained") else ("No clear landmark", "b-warn")
@@ -97,9 +98,9 @@ def render(run_dir: Path) -> str:
         for i, cand in enumerate(result["candidates"]):
             out.append(
                 '<div class="card"><div class="draft">Draft {} · needs organizer approval</div>'
-                '<p class="instr">{}</p><div>Landmark: <b>{}</b>{} · visibility: {}</div>'
+                '<p class="instr">{}</p><div>Landmark: <b>{}</b> ({}){} · visibility: {}</div>'
                 "<div>Supported by: {}</div><div class=\"muted\">{}</div></div>".format(
-                    i, _e(cand.get("instruction")), _e(cand.get("landmark")),
+                    i, _e(cand.get("instruction")), _e(cand.get("landmark")), _e(cand.get("landmarkType")),
                     " · visible text: <b>{}</b>".format(_e(cand["visibleText"])) if cand.get("visibleText") else "",
                     _e(cand.get("visibility")),
                     "".join('<span class="chip">{}</span>'.format(_e(x)) for x in cand.get("sourceFrameIds") or []),

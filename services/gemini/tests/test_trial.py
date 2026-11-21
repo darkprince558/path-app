@@ -108,8 +108,8 @@ def test_read_image_strips_exif_and_downscales(tmp_path):
 
 
 def test_unsupported_and_unreadable_images(tmp_path):
-    (tmp_path / "a.heic").write_bytes(b"x")
-    (tmp_path / "keyframes.json").write_text(json.dumps([{"jpeg": "a.heic", "camera": {}}]))
+    (tmp_path / "a.gif").write_bytes(b"x")
+    (tmp_path / "keyframes.json").write_text(json.dumps([{"jpeg": "a.gif", "camera": {}}]))
     with pytest.raises(TrialInputError):
         load_frames(tmp_path)
     other = tmp_path / "o"
@@ -141,7 +141,7 @@ def test_run_writes_result_images_and_escaped_report(tmp_path):
     run = runs[0]
     assert "[0] Turn left after the purple mural." in out
     result = json.loads((run / "result.json").read_text())
-    assert result["category"] == "CANDIDATES" and result["promptVersion"] == "landmark-v1"
+    assert result["category"] == "CANDIDATES" and result["promptVersion"] == "landmark-v2"
     meta = json.loads((run / "run.json").read_text())
     assert [f["role"] for f in meta["frames"]] == ["approach", "junction", "exit"]
     assert sorted(p.name for p in (run / "images").iterdir()) == [
@@ -249,3 +249,104 @@ def test_record_decision_rejects_non_run_folder(tmp_path):
 def test_list_command(tmp_path):
     code, out = run_cli(["list", str(keyframes_folder(tmp_path))])
     assert code == 0 and "4 frames from keyframes.json" in out and "[tracking: limited]" in out
+
+
+# -------------------------------------------------------------------- HEIC ---
+
+
+def _heic(tmp_path: Path, name: str, size=(3024, 4032), with_gps=True) -> Path:
+    pillow_heif = pytest.importorskip("pillow_heif")
+    pillow_heif.register_heif_opener()
+    img = Image.new("RGB", size, (30, 30, 30))
+    exif = Image.Exif()
+    exif[0x010F] = "SECRET-PHONE-MAKER"
+    if with_gps:
+        exif[0x8825] = {1: "N", 2: (43.0, 0.0, 0.0)}
+    path = tmp_path / name
+    try:
+        img.save(path, format="HEIF", exif=exif.tobytes())
+    except Exception as exc:  # encoder missing in this pillow-heif build
+        pytest.skip("cannot encode HEIC here: {}".format(type(exc).__name__))
+    return path
+
+
+def test_iphone_heic_names_are_listed_with_clean_ids(tmp_path):
+    for n in (1, 2, 3):
+        _heic(tmp_path, "way1({}).HEIC".format(n), size=(64, 48))
+    layout, frames = load_frames(tmp_path)
+    assert layout == "images"
+    assert [f.frame_id for f in frames] == ["way1-1", "way1-2", "way1-3"]
+    assert frames[0].mime_type == "image/heic"
+    assert find_frame(frames, "way1(2).HEIC").frame_id == "way1-2"
+
+
+def test_heic_is_converted_to_jpeg_without_gps(tmp_path):
+    path = _heic(tmp_path, "turn.heic")
+    original = path.read_bytes()
+    _, frames = load_frames(tmp_path)
+    data, mime, info = read_image(frames[0], max_side=1280, max_bytes=5_000_000)
+    assert mime == "image/jpeg" and data[:3] == b"\xff\xd8\xff"
+    assert info["convertedFrom"] == "image/heic" and max(info["width"], info["height"]) == 1280
+    assert b"SECRET-PHONE-MAKER" in original and b"SECRET-PHONE-MAKER" not in data
+    with Image.open(io.BytesIO(data)) as img:
+        assert not img.getexif() and not img.getexif().get_ifd(0x8825)
+
+
+def test_heic_without_pillow_heif_gives_clear_error(tmp_path, monkeypatch):
+    path = tmp_path / "turn.heic"
+    path.write_bytes(b"\x00\x00\x00\x18ftypheic")
+    monkeypatch.setitem(__import__("sys").modules, "pillow_heif", None)
+    _, frames = load_frames(tmp_path)
+    with pytest.raises(TrialInputError) as e:
+        read_image(frames[0], max_side=1280, max_bytes=5_000_000)
+    assert "pillow-heif" in str(e.value)
+
+
+def test_heic_run_sends_jpeg_and_report_embeds_jpeg(tmp_path):
+    folder = tmp_path / "way1"
+    folder.mkdir()
+    for n in (1, 2, 3):
+        _heic(folder, "way1({}).HEIC".format(n), size=(400, 300))
+    service, _ = make_service([response_json([candidate(frames=("way1-1", "way1-2"))])])
+    log = tmp_path / "log"
+    code, _ = run_cli(["run", str(folder), "--maneuver", "left", "--approach", "way1(1).HEIC",
+                       "--junction", "way1-2", "--exit", "way1-3", "--log-dir", str(log)], service)
+    assert code == 0
+    run = next(log.iterdir())
+    assert sorted(p.name for p in (run / "images").iterdir()) == [
+        "approach-way1-1.jpg", "exit-way1-3.jpg", "junction-way1-2.jpg"]
+    image_parts = [p for p in service.client.prompts[0].parts if p.kind == "image"]
+    assert {p.mime_type for p in image_parts} == {"image/jpeg"}
+    html = (run / "report.html").read_text(encoding="utf-8")
+    assert html.count("data:image/jpeg;base64,") == 3
+
+
+def test_backend_frames_json_v1_uses_id_field(tmp_path):
+    """Sam's capture API frames.json v1: {version, captureId, frames:[{id, imagePath, ...}]}."""
+    (tmp_path / "frames").mkdir()
+    for name in ("start-a", "turn-b"):
+        (tmp_path / "frames" / (name + ".jpg")).write_bytes(_jpeg())
+    index = {"version": 1, "captureId": "6d8c1359-2480-4493-89b8-39be20cc6fc9", "frames": [
+        {"id": "start-a", "imagePath": "frames/start-a.jpg", "timestampSeconds": 0.25,
+         "cameraPose": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], "width": 64, "height": 48},
+        {"id": "turn-b", "imagePath": "frames/turn-b.jpg", "timestampSeconds": 1.25,
+         "cameraPose": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], "width": 64, "height": 48},
+    ]}
+    (tmp_path / "frames.json").write_text(json.dumps(index), encoding="utf-8")
+    layout, frames = load_frames(tmp_path)
+    assert layout == "frames.json"
+    assert [(f.frame_id, f.timestamp_seconds, f.mime_type) for f in frames] == [
+        ("start-a", 0.25, "image/jpeg"), ("turn-b", 1.25, "image/jpeg")]
+
+
+def test_anish_export_frames_json_uses_frame_id_field(tmp_path):
+    """Native exporter (CaptureBundle.swift): frameId + imagePath + trackingState."""
+    (tmp_path / "frames").mkdir()
+    (tmp_path / "frames" / "frame-0007.jpg").write_bytes(_jpeg())
+    index = {"frames": [{"frameId": "frame-0007", "imagePath": "frames/frame-0007.jpg", "mimeType": "image/jpeg",
+                         "timestampSeconds": 1.5, "width": 64, "height": 48, "trackingState": "limited",
+                         "cameraToWorld": [1] * 16, "intrinsics": {"fx": 1, "fy": 1, "cx": 0, "cy": 0},
+                         "path": "frames/frame-0007.jpg", "timestampMs": 1500, "cameraPose": [1] * 16}]}
+    (tmp_path / "frames.json").write_text(json.dumps(index), encoding="utf-8")
+    _, frames = load_frames(tmp_path)
+    assert frames[0].frame_id == "frame-0007" and frames[0].tracking == "limited"

@@ -18,7 +18,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-IMAGE_SUFFIXES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}
+IMAGE_SUFFIXES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    # iPhone default. Converted to JPEG before sending (needs pillow-heif).
+    ".heic": "image/heic",
+    ".heif": "image/heif",
+}
+HEIF_TYPES = ("image/heic", "image/heif")
 _UNSAFE_ID_CHARS = re.compile(r"[^A-Za-z0-9._:-]+")
 
 
@@ -51,7 +59,7 @@ def _inside(folder: Path, relative: str) -> Path:
 def _mime_for(path: Path) -> str:
     mime = IMAGE_SUFFIXES.get(path.suffix.lower())
     if not mime:
-        raise TrialInputError("unsupported image type {} (use JPEG or PNG; export HEIC as JPEG)".format(path.name))
+        raise TrialInputError("unsupported image type {} (use JPEG, PNG or HEIC)".format(path.name))
     return mime
 
 
@@ -117,7 +125,9 @@ def _from_frames_json(folder: Path) -> List[FrameFile]:
         ts = item.get("timestampSeconds")
         frames.append(
             FrameFile(
-                frame_id=sanitize_id(str(item.get("frameId") or path.stem)),
+                # Anish's export and the handoff use "frameId"; Sam's backend
+                # frames.json v1 uses "id". Accept either.
+                frame_id=sanitize_id(str(item.get("frameId") or item.get("id") or path.stem)),
                 path=path,
                 mime_type=mime,
                 timestamp_seconds=float(ts) if isinstance(ts, (int, float)) else None,
@@ -155,12 +165,25 @@ def read_image(frame: FrameFile, *, max_side: int, max_bytes: int) -> Tuple[byte
     With Pillow installed, the image is re-encoded: EXIF (including GPS) and
     other metadata are dropped, orientation is applied, and the longest side
     is capped at ``max_side``. Without Pillow, original bytes are used.
+    HEIC/HEIF photos are always converted to JPEG, which needs pillow-heif.
     """
     raw = frame.path.read_bytes()
     info = {"originalBytes": len(raw), "normalized": False}
+    is_heif = frame.mime_type in HEIF_TYPES
+    if is_heif:
+        try:
+            import pillow_heif
+
+            pillow_heif.register_heif_opener()
+        except ImportError:
+            raise TrialInputError(
+                "{} is HEIC; install pillow-heif (pip install pillow-heif) or export it as JPEG".format(
+                    frame.path.name)) from None
     try:
         from PIL import Image, ImageOps
     except ImportError:
+        if is_heif:
+            raise TrialInputError("HEIC photos need Pillow: pip install pillow pillow-heif") from None
         if len(raw) > max_bytes:
             raise TrialInputError(
                 "{} is {} bytes (limit {}); install Pillow (pip install pillow) to downscale".format(
@@ -172,13 +195,17 @@ def read_image(frame: FrameFile, *, max_side: int, max_bytes: int) -> Tuple[byte
             if max(img.size) > max_side:
                 img.thumbnail((max_side, max_side))
             out = io.BytesIO()
-            if frame.mime_type == "image/png":
+            mime = frame.mime_type
+            if mime == "image/png":
                 img.save(out, format="PNG", optimize=True)
             else:
                 img.convert("RGB").save(out, format="JPEG", quality=88)
+                mime = "image/jpeg"
             data = out.getvalue()
             info.update(normalized=True, width=img.size[0], height=img.size[1])
     except Exception:  # noqa: BLE001 - surfaced as a clear input error
         raise TrialInputError("could not read {} as an image".format(frame.path.name)) from None
     info["sentBytes"] = len(data)
-    return data, frame.mime_type, info
+    if is_heif:
+        info["convertedFrom"] = frame.mime_type
+    return data, mime, info

@@ -12,8 +12,8 @@ def _prompt(**kw):
 
 
 def test_prompt_version_constant():
-    assert PROMPT_VERSION == "landmark-v1"
-    assert _prompt().version == "landmark-v1"
+    assert PROMPT_VERSION == "landmark-v2"
+    assert _prompt().version == "landmark-v2"
 
 
 def test_frames_ordered_approach_junction_exit_regardless_of_input_order():
