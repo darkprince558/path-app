@@ -10,7 +10,7 @@ Save several camera frames while recording and label which turn or landmark they
 
 Anish and Krishna can use an ordinary MOV or MP4 from the phone's Camera app. The Mac estimates camera poses, triangulates colored feature tracks, and adds surface samples where two views and nearby tracks agree. The output is a binary RGB point cloud (`scene.ply`) that opens in Path's guest viewer. A single video gives relative shape. Physical dimensions require a measured reference.
 
-1. Film a short continuous pass, about 15–25 seconds at 1080p, 30 fps, using the rear 1× camera. Start level, include the floor, and move slowly past a doorway, poster or turn. Keep that detail in several shots from different positions, including a small sideways step. Use the same lens and zoom throughout. Measure the width of the doorway if you want a physical reference later.
+1. Film a short continuous pass, about 15–25 seconds at 1080p, 30 fps, using the rear 1× camera. Start level, include the floor, and keep a doorway or poster visible as you round the corner. Seeing the same detail from different positions helps estimate depth. Use the same lens and zoom throughout. Measure the width of the doorway if you want a physical reference later.
 2. AirDrop the original movie to the Mac. From the repository root, run the commands below. You can type `./hallway3d ` and drag the movie from Finder into Terminal to fill in the path.
 3. In the browser, drag to orbit and scroll to zoom. Compare the doorway, the direction of the turn and any missing wall sections with the original video. Press Ctrl-C in Terminal to stop the preview. Each reconstruction gets a new folder under `captures-local/runs/`.
 
@@ -20,6 +20,33 @@ Anish and Krishna can use an ordinary MOV or MP4 from the phone's Camera app. Th
 ```
 
 Setup uses Python 3.12+, FFmpeg 9 with ffprobe, Node.js 22.12+ and pnpm. Tested on Apple Silicon with Python 3.12. Reconstruction runs on CPU. The Python packages are isolated in `captures-local/video3d-tools/`. Setup builds the repository's web workspace when available, or uses the pinned [guest viewer from PR #15](https://github.com/darkprince558/path-app/pull/15). After setup the video, sampled images, reconstruction and preview stay on the Mac. The preview URL is loopback-only.
+
+### Compare walls and floor with OpenMVS
+
+```sh
+./hallway3d setup-openmvs
+./hallway3d "$HOME/Downloads/hallway.MOV" --surface compare
+```
+
+The optional installer downloads the pinned OpenMVS 2.4.0 Apple Silicon binaries into the project's local tools folder and checks their hashes. For an existing installation, use `--openmvs-bin /path/to/bin`. [Upstream release](https://github.com/cdcseacave/openMVS/releases/tag/v2.4.0)
+
+The command estimates camera positions once. The stereo backend uses supported matches between image pairs. OpenMVS uses the same positions and undistorted copies of those frames to estimate and fuse depth maps across multiple views. Both exports use the same coordinate transform and a maximum of 600,000 points for the viewer. `scene.ply` contains the stereo result and `openmvs.ply` contains the OpenMVS result. OpenMVS also keeps its full-density `openmvs/dense.ply` in COLMAP coordinates. Use `--surface openmvs` for a single OpenMVS export as `scene.ply`.
+
+In the comparison viewer, select a capture time to inspect the scan at eye level. Press **A** for Stereo or **B** for OpenMVS. The camera and point size stay fixed as you switch. Orbit, zoom, and toggle again to compare a doorway, a section of floor or gaps along a wall. Reopen an existing comparison with `./hallway3d preview "/path/to/run/scene.ply" --compare "/path/to/run/openmvs.ply"`.
+
+To see the phone frame alongside both point clouds throughout the walk, run the following from the repository root using the comparison run's folder. It writes a movie, three still views and projected pixel coverage at the same point count and dot size. [Measured phone trial](../../knowledge/mac-video-trial.md#walking-speed-phone-recording)
+
+```sh
+run="/path/to/run"
+captures-local/video3d-tools/.venv/bin/python apps/capture/video3d/testdata/compare_surfaces.py \
+  "$run" "$run/scene.ply" "$run/openmvs.ply" "$run/surface-evidence" --video
+```
+
+### How the phone is tracked
+
+The default samples up to eight keyframes per second, with at most 160 spread across the clip. It first matches SIFT features and builds an incremental model. If some frames drop out or have weak 3D support, it also tries global mapping, including a candidate enriched with features tracked forward and backward through the decoded video. FFmpeg's decoder indices associate those observations with the correct keyframe even when the frame rate varies. For long clips the tracker increases the stride beyond its 3,600-source-frame budget and keeps all selected keyframes.
+
+The pipeline chooses a connected model using triangulated observations, checks for parallax, and tests global trajectories against a usable overlapping incremental section when available. `--mapping global` requests the global candidates even after a successful first pass. `--mapping incremental` reproduces the original mapping strategy. The report records the chosen method, attempts, number of registered frames and any weakly supported poses. A model can cover a whole turn while still leaving holes in its wall.
 
 ### Read a run
 
@@ -39,4 +66,4 @@ captures-local/video3d-tools/.venv/bin/python apps/capture/video3d/testdata/chec
 ./hallway3d preview captures-local/hall-check/scene.ply
 ```
 
-The demo renders a known hallway into a video and processes it through the same entry point as a phone movie. The check compares recovered camera centers, point-to-surface distances and the door color with the synthetic scene after one scale alignment. Choose a new output folder for each repeat. Use `--sparse` to inspect only triangulated features, or `--fps 5 --max-frames 180` to try closer frame spacing on a fast segment. Defaults sample up to three frames per second and distribute at most 120 across the clip.
+The demo renders a known hallway into a video and processes it through the same entry point as a phone movie. The check compares recovered camera centers, point-to-surface distances and the door color with the synthetic scene after one scale alignment. Choose a new output folder for each repeat. Use `--sparse` to inspect only triangulated features, or `--fps 3 --max-frames 120` for the earlier, faster sampling preset. To exercise variable frame rates and portrait rotation, run `captures-local/video3d-tools/.venv/bin/python apps/capture/video3d/testdata/check_tracking.py`.

@@ -7,9 +7,9 @@ import cv2
 import numpy as np
 
 
-MAX_PAIRS = 24
+MAX_PAIRS = 100
 MAX_SIDE = 800
-POINTS_PER_PAIR = 15_000
+POINTS_PER_PAIR = 9_500
 MIN_SHARED_TRACKS = 24
 
 

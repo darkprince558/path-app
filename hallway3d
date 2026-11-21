@@ -10,6 +10,9 @@ case "${1:-}" in
   setup)
     exec bash "$app/setup.sh"
     ;;
+  setup-openmvs)
+    exec bash "$app/setup_openmvs.sh"
+    ;;
   preview)
     shift
     exec python3 "$app/preview.py" "$@"
@@ -19,7 +22,9 @@ case "${1:-}" in
 Build a colored 3D point cloud from a phone video and open it in Path.
 
   ./hallway3d setup                         Prepare this Mac once
+  ./hallway3d setup-openmvs                 Install the optional OpenMVS backend
   ./hallway3d "/path/to/hallway.MOV"        Reconstruct and open the viewer
+  ./hallway3d VIDEO --surface compare       Compare Stereo and OpenMVS on the same cameras
   ./hallway3d VIDEO --no-preview            Export without opening a browser
   ./hallway3d preview /path/to/scene.ply    Reopen an existing export
   ./hallway3d demo                          Reconstruct a synthetic hallway

@@ -54,7 +54,9 @@ def extract_frames(video, directory, fps, limit):
         "ffmpeg", "-nostdin", "-v", "error", "-xerror", "-i", str(video),
         "-map", f"0:{stream['index']}", "-an", "-sn", "-dn", "-map_metadata", "-1",
         "-vf", f"fps={rate:.10f},{scale},setsar=1", "-frames:v", str(limit),
-        "-q:v", "2", "-pix_fmt", "yuvj444p", str(directory / "frame-%06d.jpg"),
+        "-q:v", "2", "-pix_fmt", "yuvj444p",
+        "-stats_enc_pre", str(directory / "source-indices.txt"), "-stats_enc_pre_fmt", "{ni}",
+        str(directory / "frame-%06d.jpg"),
     ], check=True)
     files = sorted(directory.glob("*.jpg"))
     if len(files) < 4:
@@ -73,6 +75,12 @@ def extract_frames(video, directory, fps, limit):
 def write_cloud(path, xyz, rgb):
     # A single mis-triangulated point can make the viewer zoom out beyond the hall.
     # Keep a generous margin around the middle 98% along each axis.
+    finite = np.isfinite(xyz).all(axis=1)
+    source_count = len(xyz)
+    if not finite.all():
+        xyz, rgb = xyz[finite], rgb[finite]
+    if not len(xyz):
+        raise ValueError("No finite surface points to export.")
     low, high = np.percentile(xyz, [1, 99], axis=0)
     margin = np.maximum(high - low, np.finfo(float).eps) * 0.5
     keep = np.all((xyz >= low - margin) & (xyz <= high + margin), axis=1)
@@ -80,7 +88,7 @@ def write_cloud(path, xyz, rgb):
     if not len(positions):
         raise ValueError("No finite geometry survived the preview bounds check.")
     if len(positions) > MAX_RENDER_POINTS:
-        indices = np.linspace(0, len(positions) - 1, MAX_RENDER_POINTS, dtype=int)
+        indices = np.random.default_rng(19).choice(len(positions), MAX_RENDER_POINTS, replace=False)
         positions, colors = positions[indices], colors[indices]
     vertices = np.empty(len(positions), dtype=[("xyz", "<f4", (3,)), ("rgb", "u1", (3,))])
     vertices["xyz"], vertices["rgb"] = positions, colors
@@ -97,7 +105,7 @@ def write_cloud(path, xyz, rgb):
         vertices.tofile(out)
     pending.rename(path)
     return {"points": len(vertices), "bytes": path.stat().st_size,
-            "outliers_removed": int(len(xyz) - keep.sum())}
+            "candidate_points": source_count, "outliers_removed": int(source_count - keep.sum())}
 
 
 def missing_intervals(frames, registered_names, video):
@@ -113,13 +121,70 @@ def missing_intervals(frames, registered_names, video):
     return intervals
 
 
+def camera_views(model, transform, sample_fps):
+    """Three supported capture poses in the same coordinate system as both PLYs."""
+    views = sorted((model.image(i) for i in model.reg_image_ids()), key=lambda im: im.name)
+    supported = [im for im in views if im.num_points3D >= 20]
+    if not supported:
+        return []
+    # Focus a few walking steps ahead so a subsequent orbit stays near this part of the scan.
+    centers = np.array([im.projection_center() for im in supported])
+    distance = max(np.linalg.norm(np.ptp(centers, axis=0)) * 0.16, 0.01)
+    rotation = transform[:3, :3]
+    result = []
+    for index in np.unique((np.array([.12, .5, .84]) * (len(supported) - 1)).round().astype(int)):
+        im = supported[index]
+        axes = rotation @ im.cam_from_world().rotation.matrix().T
+        position = rotation @ im.projection_center() + transform[:3, 3]
+        seconds = (int(Path(im.name).stem.split("-")[-1]) - 1) / sample_fps
+        result.append({"label": f"{seconds:.1f} s", "position": position.tolist(),
+                       "target": (position + axes[:, 2] * distance).tolist(), "up": (-axes[:, 1]).tolist()})
+    return result
+
+
+def export_surfaces(method, model, frames, run, transform, bin_dir, report):
+    exports = report["exports"] = {}
+    if method in {"stereo", "sparse", "compare"}:
+        xyz, rgb = sparse_points(model, transform)
+        kind = "sparse"
+        if method != "sparse":
+            from stereo import dense_points
+            print("Estimating stereo depth on the CPU", flush=True)
+            start = time.monotonic()
+            dense, colors, stats = dense_points(model, frames, transform)
+            report["stereo"] = {**stats, "elapsed_seconds": round(time.monotonic() - start, 2)}
+            if len(dense):
+                xyz, rgb = np.vstack((xyz, dense)), np.vstack((rgb, colors))
+                kind = "stereo + sparse"
+            else:
+                report["warnings"].append("No supported stereo depth. Exported sparse feature points only.")
+        report["export"] = {"geometry": kind, "file": "scene.ply", **write_cloud(run / "scene.ply", xyz, rgb)}
+        exports["sparse" if method == "sparse" else "stereo"] = report["export"]
+    if method in {"openmvs", "compare"}:
+        from openmvs import dense_points
+        print("Estimating and fusing OpenMVS depth on the same cameras", flush=True)
+        start = time.monotonic()
+        xyz, rgb, stats = dense_points(model, frames, transform, run / "openmvs", bin_dir=bin_dir)
+        report["openmvs"] = {**stats, "elapsed_seconds": round(time.monotonic() - start, 2)}
+        filename = "openmvs.ply" if method == "compare" else "scene.ply"
+        exports["openmvs"] = {"geometry": "OpenMVS", "file": filename, **write_cloud(run / filename, xyz, rgb)}
+        if method == "openmvs":
+            report["export"] = exports["openmvs"]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("video", type=Path)
     parser.add_argument("--output", type=Path, help="new run directory (default: captures-local/runs)")
-    parser.add_argument("--fps", type=float, default=3, help="sample rate, capped across the whole clip")
-    parser.add_argument("--max-frames", type=int, default=120, help="maximum number of input JPEGs")
-    parser.add_argument("--sparse", action="store_true", help="export the triangulated feature tracks only")
+    parser.add_argument("--fps", type=float, default=8, help="keyframes per second, capped across the clip")
+    parser.add_argument("--max-frames", type=int, default=160, help="maximum number of mapping keyframes")
+    parser.add_argument("--mapping", choices=["auto", "incremental", "global"], default="auto",
+                        help="auto tries global mapping with full-rate tracking if the fast pass loses coverage")
+    surface = parser.add_mutually_exclusive_group()
+    surface.add_argument("--surface", choices=["stereo", "openmvs", "compare"], default="stereo",
+                         help="compare exports both methods from one camera solution and opens the A/B viewer")
+    surface.add_argument("--sparse", action="store_true", help="export the triangulated feature tracks only")
+    parser.add_argument("--openmvs-bin", type=Path, help="directory containing InterfaceCOLMAP and DensifyPointCloud")
     parser.add_argument("--no-preview", action="store_true", help="finish after exporting the PLY and report")
     args = parser.parse_args()
     video = args.video.expanduser().resolve()
@@ -127,6 +192,12 @@ def main():
         parser.error(f"Video not found: {video}")
     if not math.isfinite(args.fps) or args.fps <= 0 or args.max_frames < 4:
         parser.error("Use a positive --fps and at least 4 for --max-frames.")
+    if args.surface in {"openmvs", "compare"}:
+        from openmvs import resolve_tools
+        try:
+            resolve_tools(args.openmvs_bin)
+        except RuntimeError as error:
+            parser.error(str(error))
     if args.output:
         run = args.output.expanduser().resolve()
         try:
@@ -151,30 +222,22 @@ def main():
         report["video"] = extract_frames(video, frames, args.fps, args.max_frames)
         print(f"2/3  Estimating camera poses from {report['video']['sampled_frames']} frames", flush=True)
         pycolmap.logging.minloglevel = pycolmap.logging.WARNING
-        model, stats, transform = reconstruct(frames, run / "sfm")
+        pose_start = time.monotonic()
+        model, stats, transform = reconstruct(frames, run / "sfm", video=video,
+                                              video_info=report["video"], mapping=args.mapping)
+        stats["elapsed_seconds"] = round(time.monotonic() - pose_start, 2)
         report["reconstruction"] = stats
         report["world_to_view"] = transform.tolist()
+        report["camera_views"] = camera_views(model, transform, report["video"]["sample_fps"])
         report["warnings"].extend(stats["warnings"])
         gaps = missing_intervals(frames, stats["registered_frame_names"], report["video"])
         report["unregistered_intervals_seconds"] = gaps
         if gaps:
             times = ", ".join(f"{a:g}–{b:g}s" for a, b in gaps[:6])
             report["warnings"].append(f"Review the source clip around {times}.")
-        xyz, rgb = sparse_points(model, transform)
-        kind = "sparse"
-        if args.sparse:
-            print("3/3  Exporting triangulated feature points", flush=True)
-        else:
-            from stereo import dense_points
-            print("3/3  Matching stereo views on the CPU", flush=True)
-            dense_xyz, dense_rgb, stereo = dense_points(model, frames, transform)
-            report["stereo"] = stereo
-            if len(dense_xyz):
-                kind = "stereo + sparse"
-                xyz, rgb = np.vstack((xyz, dense_xyz)), np.vstack((rgb, dense_rgb))
-            else:
-                report["warnings"].append("No supported stereo depth. Exported sparse feature points only.")
-        report["export"] = {"geometry": kind, **write_cloud(ply, xyz, rgb)}
+        print("3/3  Exporting colored surface points", flush=True)
+        export_surfaces("sparse" if args.sparse else args.surface, model, frames, run, transform,
+                        args.openmvs_bin, report)
         report["status"] = "ready"
     except (ValueError, OSError, RuntimeError, subprocess.SubprocessError, cv2.error) as error:
         report.update(status="failed", error=str(error))
@@ -192,12 +255,14 @@ def main():
         return 1
     print(f"{stats['registered_frames']}/{stats['input_frames']} camera poses, "
           f"{report['export']['points']:,} colored points in {report['elapsed_seconds']} s.")
-    print(f"3D file: {ply}", flush=True)
+    for export in report["exports"].values():
+        print(f"{export['geometry']}: {run / export['file']} ({export['points']:,} points)", flush=True)
     for warning in report["warnings"]:
         print(f"Capture note: {warning}")
     if not args.no_preview:
+        compare = ["--compare", str(run / "openmvs.ply")] if args.surface == "compare" else []
         return subprocess.call([sys.executable, str(Path(__file__).with_name("preview.py")),
-                                str(ply), "--port", "0"])
+                                str(ply), *compare, "--port", "0"])
     return 0
 
 

@@ -6,28 +6,13 @@ from pathlib import Path
 import numpy as np
 import pycolmap
 
+from recovery import MIN_DEPTH_PAIRS, MIN_TRACKS_PER_POSE, assess, depth_pairs, recover
 
-MIN_DEPTH_PAIRS = 2
+
 CAPTURE_HINT = (
     "Walk slowly past textured features and keep them in view from several "
     "positions. Include sideways movement, especially when filming a turn."
 )
-
-
-def _depth_pairs(database):
-    """Find pairs where matched image features support geometry beyond a homography."""
-    config = pycolmap.TwoViewGeometryConfiguration
-    with pycolmap.Database.open(database) as db:
-        ids, geometries = db.read_two_view_geometries()
-    # A single plane or stationary pan can fit a homography and yield spurious
-    # camera centers after bundle adjustment. Check independent two-view fits
-    # on image measurements, before relying on the estimated 3D points.
-    return [
-        pycolmap.pair_id_to_image_pair(pair_id)
-        for pair_id, geometry in zip(ids, geometries)
-        if geometry.config in (config.CALIBRATED, config.UNCALIBRATED)
-        and len(geometry.inlier_matches) >= 30
-    ]
 
 
 def _check_depth(pair_count):
@@ -39,8 +24,10 @@ def _check_depth(pair_count):
         )
 
 
-def reconstruct(frames: Path, work: Path):
+def reconstruct(frames: Path, work: Path, *, video=None, video_info=None, mapping="auto"):
     """Map a single-camera sequence of zero-padded JPEGs in a fresh workspace."""
+    if mapping not in {"auto", "incremental", "global"}:
+        raise ValueError("Mapping must be auto, incremental or global.")
     names = sorted(p.name for p in frames.iterdir() if p.suffix.lower() in {".jpg", ".jpeg"})
     if len(names) < 4:
         raise ValueError(f"Need at least 4 sampled frames, found {len(names)}. {CAPTURE_HINT}")
@@ -66,42 +53,52 @@ def reconstruct(frames: Path, work: Path):
         pairing_options=pycolmap.SequentialPairingOptions(overlap=8),
         device=pycolmap.Device.cpu,
     )
-    depth_pairs = _depth_pairs(database)
-    _check_depth(len(depth_pairs))
-    mapping = pycolmap.IncrementalPipelineOptions()
-    mapping.num_threads = threads
-    mapping.min_model_size = 4
-    # Adjacent video frames have smaller baselines than typical photo collections.
-    mapping.mapper.init_min_tri_angle = 5.0
-    models = pycolmap.incremental_mapping(database, frames, models_dir, options=mapping)
-    if not models:
-        raise RuntimeError(f"No camera trajectory could be triangulated from {len(names)} frames. {CAPTURE_HINT}")
+    pairs = depth_pairs(database)
+    attempts = []
+    models = {}
+    if len(pairs) >= MIN_DEPTH_PAIRS:
+        options = pycolmap.IncrementalPipelineOptions(num_threads=threads, min_model_size=4)
+        options.mapper.init_min_tri_angle = 5.0
+        try:
+            models = pycolmap.incremental_mapping(database, frames, models_dir, options=options)
+        except RuntimeError as exc:
+            if mapping == "incremental":
+                raise
+            attempts.append({"method": "incremental", "error": str(exc)})
+    elif mapping == "incremental" or video is None:
+        _check_depth(len(pairs))
+    else:
+        # Full-rate optical flow can still establish new nonplanar correspondences.
+        attempts.append({"method": "incremental", "error": "insufficient SIFT parallax evidence"})
+    components = [assess(model, i, "incremental", database, pairs) for i, model in models.items()]
+    eligible = [c for c in components if "rejection" not in c.summary]
+    # Keep the largest verified incremental component as the lens/geometry reference.
+    anchor = max(eligible, key=lambda c: (c.model.num_reg_images(), c.model.num_points3D()), default=None)
+    chosen = anchor
+    need_recovery = anchor is None or len(anchor.support) < len(names)
+    if mapping == "global" or (mapping == "auto" and video is not None and need_recovery):
+        # Account for any partial output left by an interrupted mapper.
+        first_id = 1 + max((int(p.name) for p in models_dir.iterdir() if p.name.isdecimal()), default=-1)
+        extra, history = recover(frames, work, video, video_info, database, anchor, threads, first_id)
+        components.extend(extra)
+        attempts.extend(history)
+        for candidate in extra:
+            if "rejection" not in candidate.summary and (chosen is None or candidate.rank() > chosen.rank()):
+                chosen = candidate
+    if chosen is None:
+        reasons = list(dict.fromkeys(a["error"].rstrip(".") for a in attempts if a.get("error")))
+        detail = " " + ". ".join(reasons) + "." if reasons else ""
+        raise RuntimeError(f"No supported camera trajectory could be triangulated from {len(names)} frames."
+                           f"{detail} {CAPTURE_HINT}")
 
-    # Disconnected components have unrelated coordinate systems. Export one and
-    # retain the identities of all excluded frames so the user can spot gaps.
-    # Prefer a component large enough to inspect, then maximize frame coverage.
-    component_depth = {}
-    for model_id, component in models.items():
-        registered_ids = set(component.reg_image_ids())
-        component_depth[model_id] = sum(a in registered_ids and b in registered_ids for a, b in depth_pairs)
-
-    def rank(item):
-        model_id, component = item
-        n_images, n_points = component.num_reg_images(), component.num_points3D()
-        usable = n_images >= 4 and n_points >= 50 and component_depth[model_id] >= MIN_DEPTH_PAIRS
-        return usable, n_images, n_points, -model_id
-
-    model_id, model = max(models.items(), key=rank)
-    _check_depth(component_depth[model_id])
+    model, model_id = chosen.model, chosen.id
+    if chosen.method != "incremental":
+        model.extract_colors_for_all_images(frames, threads)
+        model.write(models_dir / str(model_id))
     images = sorted((model.image(i) for i in model.reg_image_ids()), key=lambda image: image.name)
     registered = [image.name for image in images]
+    weak = [image.name for image in images if image.image_id not in chosen.support]
     count = model.num_points3D()
-    if len(registered) < 4 or count < 50:
-        raise RuntimeError(
-            f"Best connected model registered {len(registered)}/{len(names)} frames "
-            f"with {count} points. Need at least 4 registered frames and "
-            f"50 triangulated points for a preview. {CAPTURE_HINT}"
-        )
 
     # COLMAP's camera convention is right/down/forward. Use the first registered
     # camera as origin, then rotate 180 degrees about X for the Path App viewer.
@@ -109,8 +106,13 @@ def reconstruct(frames: Path, work: Path):
     world_to_view = np.eye(4)
     world_to_view[:3, :] = images[0].cam_from_world().matrix()
     world_to_view[1:3, :] *= -1
-    model.update_point_3d_errors()
     warnings = []
+    if weak:
+        warnings.append(f"{len(weak)} registered camera pose(s) have fewer than {MIN_TRACKS_PER_POSE} "
+                        "triangulated observations. Inspect weak_frame_names before using their geometry.")
+    for attempt in attempts:
+        if "error" in attempt:
+            warnings.append(f"{attempt['method']} attempt: {attempt['error']}")
     if len(registered) < len(names):
         warnings.append(
             f"Partial hallway preview: the selected model contains {len(registered)} "
@@ -121,15 +123,18 @@ def reconstruct(frames: Path, work: Path):
         "registered_frames": len(registered),
         "registration_fraction": len(registered) / len(names),
         "sparse_points": count,
-        "nonplanar_verified_pairs": component_depth[model_id],
+        "nonplanar_verified_pairs": chosen.summary["nonplanar_verified_pairs"],
+        "mapping_requested": mapping,
+        "mapping_method": chosen.method,
+        "recovery_attempts": attempts,
+        "feature_database": str(chosen.database.relative_to(work)),
+        "supported_frames": len(chosen.support),
+        "weak_frame_names": weak,
         "mean_reprojection_error_px": model.compute_mean_reprojection_error(),
         "mean_track_length_frames": model.compute_mean_track_length(),
-        "model_count": len(models),
+        "model_count": len(components),
         "model_id": model_id,
-        "components": [
-            {"model_id": i, "registered_frames": m.num_reg_images(), "sparse_points": m.num_points3D()}
-            for i, m in sorted(models.items())
-        ],
+        "components": [c.summary for c in components],
         "warnings": warnings,
         "first_registered_frame": registered[0],
         "registered_frame_names": registered,
