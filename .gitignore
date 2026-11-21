@@ -4,3 +4,15 @@
 .env.*
 !.env.example
 !.env.*.example
+
+# Local builds and dependencies
+node_modules/
+dist/
+.next/
+__pycache__/
+.venv/
+DerivedData/
+xcuserdata/
+
+# Local camera captures, device recordings, and venue exports
+/captures-local/

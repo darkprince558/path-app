@@ -4,6 +4,19 @@ Path App is a collaborative 3D mapping and navigation project for Hack Western 1
 
 Visitors can see what a hallway, entrance, or turn looks like before they reach it. Event organizers can map rooms and booths, schools and companies can share routes across their campuses, and hikers can share trails they’ve walked. Capture can be handheld or hands-free with a custom 3D-printed wearable phone mount.
 
+## Start here
+
+Our first milestone is to upload one real scan, share an unlisted link, and open the interactive 3D view on a second phone. Scans can be **Public** (listed for everyone), **Unlisted** (anyone with the link), or **Private** (owner and invited accounts).
+
+| Building | Start with |
+| --- | --- |
+| Website and 3D viewer | [Arielle’s web workspace](apps/web/README.md) |
+| Uploads, sharing and access | [Sam’s API workspace and local commands](services/api/README.md) |
+| Phone capture and export | [Krishna and Anish’s capture workspace](apps/capture/README.md) |
+| Shared decisions and development rules | [Architecture](docs/architecture.md) · [Human and coding-agent workflow](AGENTS.md) |
+
+Run `make check` from the repo root with Python 3.9+ and Make. This checks a synthetic venue and exercises the local upload/share API, including grants and revocation. Start the mock with `make dev-api`. It stores scans for the current process and serves a download page for integration. The guest 3D website, durable backend and device capture are the team's implementation work.
+
 ## Hackathon MVP
 
 1. **Capture** a small venue section with a phone’s camera and LiDAR.
@@ -21,7 +34,6 @@ The demo target is one real venue section, two destinations, one route opened fr
 - **Krishna and Anish** — Phone capture, scan processing, alignment, and upload integration.
 - **Arielle** — Frontend, 3D viewer, route editing, pathfinding, and event experience.
 
-## Prize tracks
+## Prize strategy
 
-- MLH Best Use of Gemini API
-- Organizers’ Choice – Most Adventurous
+Build one demo for **Best Use of Gemini API** and **Most Adventurous**. A first-time visitor chooses an unfamiliar destination, opens a scan and follows a landmark cue grounded in the actual capture. See the [ranked prize plan and 90-second demo](docs/prize-plan.md) and the [Gemini landmark design](docs/gemini-demo.md).

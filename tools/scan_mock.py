@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""Loopback upload/share mock. Assets live only for this server session."""
+
+import argparse
+import json
+import re
+import secrets
+import struct
+from dataclasses import dataclass, replace
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from urllib.parse import parse_qs, urlsplit
+
+
+MAX_UPLOAD_BYTES = 32 * 1024 * 1024
+SHARE_ID = r"[a-f0-9]{32}"
+DEV_ID = r"[a-zA-Z0-9_.@-]{1,64}"
+VISIBILITIES = ("private", "unlisted", "public")
+
+
+@dataclass(frozen=True)
+class Scan:
+    path: Path
+    owner: str
+    visibility: str
+    viewers: frozenset
+
+    def visible_to(self, user):
+        return self.visibility != "private" or self.owner == user or user in self.viewers
+
+
+def valid_header(data, file_format):
+    if file_format == "glb":
+        return (len(data) >= 20 and data[:4] == b"glTF"
+                and struct.unpack_from("<II", data, 4) == (2, len(data))
+                and data[16:20] == b"JSON")
+    lines = data[:65536].splitlines()
+    return (len(lines) >= 3 and lines[0] == b"ply"
+            and lines[1] in (b"format ascii 1.0", b"format binary_little_endian 1.0",
+                             b"format binary_big_endian 1.0")
+            and b"end_header" in lines)
+
+
+class ScanServer(ThreadingHTTPServer):
+    def __init__(self, port, directory):
+        self.directory = Path(directory)
+        self.scans = {}
+        super().__init__(("127.0.0.1", port), ScanHandler)
+
+
+class ScanHandler(BaseHTTPRequestHandler):
+    def reply(self, status, media_type, body, attachment=None):
+        self.send_response(status)
+        self.send_header("Content-Type", media_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        if attachment:
+            self.send_header("Content-Disposition", f'attachment; filename="{attachment}"')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def json_reply(self, status, payload):
+        self.reply(status, "application/json", json.dumps(payload).encode())
+
+    def user(self):
+        identifier = self.headers.get("X-Dev-User", "")
+        return identifier if re.fullmatch(DEV_ID, identifier) else None
+
+    def read_body(self, limit):
+        lengths = self.headers.get_all("Content-Length", [])
+        if not lengths or "Transfer-Encoding" in self.headers:
+            return self.json_reply(411, {"error": "Content-Length required"})
+        if len(lengths) != 1 or not re.fullmatch(r"[0-9]{1,18}", lengths[0]):
+            return self.json_reply(400, {"error": "Invalid Content-Length"})
+        size = int(lengths[0])
+        if size > limit:
+            return self.json_reply(413, {"error": "Request size limit exceeded"})
+        data = self.rfile.read(size)
+        if len(data) != size:
+            return self.json_reply(400, {"error": "Incomplete request"})
+        return data
+
+    def do_POST(self):
+        target = urlsplit(self.path)
+        if target.path != "/api/scans":
+            return self.json_reply(404, {"error": "Unknown endpoint"})
+        user = self.user()
+        if user is None:
+            return self.json_reply(401, {"error": "X-Dev-User required"})
+        params = parse_qs(target.query, keep_blank_values=True)
+        if (params.keys() - {"format", "visibility"} or
+                any(len(values) != 1 for values in params.values())):
+            return self.json_reply(400, {"error": "Invalid query"})
+        file_format = params.get("format", [""])[0]
+        visibility = params.get("visibility", ["private"])[0]
+        if file_format not in ("ply", "glb") or visibility not in VISIBILITIES:
+            return self.json_reply(400, {"error": "Invalid format or visibility"})
+        content_type = self.headers.get_content_type()
+        if content_type != "application/octet-stream" and not (
+            file_format == "glb" and content_type == "model/gltf-binary"
+        ):
+            return self.json_reply(415, {"error": "Expected raw model bytes"})
+        data = self.read_body(MAX_UPLOAD_BYTES)
+        if data is None:
+            return
+        if not valid_header(data, file_format):
+            return self.json_reply(400, {"error": "Invalid model header"})
+        share_id = secrets.token_hex(16)
+        path = self.server.directory / f"{share_id}.{file_format}"
+        path.write_bytes(data)
+        self.server.scans[share_id] = Scan(path, user, visibility, frozenset())
+        self.json_reply(201, {"shareId": share_id, "sharePath": f"/s/{share_id}"})
+
+    def do_PATCH(self):
+        match = re.fullmatch(rf"/api/scans/({SHARE_ID})", urlsplit(self.path).path)
+        share_id = match.group(1) if match else ""
+        scan = self.server.scans.get(share_id)
+        if scan is None or self.user() != scan.owner:
+            return self.json_reply(404, {"error": "Unknown scan"})
+        if self.headers.get_content_type() != "application/json":
+            return self.json_reply(415, {"error": "Expected application/json"})
+        data = self.read_body(16 * 1024)
+        if data is None:
+            return
+        try:
+            change = json.loads(data)
+        except (ValueError, RecursionError):
+            return self.json_reply(400, {"error": "Invalid JSON"})
+        if not isinstance(change, dict) or set(change) != {"visibility", "viewerIds"}:
+            return self.json_reply(400, {"error": "Expected visibility and viewerIds"})
+        visibility, viewers = change["visibility"], change["viewerIds"]
+        if (visibility not in VISIBILITIES or not isinstance(viewers, list) or
+                any(not isinstance(v, str) or not re.fullmatch(DEV_ID, v) for v in viewers)):
+            return self.json_reply(400, {"error": "Invalid visibility or viewer ID"})
+        self.server.scans[share_id] = replace(scan, visibility=visibility, viewers=frozenset(viewers))
+        self.json_reply(200, {"shareId": share_id, "visibility": visibility, "viewerIds": sorted(set(viewers))})
+
+    def do_GET(self):
+        target = urlsplit(self.path).path
+        if target == "/api/scans/public":
+            scans = [{"shareId": key, "sharePath": f"/s/{key}"}
+                     for key, scan in self.server.scans.copy().items() if scan.visibility == "public"]
+            return self.json_reply(200, {"scans": scans})
+        match = re.fullmatch(rf"/api/shares/({SHARE_ID})(/asset)?|/s/({SHARE_ID})", target)
+        if not match:
+            return self.json_reply(404, {"error": "Unknown share"})
+        api_id, asset_request, page_id = match.groups()
+        share_id = api_id or page_id
+        scan = self.server.scans.get(share_id)
+        if scan is None or not scan.visible_to(self.user()):
+            return self.json_reply(404, {"error": "Unknown share"})
+        path = scan.path
+        file_format = path.suffix[1:]
+        asset_path = f"/api/shares/{share_id}/asset"
+        if page_id:
+            page = ('<!doctype html><title>Shared scan</title><h1>Shared scan</h1>'
+                    '<p>Development upload and download check. The website will render this asset in 3D.</p>'
+                    f'<a href="{asset_path}">Download {file_format.upper()} scan</a>')
+            return self.reply(200, "text/html; charset=utf-8", page.encode())
+        if asset_request:
+            media_type = "model/gltf-binary" if file_format == "glb" else "application/octet-stream"
+            return self.reply(200, media_type, path.read_bytes(), f"scan.{file_format}")
+        self.json_reply(200, {"shareId": share_id, "format": file_format, "assetPath": asset_path})
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--port", type=int, default=8001)
+    args = parser.parse_args()
+    with TemporaryDirectory() as directory, ScanServer(args.port, directory) as server:
+        print(f"Scan mock listening on http://127.0.0.1:{server.server_port}", flush=True)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+
+
+if __name__ == "__main__":
+    main()

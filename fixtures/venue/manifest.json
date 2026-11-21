@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "eventId": "synthetic-venue",
+  "scene": {
+    "format": "ply",
+    "path": "scene.ply"
+  },
+  "startWaypointId": "entrance",
+  "waypoints": [
+    { "id": "entrance", "position": [0, 0, 0] },
+    { "id": "junction", "position": [0, 0, -4] },
+    { "id": "workshop", "position": [-3, 0, -4] },
+    { "id": "booth", "position": [3, 0, -4] }
+  ],
+  "edges": [
+    { "from": "entrance", "to": "junction" },
+    { "from": "junction", "to": "workshop" },
+    { "from": "junction", "to": "booth" }
+  ],
+  "destinations": [
+    { "id": "workshop-room", "label": "Workshop room", "waypointId": "workshop" },
+    { "id": "info-booth", "label": "Info booth", "waypointId": "booth" }
+  ]
+}
