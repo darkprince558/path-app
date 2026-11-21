@@ -99,7 +99,7 @@ export default function GuestView() {
   const retry = () => setAttempt((n) => n + 1);
 
   return (
-    <main className="relative h-dvh w-full overflow-hidden bg-night text-paper" aria-label="Shared venue scan">
+    <main className="relative h-dvh w-full overflow-hidden bg-night text-paper" aria-label="Shared 3D map">
       {state.phase === "ready" ? (
         <>
           <div className="absolute inset-0 touch-none" onPointerDown={() => setTouched(true)}>
@@ -108,7 +108,7 @@ export default function GuestView() {
             </Suspense>
           </div>
           <p className="sr-only">
-            A 3D point cloud of the shared venue scan with {state.scan.count.toLocaleString()} points. Drag to look
+            A 3D map made from a scan of the place, with {state.scan.count.toLocaleString()} points. Drag to look
             around, pinch or scroll to zoom.
           </p>
           <ViewerChrome
@@ -129,7 +129,7 @@ export default function GuestView() {
       {state.phase === "not-found" ? (
         <MessagePanel title="This link isn't open to you" action={{ label: "Try again", onClick: retry }}>
           <p>The scan may have been removed or made private, or the link may be mistyped.</p>
-          <p>Ask the organizer for a fresh link or QR code.</p>
+          <p>Ask the person who shared it for a fresh link or QR code.</p>
         </MessagePanel>
       ) : null}
 

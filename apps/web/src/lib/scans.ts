@@ -94,7 +94,7 @@ function messageFor(status: number, serverError: string | undefined, format: Sca
         ? `The server couldn't read this as a ${format.toUpperCase()} scan. Export it again from the capture app.`
         : `The server rejected the upload${serverError ? `: ${serverError}` : ""}.`;
     case 401:
-      return "Sign in as an organizer to upload scans.";
+      return "Sign in to upload scans.";
     case 413:
       return "This scan is over the 32 MB limit. Crop or downsample it and try again.";
     case 415:
@@ -166,7 +166,7 @@ export async function updateSharing(shareId: string, visibility: Visibility, vie
     throw new UploadError("Couldn't reach the Path server. Your sharing setting didn't change.");
   }
   if (response.status === 404) {
-    throw new UploadError("This scan no longer exists, or you aren't its organizer.", 404);
+    throw new UploadError("This scan no longer exists, or it was uploaded from a different account.", 404);
   }
   if (!response.ok) {
     const error = readError(await response.text());

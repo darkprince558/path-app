@@ -114,11 +114,10 @@ export default function Upload() {
         <Link to="/" className="font-display text-2xl font-black tracking-wide">
           Path
         </Link>
-        <span className="font-mono text-xs text-muted">organizer</span>
       </header>
 
       <h1 className="mt-8 font-display text-4xl leading-none font-black">Share a scan</h1>
-      <p className="mt-3 text-lg text-muted">Upload your venue scan, choose who can open it, then share the link or QR code.</p>
+      <p className="mt-3 text-lg text-muted">Upload a scan of a building, campus or trail. Choose who can open it, then share the link or QR code.</p>
 
       {phase.step === "done" ? (
         <div className="mt-8">
