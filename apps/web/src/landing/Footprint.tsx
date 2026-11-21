@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 /** One footprint, pointing up (−y), about 14 × 26 units. Toes, sole and heel. */
 export function FootprintShape() {
@@ -126,4 +126,95 @@ export function WalkingPrints({ reduce, className, color = "#2F4A3A" }: { reduce
       </g>
     </svg>
   );
+}
+
+/** The footprint as raw SVG, for prints added outside React (the cursor trail). */
+const FOOTPRINT_MARKUP =
+  '<ellipse cx="0" cy="-2" rx="4.6" ry="6.6"/><ellipse cx="0" cy="8" rx="3.4" ry="3.9"/>' +
+  '<circle cx="-3.6" cy="-10.2" r="1.35"/><circle cx="-1.2" cy="-11.4" r="1.45"/>' +
+  '<circle cx="1.4" cy="-11.2" r="1.35"/><circle cx="3.6" cy="-9.8" r="1.2"/>';
+
+/** Distance the cursor travels (px) between one footprint and the next. */
+const CURSOR_STRIDE = 42;
+/** Most prints on screen at once; older ones are removed early. */
+const CURSOR_MAX_PRINTS = 28;
+
+/**
+ * Footprints that follow the mouse inside `area`: one print every stride, pointing
+ * the way the cursor moves, alternating left and right, each fading out on its own.
+ * Mouse only (not touch or pen) and off under Reduce motion. Prints are added to the
+ * SVG directly rather than through React state, so a fast-moving cursor stays smooth.
+ */
+export function CursorTrail({
+  area,
+  enabled,
+  onActiveChange,
+  color = "#2F4A3A",
+}: {
+  area: RefObject<HTMLElement | null>;
+  enabled: boolean;
+  onActiveChange?: (active: boolean) => void;
+  color?: string;
+}) {
+  const svg = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    const element = area.current;
+    const layer = svg.current;
+    if (!element || !layer || !enabled) return;
+    let last: { x: number; y: number } | null = null;
+    let left = false;
+
+    const onMove = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse") return;
+      const box = element.getBoundingClientRect();
+      const x = event.clientX - box.left;
+      const y = event.clientY - box.top;
+      if (!last) {
+        last = { x, y };
+        return;
+      }
+      const dx = x - last.x;
+      const dy = y - last.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance < CURSOR_STRIDE) return;
+      const nx = -dy / distance;
+      const ny = dx / distance;
+      const side = left ? -1 : 1;
+      const angle = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+      const print = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      print.setAttribute(
+        "transform",
+        `translate(${x + nx * 9 * side} ${y + ny * 9 * side}) rotate(${angle}) scale(${left ? -1.9 : 1.9} 1.9)`,
+      );
+      print.setAttribute("class", "cursor-print");
+      print.innerHTML = FOOTPRINT_MARKUP;
+      print.addEventListener("animationend", () => print.remove(), { once: true });
+      layer.appendChild(print);
+      while (layer.childElementCount > CURSOR_MAX_PRINTS) layer.firstElementChild?.remove();
+      left = !left;
+      last = { x, y };
+    };
+    const onEnter = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") onActiveChange?.(true);
+    };
+    const onLeave = () => {
+      last = null;
+      onActiveChange?.(false);
+    };
+
+    element.addEventListener("pointermove", onMove);
+    element.addEventListener("pointerenter", onEnter);
+    element.addEventListener("pointerleave", onLeave);
+    return () => {
+      element.removeEventListener("pointermove", onMove);
+      element.removeEventListener("pointerenter", onEnter);
+      element.removeEventListener("pointerleave", onLeave);
+      layer.replaceChildren();
+      onActiveChange?.(false);
+    };
+  }, [area, enabled, onActiveChange]);
+
+  if (!enabled) return null;
+  return <svg ref={svg} className="pointer-events-none absolute inset-0 size-full" fill={color} aria-hidden="true" />;
 }

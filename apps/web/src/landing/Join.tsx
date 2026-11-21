@@ -1,23 +1,31 @@
 import { ArrowRight } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { useReducedMotion } from "../lib/preferences";
-import { WalkingPrints } from "./Footprint";
+import { CursorTrail, WalkingPrints } from "./Footprint";
 import { Container, demoUrl } from "./shared";
 
 /*
  * Join us: the last stop. Footprints keep walking across the page on a loop, above
  * one clear call to action, with the sample-map QR code beside it on laptops
- * (phones are already where the code would take them).
+ * (phones are already where the code would take them). With a mouse, moving the
+ * cursor over the section leaves its own trail of footprints, and the loop steps
+ * aside while you do.
  */
 
 export default function Join() {
   const reduce = useReducedMotion();
+  const section = useRef<HTMLElement>(null);
+  const [following, setFollowing] = useState(false);
   return (
-    <section id="join" aria-labelledby="join-heading" className="relative overflow-hidden bg-paper py-28 md:py-40">
-      <WalkingPrints reduce={reduce} className="block h-28 w-full" />
+    <section ref={section} id="join" aria-labelledby="join-heading" className="relative overflow-hidden bg-paper py-28 md:py-40">
+      <CursorTrail area={section} enabled={!reduce} onActiveChange={setFollowing} />
+      <div className={`transition-opacity duration-500 ${following ? "opacity-0" : "opacity-100"}`}>
+        <WalkingPrints reduce={reduce} className="block h-28 w-full" />
+      </div>
 
-      <Container className="mt-10 grid items-center justify-items-center gap-12 md:mt-14 lg:grid-cols-[1fr_auto] lg:justify-items-start xl-text:lg:grid-cols-1">
+      <Container className="relative mt-10 grid items-center justify-items-center gap-12 md:mt-14 lg:grid-cols-[1fr_auto] lg:justify-items-start xl-text:lg:grid-cols-1">
         <div className="grid justify-items-center gap-5 text-center lg:justify-items-start lg:text-left">
           <h2 id="join-heading" className="font-display text-[clamp(2.5rem,5vw,4rem)] leading-none font-black text-balance">
             Map your first place.
