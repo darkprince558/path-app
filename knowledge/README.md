@@ -12,6 +12,17 @@ Use this folder for knowledge a teammate will still need after your branch merge
 
 ## Add a finding
 
+[LiDAR ingestion contract and exporter handoff](lidar-ingestion.md) records the
+implemented backend example and native capture checks still required.
+The [contract integration handoff](../docs/lidar-contract-compatibility.md) records
+the device/database UUID distinction, generated CPU validators and separate native fixture.
+
+The [CPU worker handoff](../docs/lidar-cpu-processing.md) records the real adapter,
+child-owned lifetime lock, process cancellation and targeted local workflow.
+
+The [publishing runbook](../docs/lidar-publishing.md) records Task 5's approved
+revision-to-scan link, owner-only frames and verified synthetic viewer handoff.
+
 Create a short Markdown file here such as `capture-export.md` for a finding worth reusing. Use the real device, command or example that produced it. Link to the implementation PR or issue and add a link to the note here. If the result changes the first supported format or another team decision, update the linked architecture or plan as part of the same PR.
 
 ```markdown

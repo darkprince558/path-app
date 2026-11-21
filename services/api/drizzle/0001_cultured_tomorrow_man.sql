@@ -1,0 +1,1 @@
+CREATE INDEX "nav_edges_space_endpoints_idx" ON "nav_edges" USING btree ("space_id","from_node_id","to_node_id");

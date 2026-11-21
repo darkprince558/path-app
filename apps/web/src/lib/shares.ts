@@ -16,6 +16,10 @@ export interface ShareMetadata {
   assetPath: string;
   /** Map name. Older servers don't send it. */
   name?: string;
+  /** Column-major 4x4 scan-to-space matrix. The mock omits it (identity). */
+  transform?: number[];
+  scanId?: string;
+  metadata?: { coordinateSystem?: { units: "relative" | "metres"; upAxis: "Y"; calibrated?: boolean }; alignmentVerified?: boolean };
 }
 
 export type ShareErrorKind = "not-found" | "network" | "server" | "bad-response";
@@ -56,7 +60,8 @@ function isShareMetadata(value: unknown): value is ShareMetadata {
     typeof v.shareId === "string" &&
     (v.format === "ply" || v.format === "glb") &&
     typeof v.assetPath === "string" &&
-    v.assetPath.length > 0
+    v.assetPath.length > 0 &&
+    (v.transform === undefined || (Array.isArray(v.transform) && v.transform.length === 16 && v.transform.every(Number.isFinite)))
   );
 }
 

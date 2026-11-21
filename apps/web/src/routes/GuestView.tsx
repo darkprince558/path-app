@@ -3,6 +3,7 @@ import { Wordmark } from "../components/Logo";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Settings as SettingsIcon } from "lucide-react";
 import { LoadingPanel, MessagePanel } from "../components/StatusPanel";
+import type { SpaceModel } from "../components/SpaceViewer";
 import { readMapOrigin } from "../lib/maps";
 import { useReducedMotion, useTripAvoidStairs } from "../lib/preferences";
 import type { PointScan } from "../lib/ply";
@@ -14,14 +15,17 @@ import { fetchAsset, fetchShare, ShareError, type ShareMetadata } from "../lib/s
 const loadViewer = () => import("../components/ScanViewer");
 const loadParser = () => import("../lib/ply");
 const ScanViewer = lazy(loadViewer);
+const loadSpaceViewer = () => import("../components/SpaceViewer");
+const SpaceViewer = lazy(loadSpaceViewer);
+const IDENTITY = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
 type State =
   | { phase: "metadata" }
   | { phase: "asset"; meta: ShareMetadata }
   | { phase: "parsing"; meta: ShareMetadata; bytes: number }
   | { phase: "ready"; meta: ShareMetadata; scan: PointScan }
+  | { phase: "ready-glb"; meta: ShareMetadata; models: SpaceModel[] }
   | { phase: "not-found" }
-  | { phase: "unsupported"; meta: ShareMetadata }
   | { phase: "parse-failed"; meta: ShareMetadata; message: string }
   | { phase: "error"; step: "metadata" | "asset"; message: string };
 
@@ -46,7 +50,8 @@ export default function GuestView() {
   const resetView = useCallback(() => setResetToken((n) => n + 1), []);
 
   useEffect(() => {
-    document.title = state.phase === "ready" && state.meta.name ? `${state.meta.name} · Not 404` : "Shared map · Not 404";
+    const ready = state.phase === "ready" || state.phase === "ready-glb";
+    document.title = ready && state.meta.name ? `${state.meta.name} · Not 404` : "Shared map · Not 404";
   }, [state]);
 
   useEffect(() => {
@@ -66,7 +71,7 @@ export default function GuestView() {
         if (error instanceof ShareError && error.kind === "not-found") return setState({ phase: "not-found" });
         return setState({ phase: "error", step: "metadata", message: (error as Error).message });
       }
-      if (meta.format !== "ply") return setState({ phase: "unsupported", meta });
+      if (meta.format === "glb") void loadSpaceViewer();
 
       setState({ phase: "asset", meta });
       let buffer: ArrayBuffer;
@@ -81,6 +86,12 @@ export default function GuestView() {
       setState({ phase: "parsing", meta, bytes: buffer.byteLength });
       await yieldToPaint();
       if (signal.aborted) return;
+      if (meta.format === "glb") {
+        // Older mock shares omit alignment; approved backend shares preserve it.
+        setState({ phase: "ready-glb", meta, models: [{ id: meta.scanId ?? meta.shareId,
+          name: meta.name, bytes: buffer, transform: meta.transform ?? IDENTITY }] });
+        return;
+      }
       try {
         const { parsePointCloud } = await parser;
         if (signal.aborted) return;
@@ -138,6 +149,30 @@ export default function GuestView() {
         </ViewerChrome>
       ) : null}
 
+      {state.phase === "ready-glb" ? (
+        // A textured or meshed scan (GLB), drawn by the space viewer with the scan's saved transform.
+        <ViewerChrome
+          name={state.meta.name}
+          showHint={!touched}
+          onReset={resetView}
+          avoidStairs={avoidStairs}
+          onAvoidStairsChange={setAvoidStairs}
+        >
+          <div className="absolute inset-0 touch-none" onPointerDown={() => setTouched(true)}>
+            <Suspense fallback={<LoadingPanel label="Building the 3D view…" />}>
+              <SpaceViewer
+                models={state.models}
+                nodes={[]}
+                edges={[]}
+                resetToken={resetToken}
+                onError={(message) => setState({ phase: "parse-failed", meta: state.meta, message })}
+              />
+            </Suspense>
+          </div>
+          <p className="sr-only">A 3D model made from a scan of the place. Drag to look around and pinch or scroll to zoom.</p>
+        </ViewerChrome>
+      ) : null}
+
       {state.phase === "metadata" ? <LoadingPanel label="Opening the scan…" /> : null}
       {state.phase === "asset" ? <LoadingPanel label="Downloading the scan…" /> : null}
       {state.phase === "parsing" ? (
@@ -151,18 +186,9 @@ export default function GuestView() {
         </MessagePanel>
       ) : null}
 
-      {state.phase === "unsupported" ? (
-        <MessagePanel title="This scan can't be shown yet">
-          <p>
-            It was uploaded as <span className="font-mono">{state.meta.format.toUpperCase()}</span>. The guest view
-            shows PLY point clouds for now.
-          </p>
-        </MessagePanel>
-      ) : null}
-
       {state.phase === "parse-failed" ? (
         <MessagePanel title="We couldn't read this scan" action={{ label: "Try again", onClick: retry }}>
-          <p>The file downloaded, but it isn't a point cloud the viewer understands.</p>
+          <p>The file downloaded, but the viewer could not read its {state.meta.format === "glb" ? "3D model" : "point cloud"}.</p>
           <p className="rounded-lg bg-paper px-3 py-2 font-mono text-sm break-words text-muted">{state.message}</p>
         </MessagePanel>
       ) : null}

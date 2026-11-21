@@ -2,17 +2,58 @@
 
 Arielle owns the website: the signed-in home, upload and sharing, and the guest 3D viewer. Build the website here. Start with an upload control, the three visibility choices, a copy-link action and a guest route at `/s/<shareId>`. Display upload, loading and processing failures where they occur.
 
+## Automatic navigation demo
+
+Task 6 adds `/navmesh-demo`: Recast NavMesh generation from a synthetic room,
+arbitrary floor picks, agent clearance settings, walkable overlay and doorway
+routing. No API is needed. Existing manual navigation and saved routes remain
+available. See the [NavMesh runbook](../../docs/navmesh-navigation.md) for local
+commands, tests, limits and the approved LiDAR revision integration point.
+
+## Textured GLB spaces and navigation
+
+The integration preserves this React/Vite/Three.js architecture and adds `/spaces`,
+`/spaces/:spaceId` and `/events/:eventId` for Sam's Next.js API. The existing
+`/s/:shareId` route still supports the legacy mock and now reads GLB as well as PLY.
+See the [integration runbook](../../docs/navigation-integration.md) and
+[shared coordinate contract](../../docs/scan-data-contract.md).
+
+```sh
+cd apps/web
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+Vite proxies `/api` and `/auth` to `http://127.0.0.1:3000` by default. Run the API
+on that address. Use one browser hostname consistently (for example `localhost`).
+For Auth0 through Vite, set the API's `APP_BASE_URL=http://localhost:5173` and register
+`http://localhost:5173/auth/callback` and the matching logout URL in Auth0. Existing
+`localhost:3000` registrations can remain for API-only development. Production needs
+one HTTPS origin serving the web build and forwarding `/api` and `/auth` to Next.js.
+No client secret or access token is stored by the frontend.
+
+`pnpm test` checks GLB parsing, transforms and routing. `pnpm build` typechecks and
+builds the site. `pnpm test:browser` uses the real local API and requires the resource
+URLs listed in the runbook.
+
+## Approved LiDAR scans
+
+Approved revisions appear in the existing space viewer as normal GLBs. Share links
+also preserve the saved transform and coordinate metadata; older mock shares keep
+their identity-transform fallback. Follow the [Task 5 runbook](../../docs/lidar-publishing.md)
+for approval, private/public reads and the synthetic browser test.
+
 For the first integration, upload the sample PLY as **Unlisted**, open the returned link in a signed-out session, and use the response’s `assetPath` to load the point cloud with vertex colors. A guest should be able to orbit the scene and recognize the corridor junction. Use the actual phone export to choose camera framing, point size and mobile performance targets.
 
 The local API provides fixture bytes and exercises sharing rules. Replace its test page with the website’s guest route during integration. [Local API commands](../../services/api/README.md) · [Capture format and viewer notes](../../docs/scan-formats.md)
 
 ## Run locally
 
-Requires Node 22+ and pnpm. The dev server proxies `/api` to the scan mock on `127.0.0.1:8001`.
+Requires Node 22+ and pnpm. Set `API_TARGET=http://127.0.0.1:8001` for the legacy mock.
 
 ```sh
 py -3 -B tools/scan_mock.py --port 8001        # from the repo root (or: make dev-api)
-cd apps/web && pnpm install && pnpm dev        # http://localhost:5173
+cd apps/web && pnpm install && API_TARGET=http://127.0.0.1:8001 pnpm dev
 ```
 
 Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), choose `fixtures/venue/scene.ply`, pick a visibility and upload. The page shows the guest link, a copy button and a QR code, and lets you change visibility or private viewers afterwards. You can also upload with the curl command in the [API README](../../services/api/README.md). Then open `http://localhost:5173/s/<shareId>`. The guest page sends no `X-Dev-User` header, so it is a signed-out guest. Owner calls (upload, sharing) send `X-Dev-User: demo-owner` in development only (override with `VITE_DEV_USER`). A production build sends none, because the hosted API reads the signed-in session. `pnpm build` type-checks and writes static files to `dist/`. `pnpm preview` serves them with the same proxy on port 4173. The host must serve `index.html` for `/s/<shareId>`.
@@ -34,7 +75,9 @@ Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), c
 | `src/routes/Upload.tsx` | `/maps/new` (`/upload` redirects here): an optional name (suggested from the file name), choose a PLY or GLB (checked for type, size and header before sending), pick Public, Unlisted or Private (with viewer IDs), upload with progress and cancel. |
 | `src/components/SharePanel.tsx` | After upload: guest link, copy, QR code, preview, and visibility changes through `PATCH /api/scans/<id>`. Warns when the link is `localhost`, which a phone can't open. |
 | `src/lib/scans.ts` | Owner API client (upload, sharing) with readable messages for 400, 401, 413, 415 and network failures. |
-| `src/routes/GuestView.tsx` | `/s/:shareId` with loading, not-found/denied, download, parse-failure and unsupported-format (GLB) states. |
+| `src/routes/GuestView.tsx` | `/s/:shareId`: PLY point clouds (`ScanViewer`) or GLB models (`SpaceViewer`, with the share's saved transform), with loading, not-found/denied, download and parse-failure states. |
+| `src/routes/SpaceView.tsx` | Accessible Next.js scans and graph, route selection, owner upload/alignment and graph tools. |
+| `src/components/SpaceViewer.tsx` | GLTFLoader meshes/materials, combined transformed bounds, graph/route overlays and orbit controls. |
 | `src/routes/Home.tsx`, `src/landing/` | The landing page at `/`, described below. |
 
 ## Landing page

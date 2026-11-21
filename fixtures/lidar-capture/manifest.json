@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "captureId": "11111111-1111-4111-8111-111111111111",
+  "device": {
+    "model": "Synthetic LiDAR fixture",
+    "osVersion": "fixture-v1"
+  },
+  "coordinateSystem": {
+    "units": "metres",
+    "upAxis": "Y",
+    "handedness": "right",
+    "matrixLayout": "column-major",
+    "poseConvention": "camera-to-capture"
+  },
+  "entrancePose": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+  ],
+  "capturedAt": "2026-11-21T12:00:00Z",
+  "trackingWarnings": [
+    "Synthetic data: no physical capture or alignment verified."
+  ],
+  "files": [
+    {
+      "path": "source.glb",
+      "byteSize": 432,
+      "sha256": "b7bd8e4e92914633303bd41a06088ac0cfa12c55ae7053893b0de5c3e0ac3f51"
+    },
+    {
+      "path": "points.ply",
+      "byteSize": 186,
+      "sha256": "d3d0c84917daf8f9d70ffce6d3af81cb25cfc96250058fde451393e381f52c1c"
+    },
+    {
+      "path": "frames.json",
+      "byteSize": 548,
+      "sha256": "efad775dbd8fbf713eb68360405903ffc4e010e2837eaa63d4c6ce80ba1759da"
+    },
+    {
+      "path": "frames/junction-02.jpg",
+      "byteSize": 288,
+      "sha256": "2208036f13040e88fa2fae4198087b72f2ff8f422ab0e1c78c2441908f27e9b3"
+    },
+    {
+      "path": "preview.jpg",
+      "byteSize": 284,
+      "sha256": "dfb096c47a0d5e343d5b1e75b65d407a8df19510bbfd75cce8227030771618b9"
+    }
+  ]
+}
