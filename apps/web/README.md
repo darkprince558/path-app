@@ -15,7 +15,7 @@ py -3 -B tools/scan_mock.py --port 8001        # from the repo root (or: make de
 cd apps/web && pnpm install && pnpm dev        # http://localhost:5173
 ```
 
-Upload `fixtures/venue/scene.ply` as Unlisted with the curl command in the [API README](../../services/api/README.md), then open `http://localhost:5173/s/<shareId>`. The browser sends no `X-Dev-User` header, so it is a signed-out guest. `pnpm build` type-checks and writes static files to `dist/`. `pnpm preview` serves them with the same proxy on port 4173. The host must serve `index.html` for `/s/<shareId>`.
+Open `http://localhost:5173/upload`, choose `fixtures/venue/scene.ply`, pick a visibility and upload. The page shows the guest link, a copy button and a QR code, and lets you change visibility or private viewers afterwards. You can also upload with the curl command in the [API README](../../services/api/README.md). Then open `http://localhost:5173/s/<shareId>`. The guest page sends no `X-Dev-User` header, so it is a signed-out guest. Organizer calls send `X-Dev-User: organizer` in development only (override with `VITE_DEV_USER`). A production build sends none, because the hosted API reads the signed-in session. `pnpm build` type-checks and writes static files to `dist/`. `pnpm preview` serves them with the same proxy on port 4173. The host must serve `index.html` for `/s/<shareId>`.
 
 | Path | What it does |
 | --- | --- |
@@ -23,4 +23,7 @@ Upload `fixtures/venue/scene.ply` as Unlisted with the curl command in the [API 
 | `src/lib/shares.ts` | Calls `GET /api/shares/<id>` and its asset. The API answers 404 both for unknown and for denied shares, so the guest sees one state. |
 | `src/lib/ply.ts` | Parses ASCII or binary PLY with `PLYLoader`, rejects empty or non-finite scans, keeps at most 600k points. |
 | `src/components/ScanViewer.tsx` | Colored points on `night`, DPR capped at 2, orbit (one finger turns, two fingers zoom and pan), framed from behind the entrance (+Z). Loaded lazily alongside the metadata request. |
+| `src/routes/Upload.tsx` | `/upload`: choose a PLY or GLB (checked for type, size and header before sending), pick Public, Unlisted or Private (with viewer IDs), upload with progress and cancel. |
+| `src/components/SharePanel.tsx` | After upload: guest link, copy, QR code, preview, and visibility changes through `PATCH /api/scans/<id>`. Warns when the link is `localhost`, which a phone can't open. |
+| `src/lib/scans.ts` | Organizer API client with readable messages for 400, 401, 413, 415 and network failures. |
 | `src/routes/GuestView.tsx` | `/s/:shareId` with loading, not-found/denied, download, parse-failure and unsupported-format (GLB) states. |

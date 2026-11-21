@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { LoadingPanel, MessagePanel } from "../components/StatusPanel";
 import type { PointScan } from "../lib/ply";
+import { formatBytes } from "../lib/scans";
 import { fetchAsset, fetchShare, ShareError, type ShareMetadata } from "../lib/shares";
 
 // three.js, drei and the PLY parser live in a separate chunk. Both imports start
@@ -19,12 +20,6 @@ type State =
   | { phase: "unsupported"; meta: ShareMetadata }
   | { phase: "parse-failed"; meta: ShareMetadata; message: string }
   | { phase: "error"; step: "metadata" | "asset"; message: string };
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 /**
  * Yields so the "building" message can paint before a large parse blocks the thread.

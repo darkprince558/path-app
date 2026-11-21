@@ -6,9 +6,11 @@ import "./index.css";
 import Home from "./routes/Home";
 import GuestView from "./routes/GuestView";
 import NotFound from "./routes/NotFound";
+import Upload from "./routes/Upload";
 
 const router = createBrowserRouter([
   { path: "/", element: <Home /> },
+  { path: "/upload", element: <Upload /> },
   { path: "/s/:shareId", element: <GuestView /> },
   { path: "*", element: <NotFound /> },
 ]);
