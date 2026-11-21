@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#121C16" />
     <title>Path</title>
+    <script>
+      // Apply the saved text size and motion setting before the first paint,
+      // so the page doesn't jump from small to large text. See src/lib/preferences.tsx.
+      try {
+        var p = JSON.parse(localStorage.getItem("path.preferences.v1") || "{}");
+        var scale = { default: "100%", large: "118.75%", xlarge: "137.5%" }[p.textSize];
+        if (scale) document.documentElement.style.fontSize = scale;
+        if (p.motion === "reduce" || p.motion === "full") document.documentElement.dataset.motion = p.motion;
+      } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

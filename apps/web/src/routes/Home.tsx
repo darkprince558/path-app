@@ -4,7 +4,7 @@ import { Link } from "react-router";
 export default function Home() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center gap-4 px-4 py-12">
-      <p className="font-display text-5xl font-black tracking-wide">Path</p>
+      <h1 className="font-display text-5xl font-black tracking-wide">Path</h1>
       <p className="text-lg leading-relaxed">
         Scan a building, a campus or a trail, and share it as a 3D map anyone can find their way through.
       </p>

@@ -151,8 +151,8 @@ export default function Upload() {
               }}
               onDragLeave={() => setDragging(false)}
               onDrop={onDrop}
-              className={`flex min-h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-center transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-coral ${
-                dragging ? "border-forest bg-forest/8" : "border-forest/35 bg-surface"
+              className={`flex min-h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-center transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--focus-ring) ${
+                dragging ? "border-forest bg-surface ring-2 ring-forest ring-inset" : "border-forest/35 bg-surface"
               } ${uploading ? "pointer-events-none opacity-60" : ""}`}
             >
               <input

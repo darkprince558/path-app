@@ -4,11 +4,13 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import "./index.css";
 import AppLayout from "./components/AppLayout";
+import { PreferencesProvider } from "./lib/preferences";
 import Community from "./routes/Community";
 import Home from "./routes/Home";
 import MyMaps from "./routes/MyMaps";
 import GuestView from "./routes/GuestView";
 import NotFound from "./routes/NotFound";
+import Settings from "./routes/Settings";
 import Upload from "./routes/Upload";
 
 const router = createBrowserRouter([
@@ -19,6 +21,7 @@ const router = createBrowserRouter([
       { path: "/maps", element: <MyMaps /> },
       { path: "/maps/new", element: <Upload /> },
       { path: "/community", element: <Community /> },
+      { path: "/settings", element: <Settings /> },
     ],
   },
   { path: "/upload", element: <Navigate to="/maps/new" replace /> },
@@ -31,6 +34,8 @@ if (!root) throw new Error("Missing #root element");
 
 createRoot(root).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <PreferencesProvider>
+      <RouterProvider router={router} />
+    </PreferencesProvider>
   </StrictMode>,
 );

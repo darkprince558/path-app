@@ -33,7 +33,7 @@ export function MessagePanel({
 }) {
   return (
     <div className="absolute inset-0 grid place-items-center bg-night px-4" role="alert">
-      <div className="w-full max-w-sm rounded-2xl bg-surface p-6 text-forest shadow-xl">
+      <div data-surface="light" className="w-full max-w-sm rounded-2xl bg-surface p-6 text-forest shadow-xl">
         <h1 className="font-display text-2xl leading-tight font-black">{title}</h1>
         <div className="mt-3 space-y-3 text-base leading-relaxed">{children}</div>
         {action ? (

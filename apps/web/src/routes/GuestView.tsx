@@ -1,6 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
+import { Link, useLocation, useParams } from "react-router";
+import { Settings as SettingsIcon } from "lucide-react";
 import { LoadingPanel, MessagePanel } from "../components/StatusPanel";
+import { useReducedMotion, useTripAvoidStairs } from "../lib/preferences";
 import type { PointScan } from "../lib/ply";
 import { formatBytes } from "../lib/scans";
 import { fetchAsset, fetchShare, ShareError, type ShareMetadata } from "../lib/shares";
@@ -37,6 +39,9 @@ export default function GuestView() {
   const [attempt, setAttempt] = useState(0);
   const [resetToken, setResetToken] = useState(0);
   const [touched, setTouched] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const [avoidStairs, setAvoidStairs] = useTripAvoidStairs(shareId);
+  const resetView = useCallback(() => setResetToken((n) => n + 1), []);
 
   useEffect(() => {
     document.title = "Shared scan · Path";
@@ -99,25 +104,37 @@ export default function GuestView() {
   const retry = () => setAttempt((n) => n + 1);
 
   return (
-    <main className="relative h-dvh w-full overflow-hidden bg-night text-paper" aria-label="Shared 3D map">
+    <main data-surface="night" className="relative h-dvh w-full overflow-hidden bg-night text-paper" aria-label="Shared 3D map">
       {state.phase === "ready" ? (
-        <>
-          <div className="absolute inset-0 touch-none" onPointerDown={() => setTouched(true)}>
+        // Reading and Tab order: top bar, then the map, then the trip switch and Reset.
+        <ViewerChrome
+          shareId={state.meta.shareId}
+          scan={state.scan}
+          showHint={!touched}
+          onReset={resetView}
+          avoidStairs={avoidStairs}
+          onAvoidStairsChange={setAvoidStairs}
+        >
+          <div
+            className="absolute inset-0 touch-none"
+            onPointerDown={() => setTouched(true)}
+            onKeyDown={() => setTouched(true)}
+          >
             <Suspense fallback={<LoadingPanel label="Building the 3D view…" />}>
-              <ScanViewer scan={state.scan} resetToken={resetToken} />
+              <ScanViewer
+                scan={state.scan}
+                resetToken={resetToken}
+                reduceMotion={reduceMotion}
+                onReset={resetView}
+              />
             </Suspense>
           </div>
           <p className="sr-only">
             A 3D map made from a scan of the place, with {state.scan.count.toLocaleString()} points. Drag to look
-            around, pinch or scroll to zoom.
+            around and pinch or scroll to zoom. With a keyboard, focus the map, then use the arrow keys to turn it,
+            plus and minus to zoom, and R to reset.
           </p>
-          <ViewerChrome
-            shareId={state.meta.shareId}
-            scan={state.scan}
-            showHint={!touched}
-            onReset={() => setResetToken((n) => n + 1)}
-          />
-        </>
+        </ViewerChrome>
       ) : null}
 
       {state.phase === "metadata" ? <LoadingPanel label="Opening the scan…" /> : null}
@@ -167,47 +184,101 @@ function ViewerChrome({
   scan,
   showHint,
   onReset,
+  avoidStairs,
+  onAvoidStairsChange,
+  children,
 }: {
   shareId: string;
   scan: PointScan;
   showHint: boolean;
   onReset: () => void;
+  avoidStairs: boolean;
+  onAvoidStairsChange: (value: boolean) => void;
+  /** The 3D map, placed between the top bar and the bottom controls in reading order. */
+  children: ReactNode;
 }) {
+  const location = useLocation();
   const downsampled = scan.count < scan.sourceCount;
   return (
     <>
-      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 bg-gradient-to-b from-night/90 to-transparent px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-8">
-        <a
-          href="/"
-          className="pointer-events-auto font-display text-2xl leading-none font-black tracking-wide text-paper"
-        >
-          Path
-        </a>
-        <div className="text-right font-mono text-xs leading-relaxed text-sage">
-          <div title={shareId}>scan {shareId.slice(0, 8)}</div>
-          <div>
-            {scan.count.toLocaleString()} pts{downsampled ? ` of ${scan.sourceCount.toLocaleString()}` : ""}
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-gradient-to-b from-night/90 to-transparent px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-8">
+        <div>
+          <Link
+            to="/"
+            className="pointer-events-auto font-display text-2xl leading-none font-black tracking-wide text-paper"
+          >
+            Path
+          </Link>
+          <div className="mt-1 font-mono text-xs leading-relaxed text-sage">
+            <span title={shareId}>scan {shareId.slice(0, 8)}</span> · {scan.count.toLocaleString()} pts
+            {downsampled ? ` of ${scan.sourceCount.toLocaleString()}` : ""}
           </div>
         </div>
+        <Link
+          to="/settings"
+          state={{ from: location.pathname }}
+          aria-label="Settings: text size, motion, avoid stairs"
+          className="pointer-events-auto -mt-1 -mr-1 grid size-11 place-items-center rounded-full bg-night/80 text-paper ring-1 ring-sage/50"
+        >
+          <SettingsIcon className="size-5" aria-hidden />
+        </Link>
       </header>
 
-      <footer className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-night/90 to-transparent px-4 pt-10 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <p
-          className={`min-w-0 truncate rounded-full bg-night/80 px-3 py-2 text-sm whitespace-nowrap text-paper ring-1 ring-sage/30 transition-opacity duration-500 ${
-            showHint ? "opacity-100" : "opacity-0"
-          }`}
-          aria-hidden={!showHint}
-        >
-          Drag to turn · pinch to zoom
-        </p>
+      {children}
+
+      <p
+        className={`pointer-events-none absolute inset-x-0 bottom-24 z-10 mx-auto xl-text:bottom-40 w-fit max-w-[calc(100%-2rem)] truncate rounded-full bg-night/80 px-3 py-2 text-sm text-paper ring-1 ring-sage/30 transition-opacity duration-500 ${
+          showHint ? "opacity-100" : "opacity-0"
+        }`}
+        aria-hidden="true"
+      >
+        Drag to turn · pinch to zoom
+      </p>
+
+      <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-end justify-between gap-3 bg-gradient-to-t from-night/90 to-transparent px-4 pt-10 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <TripSwitch checked={avoidStairs} onChange={onAvoidStairsChange} />
         <button
           type="button"
           onClick={onReset}
-          className="pointer-events-auto min-h-11 shrink-0 rounded-full bg-night/80 px-4 text-sm font-bold text-paper ring-1 ring-sage/50 active:bg-forest"
+          className="pointer-events-auto ml-auto min-h-11 shrink-0 rounded-full bg-night/80 px-4 text-sm font-bold text-paper ring-1 ring-sage/50 active:bg-forest"
         >
           Reset view
         </button>
       </footer>
     </>
+  );
+}
+
+/**
+ * "Avoid stairs" for this trip only. It starts from the default in Settings, and changing
+ * it here doesn't change that default. The label doesn't say why, so nobody has to explain.
+ */
+function TripSwitch({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-describedby="trip-switch-detail"
+      onClick={() => onChange(!checked)}
+      className={`pointer-events-auto flex min-h-11 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-bold whitespace-nowrap ring-1 ${
+        checked ? "bg-sage text-ink ring-sage" : "bg-night/80 text-paper ring-sage/50"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`relative h-7 w-12 shrink-0 rounded-full ${checked ? "bg-forest" : "bg-paper/20"}`}
+      >
+        <span
+          className={`absolute top-1 left-1 size-5 rounded-full transition-transform ${
+            checked ? "translate-x-5 bg-sage" : "bg-paper"
+          }`}
+        />
+      </span>
+      Avoid stairs
+      <span id="trip-switch-detail" className="sr-only">
+        For this trip only. Routes use elevators and ramps. Your default is in Settings.
+      </span>
+    </button>
   );
 }

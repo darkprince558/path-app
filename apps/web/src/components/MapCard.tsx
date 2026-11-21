@@ -74,7 +74,7 @@ export default function MapCard({ map, sample = false }: { map: MapSummary; samp
     <>
       <MapThumb seed={map.id} />
       <div className="grid gap-1.5 p-3">
-        <h3 className="leading-snug font-bold">{map.name}</h3>
+        <h2 className="leading-snug font-bold">{map.name}</h2>
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
           <span className="inline-flex items-center gap-1">
             <badge.Icon className="size-3.5" aria-hidden />

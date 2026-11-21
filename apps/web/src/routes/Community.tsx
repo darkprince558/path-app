@@ -80,7 +80,7 @@ export default function Community() {
       ) : null}
 
       {state.phase === "ready" && state.maps.length > 0 ? (
-        <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-5 xl:grid-cols-4">
+        <ul className="mt-6 grid grid-cols-2 gap-3 xl-text:max-sm:grid-cols-1 sm:grid-cols-3 md:gap-5 xl:grid-cols-4">
           {state.maps.map((map) => (
             <li key={map.id}>
               <MapCard map={map} />

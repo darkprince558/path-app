@@ -1,7 +1,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
-import { CanvasTexture, MathUtils, MOUSE, TOUCH, type Texture, type Vector3 } from "three";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { CanvasTexture, MathUtils, MOUSE, Spherical, TOUCH, Vector3, type Texture } from "three";
 import type { PointScan } from "../lib/ply";
 
 const NIGHT = "#121C16";
@@ -11,8 +11,11 @@ interface OrbitLike {
   target: Vector3;
   minDistance: number;
   maxDistance: number;
+  maxPolarAngle: number;
   update(): void;
 }
+
+const MAX_POLAR = Math.PI * 0.92;
 
 /** A soft round sprite so points read as dots rather than squares. */
 function useDotTexture(): Texture {
@@ -95,33 +98,112 @@ function Framing({ scan, resetToken }: { scan: PointScan; resetToken: number }) 
   return null;
 }
 
+/**
+ * Keyboard control for people who can't drag or pinch. While the map has focus:
+ * arrow keys turn it (Shift for bigger steps), + and − zoom, R resets the view.
+ */
+function KeyboardOrbit({ target, onReset }: { target: RefObject<HTMLDivElement | null>; onReset: () => void }) {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as unknown as OrbitLike | null;
+
+  useEffect(() => {
+    const element = target.current;
+    if (!element || !controls) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key === "r" || event.key === "R") {
+        event.preventDefault();
+        onReset();
+        return;
+      }
+      const step = MathUtils.degToRad(event.shiftKey ? 30 : 10);
+      const spherical = new Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+      switch (event.key) {
+        case "ArrowLeft":
+          spherical.theta += step;
+          break;
+        case "ArrowRight":
+          spherical.theta -= step;
+          break;
+        case "ArrowUp":
+          spherical.phi -= step;
+          break;
+        case "ArrowDown":
+          spherical.phi += step;
+          break;
+        case "+":
+        case "=":
+          spherical.radius *= 0.8;
+          break;
+        case "-":
+        case "_":
+          spherical.radius /= 0.8;
+          break;
+        default:
+          return;
+      }
+      event.preventDefault();
+      spherical.phi = MathUtils.clamp(spherical.phi, 0.05, controls.maxPolarAngle);
+      spherical.radius = MathUtils.clamp(spherical.radius, controls.minDistance, controls.maxDistance);
+      spherical.makeSafe();
+      camera.position.copy(controls.target).add(new Vector3().setFromSpherical(spherical));
+      camera.lookAt(controls.target);
+      controls.update();
+    };
+    element.addEventListener("keydown", onKey);
+    return () => element.removeEventListener("keydown", onKey);
+  }, [target, camera, controls, onReset]);
+
+  return null;
+}
+
 export interface ScanViewerProps {
   scan: PointScan;
   /** Change this number to put the camera back to the starting view. */
   resetToken: number;
+  /** Turns off the glide after letting go (damping). */
+  reduceMotion?: boolean;
+  onReset: () => void;
 }
 
-export default function ScanViewer({ scan, resetToken }: ScanViewerProps) {
+export default function ScanViewer({ scan, resetToken, reduceMotion = false, onReset }: ScanViewerProps) {
+  const keyTarget = useRef<HTMLDivElement>(null);
   return (
-    <Canvas
-      dpr={[1, 2]}
-      camera={{ fov: 55 }}
-      gl={{ antialias: true, powerPreference: "high-performance" }}
-      aria-hidden="true"
+    <div
+      ref={keyTarget}
+      tabIndex={0}
+      role="application"
+      aria-roledescription="3D map"
+      aria-label="3D map. Arrow keys turn it, plus and minus zoom, R resets the view."
+      className="group relative h-full w-full focus-visible:outline-3 focus-visible:-outline-offset-4 focus-visible:outline-(--focus-ring)"
     >
-      <color attach="background" args={[NIGHT]} />
-      <Points scan={scan} />
-      <OrbitControls
-        makeDefault
-        enableDamping
-        dampingFactor={0.08}
-        rotateSpeed={0.7}
-        zoomSpeed={0.9}
-        maxPolarAngle={Math.PI * 0.92}
-        touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
-        mouseButtons={{ LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }}
-      />
-      <Framing scan={scan} resetToken={resetToken} />
-    </Canvas>
+      <p
+        aria-hidden="true"
+        className="pointer-events-none absolute top-20 left-1/2 z-10 hidden -translate-x-1/2 rounded-full bg-night/90 px-3 py-1.5 text-sm whitespace-nowrap text-paper ring-1 ring-coral group-focus-visible:block"
+      >
+        ← → ↑ ↓ turn · + − zoom · R reset
+      </p>
+      <Canvas
+        dpr={[1, 2]}
+        camera={{ fov: 55 }}
+        gl={{ antialias: true, powerPreference: "high-performance" }}
+        aria-hidden="true"
+      >
+        <color attach="background" args={[NIGHT]} />
+        <Points scan={scan} />
+        <OrbitControls
+          makeDefault
+          enableDamping={!reduceMotion}
+          dampingFactor={0.08}
+          rotateSpeed={0.7}
+          zoomSpeed={0.9}
+          maxPolarAngle={MAX_POLAR}
+          touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
+          mouseButtons={{ LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }}
+        />
+        <Framing scan={scan} resetToken={resetToken} />
+        <KeyboardOrbit target={keyTarget} onReset={onReset} />
+      </Canvas>
+    </div>
   );
 }

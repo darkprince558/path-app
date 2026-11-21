@@ -27,7 +27,25 @@ Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), c
 | `src/routes/MyMaps.tsx` | `/maps`: Your maps grid with All, Public, Unlisted, Private and Shared with me filters. Shows **sample cards** (`src/lib/maps.ts`) until the API can list an account's maps and their names. |
 | `src/routes/Community.tsx` | `/community`: real public maps from `GET /api/scans/public`, with loading, empty and error states. |
 | `src/lib/session.ts` | Stand-in signed-in account for development (`VITE_DEV_USER`, `VITE_DEV_NAME`) until real sign-in exists. |
+| `src/lib/preferences.tsx` | Settings kept on the device (no account needed): text size, motion, and the "Avoid stairs" default. `useTripAvoidStairs` gives each map a per-trip switch that starts from the default and doesn't change it. |
+| `src/routes/Settings.tsx` | `/settings`: Text size (Default, Large, Extra large), Motion (Match my device, Reduce, Allow), Avoid stairs by default. |
 | `src/routes/Upload.tsx` | `/maps/new` (`/upload` redirects here): choose a PLY or GLB (checked for type, size and header before sending), pick Public, Unlisted or Private (with viewer IDs), upload with progress and cancel. |
 | `src/components/SharePanel.tsx` | After upload: guest link, copy, QR code, preview, and visibility changes through `PATCH /api/scans/<id>`. Warns when the link is `localhost`, which a phone can't open. |
 | `src/lib/scans.ts` | Owner API client (upload, sharing) with readable messages for 400, 401, 413, 415 and network failures. |
 | `src/routes/GuestView.tsx` | `/s/:shareId` with loading, not-found/denied, download, parse-failure and unsupported-format (GLB) states. |
+
+## Accessibility
+
+- **Keyboard:** "Skip to main content" is the first Tab stop in the app. On a map, Tab order is top bar, then the map, then Avoid stairs and Reset view. With the map focused, the arrow keys turn it (Shift for bigger steps), + and − zoom, and R resets.
+- **Focus rings** follow the surface so they stay above 3:1: forest on paper, paper on the forest menu, coral on night. Coral on paper is only 2.2:1, so it is never used for focus there.
+- **Text size** scales the root font (everything is in rem). At Extra large, phones show map cards one per row and the map's bottom controls wrap.
+- **Reduced motion** follows the device unless Settings overrides it. It turns off CSS animations and the 3D map's glide after letting go.
+- **Automated check:** with `pnpm dev` running, open a page and paste this in the browser console to run axe (WCAG 2.x A/AA and best practices):
+
+  ```js
+  const s = await (await fetch("/node_modules/axe-core/axe.min.js?raw")).text();
+  (0, eval)(s.replace(/^export default /, "window.__axe = ")); (0, eval)(window.__axe);
+  (await axe.run(document)).violations
+  ```
+
+  On 2026-11-21, `/`, `/maps`, `/community`, `/settings`, `/maps/new` (form and share panel) and `/s/<id>` (map and not-found) returned no violations at 1280x800, and the map also at 375x812 with Extra large text. axe can't measure text over the 3D canvas, so those pairs were checked by hand: sage on night is 9.3:1 and paper on night is 14.6:1.

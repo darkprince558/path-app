@@ -1,4 +1,4 @@
-import { Map as MapIcon, Plus, Users } from "lucide-react";
+import { Map as MapIcon, Plus, Settings as SettingsIcon, Users } from "lucide-react";
 import type { ComponentType } from "react";
 import { Link, NavLink, Outlet } from "react-router";
 import { currentUser } from "../lib/session";
@@ -12,6 +12,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/maps", label: "My maps", icon: MapIcon },
   { to: "/community", label: "Community", icon: Users },
+  { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 function Avatar({ initials, className = "" }: { initials: string; className?: string }) {
@@ -34,8 +35,9 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-dvh bg-paper md:flex">
+      <SkipLink />
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col bg-forest px-4 py-6 text-paper md:flex">
+      <aside data-surface="forest" className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col bg-forest px-4 py-6 text-paper md:flex">
         <Link to="/" className="px-3 font-display text-3xl font-black tracking-wide">
           Path
         </Link>
@@ -74,20 +76,24 @@ export default function AppLayout() {
         <Link to="/" className="font-display text-2xl font-black tracking-wide">
           Path
         </Link>
-        <span className="flex items-center gap-2 text-sm font-bold">
-          <span className="sr-only">Signed in as</span>
-          {user.name}
+        <Link
+          to="/settings"
+          className="-mr-2 flex min-h-11 items-center gap-2 rounded-full px-2 text-sm font-bold"
+          aria-label={`${user.name}, settings`}
+        >
+          <SettingsIcon className="size-5 text-muted" aria-hidden />
           <Avatar initials={user.initials} className="size-8 text-sm" />
-        </span>
+        </Link>
       </header>
 
-      <main className="min-w-0 flex-1 px-4 pt-4 pb-28 md:px-10 md:pt-10 md:pb-12">
+      <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 pt-4 pb-28 focus:outline-none md:px-10 md:pt-10 md:pb-12">
         <Outlet />
       </main>
 
       {/* Phone tab bar */}
       <nav
         aria-label="Main"
+        data-surface="forest"
         className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-3 bg-forest px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-paper md:hidden"
       >
         <TabLink item={NAV[0]!} />
@@ -118,5 +124,18 @@ function TabLink({ item: { to, label, icon: Icon } }: { item: NavItem }) {
       <Icon className="size-6" aria-hidden />
       {label}
     </NavLink>
+  );
+}
+
+/** First thing a keyboard user reaches: jumps past the menu to the page content. */
+export function SkipLink() {
+  return (
+    <a
+      href="#main"
+      data-surface="forest"
+      className="fixed top-2 left-2 z-50 -translate-y-24 rounded-full bg-forest px-5 py-3 font-bold text-paper shadow-lg focus:translate-y-0"
+    >
+      Skip to main content
+    </a>
   );
 }

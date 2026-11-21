@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Applies when the person picks "Extra large" text in Settings. */
+@custom-variant xl-text (&:where([data-text-size="xlarge"] *));
+
 /*
  * Design tokens from apps/web/DESIGN.md.
  * Contrast rules: coral is a fill only (route, pins, CTA background) — never text,
@@ -31,18 +34,50 @@
     @apply bg-paper font-sans text-forest antialiased;
   }
 
+  /*
+   * Focus ring for keyboard users. It must reach 3:1 against what's behind it, and
+   * coral on cream is only 2.2:1, so the color follows the surface:
+   * forest on paper (8.1:1), paper on the forest menu (8.1:1), coral on night (6.7:1).
+   */
+  :root {
+    --focus-ring: var(--color-forest);
+  }
+  [data-surface="forest"] {
+    --focus-ring: var(--color-paper);
+  }
+  [data-surface="night"] {
+    --focus-ring: var(--color-coral);
+  }
+  [data-surface="light"] {
+    --focus-ring: var(--color-forest);
+  }
+
   :focus-visible {
-    outline: 3px solid var(--color-coral);
+    outline: 3px solid var(--focus-ring);
     outline-offset: 2px;
   }
 }
 
+/*
+ * Reduced motion: on when the person picks "Reduce motion" in Settings, or when they
+ * keep "Match my device" and the device asks for it. "Allow motion" overrides the device.
+ */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  :root:not([data-motion="full"]) *,
+  :root:not([data-motion="full"]) *::before,
+  :root:not([data-motion="full"]) *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
+}
+
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
