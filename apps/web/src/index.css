@@ -1,5 +1,30 @@
 @import "tailwindcss";
 
+/* Fontsource Variable 5.3.0 Latin subsets. License notices ship beside the fonts. */
+@font-face {
+  font-family: "Overpass";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/assets/fonts/overpass-latin-wght-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/assets/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Mono";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/assets/fonts/atkinson-hyperlegible-mono-latin-wght-normal.woff2") format("woff2");
+}
+
 /*
  * Design tokens from apps/web/DESIGN.md.
  * Contrast rules: coral is a fill only (route, pins, CTA background) — never text,
