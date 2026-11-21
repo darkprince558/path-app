@@ -114,6 +114,9 @@ private struct ScanDetail: View {
   @State private var pairing = false
   @State private var busy = false
   @State private var archive: URL?
+  @State private var captureID = ""
+  @State private var bundleArchive: URL?
+  @State private var bundleError = ""
   @State private var retryVideo = false
   @State private var status = ""
   var model: URL { record.folder.appendingPathComponent("scene.glb") }
@@ -164,6 +167,31 @@ private struct ScanDetail: View {
           if busy { ProgressView() }
           if !status.isEmpty { Text(status).font(.footnote) }
         }.disabled(busy)
+        if record.triangles > 0 && record.pointCount > 0 {
+          Section("LiDAR upload bundle") {
+            TextField("Capture ID from the server", text: $captureID)
+              .textInputAutocapitalization(.never).autocorrectionDisabled()
+              .onChange(of: captureID) { _, _ in bundleArchive = nil; bundleError = "" }
+              .disabled(busy)
+            if let bundleArchive {
+              ShareLink("Share LiDAR bundle", item: bundleArchive)
+            } else {
+              Button("Prepare LiDAR bundle") {
+                guard let id = UUID(uuidString: captureID) else { return }
+                let scan = record
+                busy = true
+                bundleError = ""
+                Task { @MainActor in
+                  defer { busy = false }
+                  do {
+                    bundleArchive = try await Task.detached { try scan.bundleArchive(captureID: id) }.value
+                  } catch { bundleError = error.localizedDescription }
+                }
+              }.disabled(busy || UUID(uuidString: captureID) == nil)
+            }
+            if !bundleError.isEmpty { Text(bundleError).font(.footnote) }
+          }
+        }
         Section("Files on this phone") {
           if let archive {
             ShareLink("Share complete scan archive", item: archive)
