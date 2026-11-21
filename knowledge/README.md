@@ -9,6 +9,9 @@ Use this folder for knowledge a teammate will still need after your branch merge
 | Ship one scan that opens from an unlisted link on a second phone first. | It exercises the capture export, upload, permissions and guest viewer together. | [Architecture](../docs/architecture.md) |
 | Public scans appear in discovery. Unlisted scans open by link. Private scans require an owner or invited account. | Organizers choose an audience for both the scene and its underlying files. | [Sharing rules](../docs/architecture.md#sharing) |
 | GitHub holds the source and team checkpoints. The live site and scan storage need a runtime of their own. | A guest needs an HTTPS URL they can open without access to the team repository. Vultr is a deployment proposal. | [Deployment plan](../docs/deployment.md) |
+| A plain phone video can produce a local RGB PLY for visual review. Keep its arbitrary scale and first-camera orientation out of metric route planning until a person aligns and measures the scan. | The guest viewer rendered the reconstructed synthetic hallway. A real indoor RGB run recovered most camera positions but left gaps across smooth surfaces. | [Mac trial and reproducible synthetic check](mac-video-trial.md) |
+| Bound planar repairs by measured points and check each patch against the original viewpoints. | The phone trial recovered some missing floor, while cameras near the tightest turn supplied little independent depth. | [Measured plane trial](mac-video-trial.md#plane-fills-at-the-turn) · [Mapping research and library trials](indoor-surface-research.md) |
+| Keep the phone recorder queue and OpenMVS working files in local Application Support on the Mac. | During browser capture verification, macOS evicted active depth maps in cloud-managed Documents. The same class of reconstruction ran on local storage. | [Phone recorder setup and acceptance check](../docs/phone-recorder.md) |
 
 ## Add a finding
 

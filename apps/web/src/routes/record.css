@@ -1,0 +1,72 @@
+.rec-page {
+  color: var(--color-forest);
+  max-width: 76rem;
+  min-height: 100dvh;
+  margin: auto;
+  padding: 0 clamp(1rem, 5vw, 4rem) max(1.5rem, env(safe-area-inset-bottom));
+}
+.rec-nav {
+  display: flex;
+  align-items: baseline;
+  gap: .85rem;
+  border-bottom: 1px solid #a6af99;
+  padding: 1.1rem 0 .9rem;
+  font-size: .92rem;
+}
+.rec-nav a { font: 900 1.8rem / 1 var(--font-display); letter-spacing: -.06em; color: var(--color-forest); }
+.rec-nav a span { color: var(--color-rust); }
+.rec-nav > span { border-left: 1px solid #a6af99; padding-left: .85rem; }
+.rec-layout { display: grid; gap: 1.3rem; padding-top: 1.15rem; align-items: start; }
+.rec-camera {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  border-radius: .8rem;
+  background: var(--color-night);
+  color: var(--color-paper);
+  height: clamp(13rem, 36svh, 23rem);
+}
+.rec-camera video { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.rec-viewfinder { display: grid; align-content: center; justify-items: center; gap: 1rem; color: var(--color-sage); font-size: .85rem; }
+.rec-target {
+  width: 4.5rem; height: 3.3rem;
+  background:
+    linear-gradient(var(--color-sage), var(--color-sage)) left top / 1rem 2px,
+    linear-gradient(var(--color-sage), var(--color-sage)) left top / 2px 1rem,
+    linear-gradient(var(--color-sage), var(--color-sage)) right top / 1rem 2px,
+    linear-gradient(var(--color-sage), var(--color-sage)) right top / 2px 1rem,
+    linear-gradient(var(--color-sage), var(--color-sage)) left bottom / 1rem 2px,
+    linear-gradient(var(--color-sage), var(--color-sage)) left bottom / 2px 1rem,
+    linear-gradient(var(--color-sage), var(--color-sage)) right bottom / 1rem 2px,
+    linear-gradient(var(--color-sage), var(--color-sage)) right bottom / 2px 1rem;
+  background-repeat: no-repeat;
+}
+.rec-timer { display: flex; gap: .45rem; align-items: center; position: absolute; left: .75rem; top: .75rem; padding: .3rem .6rem; border-radius: .35rem; background: #101d17dd; color: white; font: 600 .82rem var(--font-mono); pointer-events: none; }
+.rec-timer i, .rec-dot, .rec-square { display: inline-block; width: .78rem; height: .78rem; border-radius: 50%; background: currentColor; }
+.rec-timer i { background: var(--color-coral); width: .55rem; height: .55rem; }
+.rec-square { border-radius: .1rem; }
+.rec-panel { min-width: 0; }
+.rec-panel h1 { font: 800 clamp(2.15rem, 5vw, 3.6rem) / .99 var(--font-display); letter-spacing: -.055em; text-wrap: balance; }
+.rec-instruction { font-size: 1rem; line-height: 1.45; margin: .7rem 0 1.25rem; max-width: 36ch; }
+.rec-sensors { padding: .9rem 0; margin: .6rem 0 1.1rem; border-block: 1px solid #a6af99; }
+.rec-sensors h2 { font-size: 1rem; font-weight: 750; }
+.rec-sensors p, .rec-caption, .rec-link-label { color: var(--color-muted); font-size: .82rem; line-height: 1.4; }
+.rec-sensors dl { display: flex; gap: clamp(1.25rem, 5vw, 3rem); margin-top: .7rem; }
+.rec-sensors dt { font-size: .76rem; }
+.rec-sensors dd { font: 650 1.4rem / 1.4 var(--font-mono); }
+.rec-primary, .rec-secondary { display: inline-flex; justify-content: center; align-items: center; gap: .7rem; min-height: 2.85rem; padding: .6rem 1rem; border-radius: .5rem; font-weight: 730; cursor: pointer; }
+.rec-primary { width: 100%; color: var(--color-ink); background: var(--color-coral); }
+.rec-primary:disabled { cursor: default; background: #d8d4bf; color: #565f55; }
+.rec-secondary { border: 1px solid #728575; background: var(--color-surface); }
+.rec-caption { margin: .55rem 0 .85rem; }
+.rec-notice { background: var(--color-surface); border-left: 3px solid var(--color-rust); padding: .65rem .85rem; font-size: .94rem; margin: .65rem 0; }
+.rec-progress { font-weight: 700; margin-top: .7rem; }
+.rec-link-label { display: block; margin: 1rem 0 .3rem; font-weight: 700; }
+.rec-link { width: 100%; min-height: 2.75rem; font: .85rem var(--font-mono); padding: .5rem; color: var(--color-ink); background: var(--color-surface); border: 1px solid #728575; border-radius: .45rem; }
+.rec-share-buttons { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
+@media (min-width: 760px) {
+  .rec-nav { padding: 1.5rem 0 1.2rem; }
+  .rec-layout { grid-template-columns: minmax(0, 1.3fr) minmax(16rem, .8fr); gap: clamp(1.75rem, 5vw, 4.5rem); padding-top: clamp(2rem, 6vw, 4.5rem); }
+  .rec-camera { height: clamp(24rem, 60svh, 39rem); }
+  .rec-panel { align-self: center; padding-block: .5rem; }
+}
