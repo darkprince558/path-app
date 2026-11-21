@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Mesh, MeshStandardMaterial, Vector3 } from "three";
+import { Mesh, MeshStandardMaterial, Points, Vector3 } from "three";
 import { parseGlb, scanMatrix, validateGlb } from "../src/lib/glb.ts";
 
 const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -64,4 +64,16 @@ test("malformed GLB lengths and alignment are rejected before decoding", () => {
 
 test("empty GLB scenes do not report successful loading", async () => {
   await assert.rejects(parseGlb(glb({ asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [] }] }), identity), /no usable mesh/);
+});
+
+
+test("native feature points contribute to guest framing", async () => {
+  const vertices = new Float32Array([0,0,0, 0,2,0]);
+  const data = glb({asset:{version:"2.0"},scene:0,scenes:[{nodes:[0]}],nodes:[{mesh:0}],
+    meshes:[{primitives:[{mode:0,attributes:{POSITION:0}}]}],buffers:[{byteLength:24}],
+    bufferViews:[{buffer:0,byteLength:24}],accessors:[{componentType:5126,type:"VEC3",count:2,bufferView:0,min:[0,0,0],max:[0,2,0]}]}, vertices);
+  const result = await parseGlb(data, identity);
+  assert.equal(result.bounds.max.y, 2);
+  assert.ok(result.object.getObjectByProperty("type", "Points") instanceof Points);
+  result.dispose();
 });

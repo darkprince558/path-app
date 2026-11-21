@@ -102,6 +102,8 @@ struct ScanPreview: View {
     Group {
       if let scene {
         SceneView(scene: scene, options: [.allowsCameraControl, .autoenablesDefaultLighting])
+          .accessibilityElement(children: .ignore).accessibilityLabel("Interactive 3D scan")
+          .accessibilityIdentifier("native-model-preview")
       } else if failed {
         ContentUnavailableView("Preview unavailable", systemImage: "viewfinder")
       } else {

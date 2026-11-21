@@ -7,14 +7,14 @@ let dest = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
 try FileManager.default.createDirectory(at: dest, withIntermediateDirectories: true)
 let bitmap = NSBitmapImageRep(
   bitmapDataPlanes: nil, pixelsWide: 64, pixelsHigh: 64, bitsPerSample: 8, samplesPerPixel: 3,
-  hasAlpha: false, isPlanar:false, colorSpaceName: .deviceRGB, bytesPerRow: 192, bitsPerPixel: 24)!
+  hasAlpha: false, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 192, bitsPerPixel: 24)!
 let pixels = bitmap.bitmapData!
 for y in 0..<64 {
   for x in 0..<64 {
-    let i = y * bitmap.bytesPerRow + 3*x
+    let i = y * bitmap.bytesPerRow + 3 * x
     pixels[i] = x < 32 ? 235 : 24
-    pixels[i+1] = y < 32 ? 40 : 205
-    pixels[i+2] = x < 32 ? 28 : 224
+    pixels[i + 1] = y < 32 ? 40 : 205
+    pixels[i + 2] = x < 32 ? 28 : 224
   }
 }
 let image = dest.appendingPathComponent("view.jpg")

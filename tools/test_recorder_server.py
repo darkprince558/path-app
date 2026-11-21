@@ -131,6 +131,33 @@ class RecorderTransport(unittest.TestCase):
             self.assertEqual(self.request("GET", meta["assetPath"], auth=False)[1], self.model)
             self.assertEqual(self.calls, 1)
 
+    def test_native_model_share_survives_restart(self):
+        path = '/api/native-scans/' + self.capture
+        binary = struct.pack('<6f', 0, 0, 0, 1, 1, 1)
+        doc = {"asset":{"version":"2.0"}, "buffers":[{"byteLength":len(binary)}],
+               "bufferViews":[{"buffer":0,"byteLength":len(binary)}],
+               "accessors":[{"bufferView":0,"type":"VEC3","componentType":5126,"count":2,"min":[0,0,0],"max":[1,1,1]}],
+               "meshes":[{"primitives":[{"mode":0,"attributes":{"POSITION":0}}]}],
+               "nodes":[{"mesh":0}],"scenes":[{"nodes":[0]}],"scene":0}
+        def encode():
+            desc=json.dumps(doc).encode();desc += b' ' * (-len(desc)%4)
+            return struct.pack('<4sIII4s', b'glTF',2,28+len(desc)+len(binary),len(desc),b'JSON')+desc+struct.pack('<I4s',len(binary),b'BIN\0')+binary
+        payload=encode()
+        with self.serve():
+            self.assertEqual(self.request('PUT',path,payload,'model/gltf-binary',auth=False)[0],401)
+            self.assertEqual(self.request('PUT',path,payload[:25],'model/gltf-binary')[0],400)
+            doc['buffers'][0]['uri']='external.bin'
+            self.assertEqual(self.request('PUT',path,encode(),'model/gltf-binary')[0],400)
+            del doc['buffers'][0]['uri']
+            code,reply=self.request('PUT',path,payload,'model/gltf-binary');self.assertEqual(code,200)
+            self.assertEqual(self.request('PUT',path,payload,'model/gltf-binary')[1],reply)
+            doc['asset']['generator']='another scan'
+            self.assertEqual(self.request('PUT',path,encode(),'model/gltf-binary')[0],409)
+            asset=reply['sharePath'].replace('/s/','/api/shares/')+'/asset'
+        with self.serve():
+            self.assertEqual(self.request('GET',asset,auth=False),(200,payload))
+            self.assertEqual(self.calls,0)
+
     def test_interrupted_worker_requeued(self):
         with self.serve():
             self.request("PUT", self.prefix+"/video", self.video, "video/quicktime")

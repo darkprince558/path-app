@@ -17,11 +17,11 @@
 			productRefGroup = 100000000000000000000004;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (100000000000000000000005);
+			targets = (100000000000000000000005, 100000000000000000000300);
 		};
 		100000000000000000000002 /* Main group */ = {
 			isa = PBXGroup;
-			children = (100000000000000000000003, 100000000000000000000004);
+			children = (100000000000000000000003, 100000000000000000000301, 100000000000000000000004);
 			sourceTree = "<group>";
 		};
 		100000000000000000000003 /* PathCapture sources */ = {
@@ -32,7 +32,7 @@
 		};
 		100000000000000000000004 /* Products */ = {
 			isa = PBXGroup;
-			children = (100000000000000000000013);
+			children = (100000000000000000000013, 100000000000000000000302);
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -83,6 +83,18 @@
 		100000000000000000000203 = { isa = PBXBuildFile; fileRef = 100000000000000000000103; };
 		100000000000000000000104 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanRecord.swift; sourceTree = "<group>"; };
 		100000000000000000000204 = { isa = PBXBuildFile; fileRef = 100000000000000000000104; };
+    100000000000000000000300 /* UI tests */ = { isa = PBXNativeTarget; buildConfigurationList = 100000000000000000000307; buildPhases = (100000000000000000000303); buildRules = (); dependencies = (10000000000000000000030A); name = PathCaptureUITests; productName = PathCaptureUITests; productReference = 100000000000000000000302; productType = "com.apple.product-type.bundle.ui-testing"; };
+    100000000000000000000301 = { isa = PBXGroup; children = (100000000000000000000304); path = PathCaptureUITests; sourceTree = "<group>"; };
+    100000000000000000000302 = { isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = PathCaptureUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+    100000000000000000000303 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000305); runOnlyForDeploymentPostprocessing = 0; };
+    100000000000000000000304 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathCaptureUITests.swift; sourceTree = "<group>"; };
+    100000000000000000000305 = { isa = PBXBuildFile; fileRef = 100000000000000000000304; };
+    100000000000000000000307 = { isa = XCConfigurationList; buildConfigurations = (100000000000000000000308, 100000000000000000000309); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+    10000000000000000000030A = { isa = PBXTargetDependency; target = 100000000000000000000005; targetProxy = 10000000000000000000030B; };
+    10000000000000000000030B = { isa = PBXContainerItemProxy; containerPortal = 100000000000000000000001; proxyType = 1; remoteGlobalIDString = 100000000000000000000005; remoteInfo = PathCapture; };
+    100000000000000000000308 = { isa = XCBuildConfiguration; buildSettings = { GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.pathapp.demo.capture.uitests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; TEST_TARGET_NAME = PathCapture; }; name = Debug; };
+    100000000000000000000309 = { isa = XCBuildConfiguration; buildSettings = { GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.pathapp.demo.capture.uitests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; TEST_TARGET_NAME = PathCapture; }; name = Release; };
+
 		100000000000000000000020 /* Debug project */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
