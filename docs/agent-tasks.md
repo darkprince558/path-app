@@ -4,7 +4,7 @@ Use one [agent task](../.github/ISSUE_TEMPLATE/agent-task.md) or Entire Trail pe
 
 ## Start two sessions
 
-Install both agent CLIs you intend to run and follow the [Entire setup](entire.md). Once the setup is on `main`, run the following in a clone of Path App. These example branches let Arielle’s viewer and Sam’s API progress independently. If someone already claimed either task, choose another.
+Install both agent CLIs you intend to run and follow the [Entire setup](entire.md). Run the following from a clone of Path App. The [editable roadmap](../planning/ROADMAP.md) shows the current milestone and dependencies. These example branches let Arielle’s viewer and Sam’s API progress independently. If someone already claimed either task, choose another.
 
 ```sh
 git fetch origin
@@ -12,14 +12,13 @@ git worktree add -b feature/guest-viewer ../path-web origin/main
 git worktree add -b feature/scan-api ../path-api origin/main
 ```
 
-Open two terminals in the original clone. Complete the setup commands in the first before running setup in the second, since worktrees share Git hooks. Each agent starts from the root of its own worktree.
+Open two terminals in the original clone. Complete the setup commands in the first before running setup in the second, since worktrees share Git hooks. Each agent starts from the root of its own worktree. On Windows use `py -3 scripts/setup_entire.py` for the setup command.
 
 **Terminal 1 — Claude Code**
 
 ```sh
 cd ../path-web
-entire enable --yes --agent claude-code --local --no-init-repo --telemetry=false --checkpoint-push-remote origin
-entire status --detailed
+python3 scripts/setup_entire.py
 claude
 ```
 
@@ -27,8 +26,7 @@ claude
 
 ```sh
 cd ../path-api
-entire enable --yes --agent codex --local --no-init-repo --telemetry=false --checkpoint-push-remote origin
-entire status --detailed
+python3 scripts/setup_entire.py
 codex
 ```
 

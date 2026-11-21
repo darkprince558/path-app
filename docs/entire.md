@@ -1,8 +1,10 @@
 # Entire for the Path App team
 
-Use Entire to leave the reasoning behind a feature with its branch. Start a fresh agent session for each task. A checkpoint can include your prompts, tool output and the files your agent read, so use team-shareable material and the synthetic scan fixture. In the setup below, pushing sends checkpoints to the private Path App GitHub repo.
+Entire links an AI coding session to a Git commit. For example, Sam can build the upload API with Claude, push his branch, and give Arielle the checkpoint ID so she can see what the viewer should expect. Graph helps locate the code. Brain helps retrieve decisions from repository notes and checkpoint history. Start a fresh agent session for each task. A checkpoint can include your prompts, tool output and the files your agent read, so use team-shareable material and the synthetic scan fixture. In the setup below, pushing sends checkpoints to the private Path App GitHub repo.
 
 ## Set up your machine
+
+For the shortest path, use the [team chat message and setup command](../prompts/team-chat.md). The individual commands below are useful for configuring one agent or diagnosing a setup problem.
 
 Use Git 2.36+ and install the stable Entire CLI for your platform. For Claude capture with Brain, use Claude Code 2.1.78 or later. [Official installation guide](https://docs.entire.com/quickstart) · [Brain compatibility](https://github.com/entireio/entire-brain/releases/tag/v0.5.1)
 
@@ -45,12 +47,6 @@ Use `entire brain viz` for an interactive map. Give the next agent the relevant 
 1. **Owner:** Pick a brief from [agent tasks](agent-tasks.md), create a feature branch and make the change with the agent. Run the task’s checks, review the diff, stage the intended files, and commit. Accept the session-link prompt if it appears.
 2. Run `git log -1 --format=%B` and look for `Entire-Checkpoint`. Review the checkpoint locally with `entire checkpoint explain --commit HEAD --full`. Check `entire checkpoint list --outgoing`, then `git push -u origin HEAD`. Send your teammate the branch, commit SHA, checkpoint ID, the check you ran, and the next action. You can confirm the ID reached GitHub with `git ls-remote origin 'refs/entire/checkpoints/*'`. If your clone uses manual checkpoint uploads, use `entire checkpoint push CHECKPOINT_ID` after review.
 3. **Recipient:** From a clean checkout, run `git fetch origin` and `entire checkpoint explain CHECKPOINT_ID` using the ID from the handoff. To resume with the original agent, run `entire session resume BRANCH_NAME` before merge. If handing Claude’s work to Codex or vice versa, start the other agent on the branch and give it the checkpoint ID, acceptance test and next action. Have it inspect the checkpoint and verify the code. [Session storage](https://docs.entire.com/guides/checkpoints/checkpoint-storage) · [Resume](https://docs.entire.com/cli-reference/session)
-
-## Message for the team
-
-Paste this in the team chat:
-
-> Hey team, please install Entire before your next session: follow the setup steps above and confirm `entire status` shows your session after its first turn. Start a fresh Claude or Codex session from the repo root for each task, and keep it to this project only, not your other repos. Claim a distinct issue or Trail and its own worktree so we don't overlap. The repo is private, but pushed checkpoints still include your prompts and tool output, so only use team-shareable material and the synthetic scan fixture. After you push, send me the branch, the checkpoint ID, and the check you ran and whether it passed. Thanks, Anish
 
 ## Optional hosted Trails and judging evidence
 

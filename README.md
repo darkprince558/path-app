@@ -6,6 +6,12 @@ Visitors can see what a hallway, entrance, or turn looks like before they reach 
 
 ## Start here
 
+1. **[Set up your laptop](prompts/team-chat.md)** with the copy-paste commands for your OS.
+2. **[Open the editable roadmap](planning/ROADMAP.md)** and claim your [work item](https://github.com/darkprince558/path-app/issues).
+3. **[Start your agent task](prompts/start-task.md)** in its own worktree. Record reusable decisions and findings in the [team notebook](knowledge/README.md).
+
+The [planning index](planning/README.md) links the architecture, deployment and demo plans.
+
 Our first milestone is to upload one real scan, share an unlisted link, and open the interactive 3D view on a second phone. Scans can be **Public** (listed for everyone), **Unlisted** (anyone with the link), or **Private** (owner and invited accounts).
 
 | Building | Start with |

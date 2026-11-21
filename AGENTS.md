@@ -6,6 +6,8 @@ Use these instructions for Codex, Claude Code, and other coding agents. If your 
 
 Read the [architecture](docs/architecture.md) and the README for the component you are editing. The first shared milestone is uploading a real scan and opening an unlisted link on a second phone.
 
+Use the [roadmap](planning/ROADMAP.md) for milestone order and dependencies. Keep day-to-day status in the linked issue. When a verified finding changes what another teammate should do, add it to the [team notebook](knowledge/README.md) and link the evidence.
+
 - Pick one outcome a teammate can verify. Record the human owner, affected components, and what success looks like in the issue or PR.
 - Check current branches, open PRs, and local changes before editing. Work on a short-lived branch based on the current `main`. Give concurrent agents separate branches and worktrees or clones, with one active writer per task.
 - Claim a task in a GitHub issue or Entire Trail. Name the human owner and writable paths. Use the [parallel Claude Code and Codex workflow](docs/agent-tasks.md) for startup commands, task briefs and review.
