@@ -111,6 +111,7 @@ private struct ScanDetail: View {
   @Environment(\.dismiss) var dismiss
   @State private var pairing = false
   @State private var busy = false
+  @State private var archive: URL?
   @State private var retryVideo = false
   @State private var status = ""
   var model: URL { record.folder.appendingPathComponent("scene.glb") }
@@ -151,7 +152,10 @@ private struct ScanDetail: View {
             }
             if record.hasVideo && record.videoGuestURL == nil {
               Button(
-                retryVideo ? "Retry camera reconstruction" : (record.videoJob == nil ? "Reconstruct camera video on Mac" : "Check camera reconstruction")
+                retryVideo
+                  ? "Retry camera reconstruction"
+                  : (record.videoJob == nil
+                    ? "Reconstruct camera video on Mac" : "Check camera reconstruction")
               ) { run(true) }
             }
           }
@@ -159,6 +163,20 @@ private struct ScanDetail: View {
           if !status.isEmpty { Text(status).font(.footnote) }
         }.disabled(busy)
         Section("Files on this phone") {
+          if let archive {
+            ShareLink("Share complete scan archive", item: archive)
+          } else {
+            Button("Prepare complete scan archive") {
+              busy = true
+              let scan = record
+              Task { @MainActor in
+                defer { busy = false }
+                do { archive = try await Task.detached { try scan.archive() }.value } catch {
+                  status = error.localizedDescription
+                }
+              }
+            }.disabled(busy)
+          }
           ForEach(
             [
               ("3D model", "scene.glb"), ("Colored points", "points.ply"),

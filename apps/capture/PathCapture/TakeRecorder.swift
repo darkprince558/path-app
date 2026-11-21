@@ -25,6 +25,12 @@ struct CameraSample: Codable {
   let imageWidth, imageHeight: Int
   let tracking: String
 }
+struct CalibratedFrame: Encodable {
+  let camera: CameraSample
+  let jpeg: String
+  let depthMetersFloat32LE, confidenceUInt8: String?
+  let depthWidth, depthHeight: Int?
+}
 final class TakeRecorder {
   let id = UUID()
   let created = Date()
@@ -34,13 +40,14 @@ final class TakeRecorder {
   private var readings: [(Double, MotionAxis, MotionAxis, MotionRotation)] = []
   private let lock = NSLock()
   private var poses: [CameraSample] = []
+  private var keyframes: [CalibratedFrame] = []
   private let context = CIContext(options: [.cacheIntermediates: false])
   private var photoInterval = 0.8
   private var nextPhotoID = 0
   private var lastPhotoPose: simd_float4x4?
   private(set) var photos: [ScanPhoto] = []
   private(set) var origin: Double?
-  private var lastFrame = 0.0, lastPose = 0.0, lastVideo = 0.0, lastPhoto = 0.0
+  private var lastFrame = 0.0, lastVideo = 0.0, lastPhoto = 0.0
   private var video: AVAssetWriter?
   private var input: AVAssetWriterInput?
   private var pixels: AVAssetWriterInputPixelBufferAdaptor?
@@ -130,7 +137,7 @@ final class TakeRecorder {
         lastVideo = t
       }
     }
-    if t - lastPose >= 0.095, let start = origin {
+    if let start = origin {
       let cam = f.camera
       let tf = cam.transform
       let k = cam.intrinsics
@@ -140,7 +147,6 @@ final class TakeRecorder {
           intrinsics: (0..<3).flatMap { c in (0..<3).map { r in k[c][r] } },
           imageWidth: Int(cam.imageResolution.width), imageHeight: Int(cam.imageResolution.height),
           tracking: tracking))
-      lastPose = t
     }
     guard usePhotos, tracking == "normal", t - lastPhoto >= photoInterval else { return }
     let tf = f.camera.transform
@@ -159,6 +165,10 @@ final class TakeRecorder {
       (try? jpeg.write(to: url, options: .atomic)) != nil
     else { return }
     var depths: [Float] = []
+    var depthFile: String?
+    var confidenceFile: String?
+    var rawWidth: Int?
+    var rawHeight: Int?
     var depthSize = SIMD2<Int>(repeating: 0)
     if let d = f.sceneDepth?.depthMap,
       CVPixelBufferLockBaseAddress(d, .readOnly) == kCVReturnSuccess
@@ -168,6 +178,19 @@ final class TakeRecorder {
       let height = CVPixelBufferGetHeight(d)
       let stride = CVPixelBufferGetBytesPerRow(d) / 4
       if let base = CVPixelBufferGetBaseAddress(d)?.assumingMemoryBound(to: Float.self) {
+        let name = "depth-\(nextPhotoID).f32"
+        var packed = Data(capacity: width * height * 4)
+        for y in 0..<height {
+          packed.append(
+            UnsafeRawPointer(base.advanced(by: y * stride)).assumingMemoryBound(to: UInt8.self),
+            count: width * 4)
+        }
+        if (try? packed.write(to: directory.appendingPathComponent(name), options: .atomic)) != nil
+        {
+          depthFile = name
+          rawWidth = width
+          rawHeight = height
+        }
         depthSize = SIMD2(64, 48)
         for y in 0..<depthSize.y {
           for x in 0..<depthSize.x {
@@ -175,6 +198,28 @@ final class TakeRecorder {
           }
         }
       }
+    }
+    if let map = f.sceneDepth?.confidenceMap, let w = rawWidth, let h = rawHeight,
+      CVPixelBufferGetWidth(map) == w, CVPixelBufferGetHeight(map) == h,
+      CVPixelBufferLockBaseAddress(map, .readOnly) == kCVReturnSuccess
+    {
+      defer { CVPixelBufferUnlockBaseAddress(map, .readOnly) }
+      if let bytes = CVPixelBufferGetBaseAddress(map)?.assumingMemoryBound(to: UInt8.self) {
+        var packed = Data(capacity: w * h)
+        let stride = CVPixelBufferGetBytesPerRow(map)
+        for y in 0..<h { packed.append(bytes.advanced(by: y * stride), count: w) }
+        let name = "confidence-\(nextPhotoID).u8"
+        if (try? packed.write(to: directory.appendingPathComponent(name), options: .atomic)) != nil
+        {
+          confidenceFile = name
+        }
+      }
+    }
+    if let pose = poses.last {
+      keyframes.append(
+        CalibratedFrame(
+          camera: pose, jpeg: url.lastPathComponent, depthMetersFloat32LE: depthFile,
+          confidenceUInt8: confidenceFile, depthWidth: rawWidth, depthHeight: rawHeight))
     }
     // Thin previously saved views in time, keeping room for the next part of the walk.
     if photos.count == 32 {
@@ -210,6 +255,8 @@ final class TakeRecorder {
       to: directory.appendingPathComponent("motion.json"), options: .atomic)
     try JSONEncoder().encode(poses).write(
       to: directory.appendingPathComponent("camera-poses.json"), options: .atomic)
+    try JSONEncoder().encode(keyframes).write(
+      to: directory.appendingPathComponent("keyframes.json"), options: .atomic)
     return (hasVideo, samples.count)
   }
   private func snapshotMotion() -> [(Double, MotionAxis, MotionAxis, MotionRotation)] {

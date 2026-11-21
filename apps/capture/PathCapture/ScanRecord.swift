@@ -17,6 +17,22 @@ struct ScanRecord: Codable, Identifiable {
     FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
       .appendingPathComponent("Scans", isDirectory: true)
   }
+  func archive() throws -> URL {
+    let coordinator = NSFileCoordinator(filePresenter: nil)
+    let name = "PathScan-" + id.uuidString + ".zip"
+    let staging = FileManager.default.temporaryDirectory.appendingPathComponent(
+      UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+    let archive = staging.appendingPathComponent(name)
+    var coordinatorError: NSError?
+    var copyError: Error?
+    coordinator.coordinate(readingItemAt: folder, options: .forUploading, error: &coordinatorError)
+    { snapshot in
+      do { try FileManager.default.copyItem(at: snapshot, to: archive) } catch { copyError = error }
+    }
+    if let issue = coordinatorError ?? copyError as NSError? { throw issue }
+    return archive
+  }
   func persist() throws {
     try JSONEncoder().encode(self).write(
       to: folder.appendingPathComponent("scan.json"), options: .atomic)
