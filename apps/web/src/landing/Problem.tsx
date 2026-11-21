@@ -8,7 +8,7 @@ import { buildVenueCloud } from "./venue";
  * "The problem": what people use today to find their way inside, and where each one
  * runs out, ending with Not 404. All five points stay readable in a list. A dark screen
  * beside them (styled like the hero) plays a short scene for the highlighted point,
- * then moves on by itself. The loop pauses while you hover, focus or are scrolled
+ * then moves on by itself. The loop pauses while keyboard focus is inside, while scrolled
  * away, has a Pause button, and with Reduce motion it doesn't move on its own: each
  * scene shows its finished picture and you pick the point.
  */
@@ -271,7 +271,6 @@ export default function Problem() {
   const [active, setActive] = useState(0);
   const [run, setRun] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [hovering, setHovering] = useState(false);
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(false);
   const player = useRef<HTMLDivElement>(null);
@@ -288,7 +287,9 @@ export default function Problem() {
   }, []);
 
   const autoplay = !reduce;
-  const playing = autoplay && !paused && !hovering && !focused && visible;
+  // No pause on hover: a resting mouse froze the bar with no sign why, and scrolling
+  // with the mouse still never ended the "hover". The Pause button is the control.
+  const playing = autoplay && !paused && !focused && visible;
   const point = POINTS[active]!;
   const isPath = point.id === "path";
 
@@ -310,8 +311,6 @@ export default function Problem() {
 
         <div
           ref={player}
-          onPointerEnter={(e) => e.pointerType === "mouse" && setHovering(true)}
-          onPointerLeave={() => setHovering(false)}
           onFocus={(e) => e.target.matches(":focus-visible") && setFocused(true)}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
