@@ -1,10 +1,10 @@
 # Running Claude Code and Codex together
 
-Use one [agent task](../.github/ISSUE_TEMPLATE/agent-task.md) or Entire Trail per outcome. Claim it with your name, agent, branch and files before editing. Track status there as **Ready**, **Working**, **Blocked**, **Review** or **Merged**. Put the reason and next owner beside a blocker. If an issue and a Trail both exist, link them and keep status in one place.
+Use one GitHub issue per outcome. [Create or claim a task](tasks.md) with your name, agent, branch and files before editing. The [team board](https://github.com/darkprince558/path-app/issues/8) shows planned tasks (`task:ready`), work in progress (`task:active`) and recently completed issues. Post a checkpoint when you verify a step, hit a blocker or hand off. Name the next action and who can take it.
 
 ## Start two sessions
 
-Install both agent CLIs you intend to run and follow the [Entire setup](entire.md). Once the setup is on `main`, run the following in a clone of Path App. These example branches let Arielle’s viewer and Sam’s API progress independently. If someone already claimed either task, choose another.
+Install both agent CLIs you intend to run and follow the [Entire setup](entire.md). Run the following from a clone of Path App. The [editable roadmap](../planning/ROADMAP.md) shows the current milestone and dependencies. These example branches let Arielle’s viewer and Sam’s API progress independently. If someone already claimed either task, choose another.
 
 ```sh
 git fetch origin
@@ -12,14 +12,13 @@ git worktree add -b feature/guest-viewer ../path-web origin/main
 git worktree add -b feature/scan-api ../path-api origin/main
 ```
 
-Open two terminals in the original clone. Complete the setup commands in the first before running setup in the second, since worktrees share Git hooks. Each agent starts from the root of its own worktree.
+Open two terminals in the original clone. Complete the setup commands in the first before running setup in the second, since worktrees share Git hooks. Each agent starts from the root of its own worktree. On Windows use `py -3 scripts/setup_entire.py` for the setup command.
 
 **Terminal 1 — Claude Code**
 
 ```sh
 cd ../path-web
-entire enable --yes --agent claude-code --local --no-init-repo --telemetry=false --checkpoint-push-remote origin
-entire status --detailed
+python3 scripts/setup_entire.py
 claude
 ```
 
@@ -27,8 +26,7 @@ claude
 
 ```sh
 cd ../path-api
-entire enable --yes --agent codex --local --no-init-repo --telemetry=false --checkpoint-push-remote origin
-entire status --detailed
+python3 scripts/setup_entire.py
 codex
 ```
 
@@ -49,7 +47,7 @@ Start with the open [guest viewer](https://github.com/darkprince558/path-app/iss
 
 ## Review and hand off
 
-Commit and push a scoped change after the agent has edited files. Check for the `Entire-Checkpoint` trailer and find the ID with `entire checkpoint list`. Add the branch, commit, checkpoint ID, exact verification command and result, and one next action to the issue or Trail.
+Commit and push a scoped change after the agent has edited files. Use `python3 scripts/tasks.py checkpoint N "Observed result" --head --next "Next action"` with your issue number. It attaches the pushed commit and its shared Entire checkpoint when present. Include the verification command or device used so the next person can repeat the check.
 
 The reviewer fetches the branch and inspects the pushed change against the acceptance test, e.g. `git diff origin/main...origin/feature/guest-viewer -- apps/web`. Ask the reviewer to report a reproducible issue or the result of the test. The human owner resolves findings and decides when to merge.
 

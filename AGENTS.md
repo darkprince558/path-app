@@ -10,9 +10,11 @@ Use these instructions for Codex, Claude Code, and other coding agents. If your 
 
 Read the [architecture](docs/architecture.md) and the README for the component you are editing. The first shared milestone is uploading a real scan and opening an unlisted link on a second phone.
 
+Use the [roadmap](planning/ROADMAP.md) for milestone order and dependencies. Keep day-to-day status in the linked issue. When a verified finding changes what another teammate should do, add it to the [team notebook](knowledge/README.md) and link the evidence.
+
 - Pick one outcome a teammate can verify. Record the human owner, affected components, and what success looks like in the issue or PR.
 - Check current branches, open PRs, and local changes before editing. Work on a short-lived branch based on the current `main`. Give concurrent agents separate branches and worktrees or clones, with one active writer per task.
-- Claim a task in a GitHub issue or Entire Trail. Name the human owner and writable paths. Use the [parallel Claude Code and Codex workflow](docs/agent-tasks.md) for startup commands, task briefs and review.
+- Read the [live team board](https://github.com/darkprince558/path-app/issues/8) before starting. Follow the [task commands](docs/tasks.md) to claim an existing GitHub issue or create a self-assigned one when the user asks you to track work. Name the human owner and writable paths. Use the [parallel Claude Code and Codex workflow](docs/agent-tasks.md) for startup commands and review.
 - For a change that crosses components, agree with the producer and consumer on a small example first. Keep the shared contract, its example, and callers in sync. This matters especially for scan coordinates, asset identifiers, and publication state.
 
 ## Build and verify
@@ -21,6 +23,7 @@ Read the [architecture](docs/architecture.md) and the README for the component y
 - Use synthetic or approved small fixtures in Git. Keep full captures, private venue images, API credentials, and signed upload URLs out of commits, coding-agent prompts, and PRs.
 - Run the affected component’s documented checks. Exercise the user action that changed, recording the fixture or device used and the observed result. For cross-component changes, exercise one producer-to-consumer example.
 - Describe fixture-based results, real-device checks, and outstanding tests accurately. A simulated phone scan only verifies the steps after capture.
+- When the owner asks you to track the task, post a checkpoint after a verified step, blocker or handoff. Include the observed result and next action. Close the issue when its acceptance check passes.
 - Run `make check` for upload, sharing, or venue fixture changes. Exercise all three sharing modes when a change affects guest access.
 
 ## Example agent handoff

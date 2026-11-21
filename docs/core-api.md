@@ -1,6 +1,6 @@
 # Core API contract
 
-Sam owns these Next.js route handlers in `services/api`. They use the Auth0 server session on same-origin browser requests or a bearer access token for the `AUTH0_AUDIENCE` API. Mutations require sign-in. Public reads work signed out; unauthorized private IDs return 404. JSON errors use `{ "error": { "code", "message" } }`; validation errors also include `issues`. IDs are UUIDs. Coordinates are metres in the space's shared frame, with +Y up. Navigation edges are explicit; geometry does not create routes.
+Sam owns these Next.js route handlers in `services/api`. They use the Auth0 server session on same-origin browser requests or a bearer access token for the `AUTH0_AUDIENCE` API. Mutations require sign-in. Public reads work signed out; unauthorized private IDs return 404. JSON errors use `{ "error": { "code", "message" } }`; validation errors also include `issues`. IDs are UUIDs. Coordinates use the space's shared Y-up frame: metres when calibrated, otherwise explicitly relative units. Declare this in `space.boundary.coordinateSystem` and use the same units for nodes, edge distances and scan transforms; see the [scan data contract](scan-data-contract.md). Navigation edges are explicit; geometry does not create routes.
 
 | Resource | Routes | Response shape |
 | --- | --- | --- |

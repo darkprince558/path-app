@@ -15,7 +15,16 @@ type Scan = typeof scans.$inferSelect;
 export const MAX_GLB_BYTES = 32 * 1024 * 1024;
 const MAX_MULTIPART_BYTES = MAX_GLB_BYTES + 1024 * 1024;
 export const identityTransform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-export const transform = z.array(z.number().finite()).length(16);
+export const transform = z.array(z.number().finite()).length(16).refine(matrix => {
+  if (matrix.length !== 16 || matrix[3] !== 0 || matrix[7] !== 0 || matrix[11] !== 0 || matrix[15] !== 1) return false;
+  // Normalize before testing the determinant so valid small-unit reconstructions remain usable.
+  const scale = Math.max(...[0, 1, 2, 4, 5, 6, 8, 9, 10].map(i => Math.abs(matrix[i])));
+  if (!scale) return false;
+  const m = matrix.map(value => value / scale);
+  const determinant = m[0] * (m[5] * m[10] - m[9] * m[6])
+    - m[4] * (m[1] * m[10] - m[9] * m[2]) + m[8] * (m[1] * m[6] - m[5] * m[2]);
+  return Number.isFinite(determinant) && Math.abs(determinant) > Number.EPSILON;
+}, 'Transform must be a nonsingular affine column-major matrix');
 export const scanInput = z.object({
   name, visibility: visibility.optional(), transform,
   metadata: metadata.optional(),
@@ -86,7 +95,19 @@ export function validateGlb(bytes: Uint8Array, filename: string) {
   try {
     const json = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(20, 20 + jsonLength)));
     if (json?.asset?.version !== '2.0') throw new Error('Invalid asset version');
-  } catch { throw badRequest('Invalid GLB JSON chunk'); }
+    // Loading a protected GLB must never require a public sidecar or an arbitrary remote URL.
+    for (const key of ['buffers', 'images']) {
+      if (json[key] !== undefined && !Array.isArray(json[key])) throw new Error(`Invalid ${key}`);
+      for (const resource of json[key] ?? []) {
+        if (!resource || typeof resource !== 'object') throw new Error('Invalid resource');
+        if (resource.uri !== undefined && (typeof resource.uri !== 'string' || !resource.uri.startsWith('data:')))
+          throw badRequest('GLB buffers and textures must be embedded; external asset URLs are not supported');
+      }
+    }
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw badRequest('Invalid GLB JSON chunk');
+  }
   let offset = 20 + jsonLength;
   while (offset < bytes.byteLength) {
     if (offset + 8 > bytes.byteLength) throw badRequest('Invalid GLB chunk');
