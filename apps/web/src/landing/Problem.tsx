@@ -1,42 +1,55 @@
-import { ArrowUpRight } from "lucide-react";
-import { useRef, type CSSProperties, type ReactNode } from "react";
+import { Pause, Play } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useReducedMotion } from "../lib/preferences";
-import { gsap, useGSAP, WIDE } from "./motion";
-import { Container, Eyebrow } from "./shared";
+import { Container } from "./shared";
+import { buildVenueCloud } from "./venue";
 
 /*
- * "The problem", told as four road signs while a floor plan changes beside them:
- * a map app's pin at the front door, then a flat and cluttered plan, then question
- * marks where the plan can't help, then the plan tilts, its walls rise into 3D and a
- * route draws itself. The section is pinned (it stays on screen while you scroll)
- * and the animation follows the scroll position. The walls are the same SVG stacked
- * in several layers along the Z axis, which reads as extruded 3D in plain CSS.
+ * "The problem": what people use today to find their way inside, and where each one
+ * runs out, ending with Path. All five points stay readable in a list. A dark screen
+ * beside them (styled like the hero) plays a short scene for the highlighted point,
+ * then moves on by itself. The loop pauses while you hover, focus or are scrolled
+ * away, has a Pause button, and with Reduce motion it doesn't move on its own: each
+ * scene shows its finished picture and you pick the point.
  */
 
-const SIGNS = [
-  {
-    kicker: "Map apps",
-    title: "Get you to the front door.",
-    body: "Then the dot stops. Inside a campus, a hospital or a venue, you're on your own.",
-  },
-  {
-    kicker: "Floor plans",
-    title: "Flat, old and stuck to one wall.",
-    body: "If there is one, it's a PDF or a board next to the elevator you were trying to find.",
-  },
-  {
-    kicker: "“Accessible entrance”",
-    title: "But where? And is there a step?",
-    body: "Notes like this don't show the way, so people who avoid stairs find out at the door.",
-  },
-  {
-    kicker: "Path",
-    title: "See the real place in 3D, before you go.",
-    body: "Someone scans it once with a phone. Everyone else picks a room and follows a route that can skip the stairs.",
-  },
-];
+interface Point {
+  id: string;
+  tool: string;
+  title: string;
+  body: string;
+  /** Seconds this scene plays before the next one. */
+  seconds: number;
+  scene: () => ReactNode;
+}
 
-/* Plan coordinates: meters from the fixture, x → (x + 5) × 50, z → (1 − z) × 50. */
+/* ------------------------------------------------------------ helpers */
+
+/** Position an HTML label over a scene, in the scene's own 400 × 300 units. */
+function At({ x, y, children, className = "", style }: { x: number; y: number; children: ReactNode; className?: string; style?: CSSProperties }) {
+  return (
+    <div className={`absolute ${className}`} style={{ left: `${(x / 400) * 100}%`, top: `${(y / 300) * 100}%`, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function Chip({ children, tone = "glass", className = "", style }: { children: ReactNode; tone?: "glass" | "paper"; className?: string; style?: CSSProperties }) {
+  return (
+    <span
+      className={`inline-block rounded-full px-3 py-1.5 text-xs font-bold whitespace-nowrap shadow-lg sm:text-sm ${
+        tone === "paper" ? "bg-paper text-ink" : "bg-[#1B2A21]/80 text-paper ring-1 ring-sage/25 backdrop-blur"
+      } ${className}`}
+      style={style}
+    >
+      {children}
+    </span>
+  );
+}
+
+const delay = (s: number): CSSProperties => ({ animationDelay: `${s}s` });
+
+/* Floor plan in its own units (500 × 420), shared by the floor plan and checkmark scenes. */
 const WALLS = [
   "M200 10 V200 H25 V400 H200 V300",
   "M300 10 V200 H475 V400 H300 V300",
@@ -44,230 +57,372 @@ const WALLS = [
   "M300 300 H372 M428 300 H475",
   "M200 400 H300",
 ];
-const ROUTE = "M250 45 V215 Q250 250 215 250 H100 V350";
-const WALL_LAYERS = 7;
-const WALL_STEP = 6;
 
-function Plan() {
+/* --------------------------------------------------------------- scenes */
+
+const MAP_BLUE = "#4C8DF6";
+
+function MapAppScene() {
   return (
-    <svg viewBox="0 0 500 420" className="absolute inset-0 size-full" aria-hidden="true">
-      <defs>
-        <pattern id="plan-grid" width="25" height="25" patternUnits="userSpaceOnUse">
-          <path d="M25 0 H0 V25" fill="none" stroke="#2F4A3A" strokeOpacity="0.09" strokeWidth="1" />
-        </pattern>
-        <pattern id="plan-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <path d="M0 0 V8" stroke="#2F4A3A" strokeOpacity="0.45" strokeWidth="2" />
-        </pattern>
-      </defs>
-      <rect x="0" y="0" width="500" height="420" rx="14" fill="#FAF5E6" />
-      <rect x="0" y="0" width="500" height="420" rx="14" fill="url(#plan-grid)" />
-
-      {/* Step 1: only the building outline and the map app's pin at the door. */}
-      <g data-part="arrive" opacity="0">
-        <rect x="18" y="4" width="464" height="404" rx="10" fill="none" stroke="#5E6B60" strokeWidth="3" strokeDasharray="10 8" />
-        <circle cx="250" cy="28" r="11" fill="#2F4A3A" />
-        <circle cx="250" cy="28" r="4" fill="#FAF5E6" />
-      </g>
-
-      {/* Step 2: the clutter of a typical posted plan. */}
-      <g data-part="detail" opacity="0.35" fontFamily="Atkinson Hyperlegible Mono, monospace" fontSize="11" fill="#5E6B60">
-        <rect x="200" y="300" width="100" height="100" fill="url(#plan-hatch)" />
-        <rect x="215" y="140" width="70" height="40" fill="none" stroke="#5E6B60" strokeDasharray="4 4" />
-        <text x="221" y="164">ELEV?</text>
-        <text x="40" y="345">RM 1.04</text>
-        <text x="40" y="362">(was 1.12)</text>
-        <text x="330" y="345">RM 1.06</text>
-        <text x="40" y="232">MECH</text>
-        <text x="400" y="232">STOR.</text>
-        <text x="216" y="355" fill="#2F4A3A">STAIRS</text>
-        <text x="210" y="30">ENTR. B</text>
-        <text x="380" y="410" fontSize="9">REV. 2014 · NOT TO SCALE</text>
-      </g>
-      {/* The route, drawn in the last step. */}
-      <path data-part="route" d={ROUTE} fill="none" stroke="#F48057" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" pathLength={1} />
-    </svg>
+    <>
+      <svg viewBox="0 0 400 300" className="absolute inset-0 size-full" aria-hidden="true">
+        <g stroke="#24372C" strokeWidth="26" strokeLinecap="square">
+          <path d="M0 220 H400 M60 0 V300 M340 0 V300" />
+        </g>
+        <rect x="355" y="0" width="45" height="300" fill="#24402F" />
+        <rect x="140" y="40" width="160" height="125" rx="6" fill="#2A3A31" stroke="#5E6B60" strokeWidth="2" />
+        <path d="M150 52 H290" stroke="#5E6B60" strokeOpacity="0.5" strokeDasharray="4 6" />
+        <path d="M60 300 V220 H220 V165" fill="none" stroke={MAP_BLUE} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.55" />
+        <circle className="pb-accuracy" cx="220" cy="110" r="46" fill={MAP_BLUE} fillOpacity="0.14" stroke={MAP_BLUE} strokeOpacity="0.5" style={delay(2.1)} />
+        <g className="pb-gps">
+          <circle r="11" fill={MAP_BLUE} fillOpacity="0.25" />
+          <circle r="7" fill={MAP_BLUE} stroke="#F3EBD0" strokeWidth="2.5" />
+        </g>
+      </svg>
+      <At x={232} y={176} className="pb-pop" style={delay(1.8)}>
+        <Chip>You have arrived</Chip>
+      </At>
+      <At x={150} y={64} className="pb-pop" style={delay(2.9)}>
+        <Chip tone="paper">Where's Room 204?</Chip>
+      </At>
+    </>
   );
 }
 
-function WallLayer({ index }: { index: number }) {
-  const top = index === WALL_LAYERS - 1;
+function IndoorMapsScene() {
+  const rows = [
+    { name: "Airport, Terminal 1", ok: true },
+    { name: "Shopping mall", ok: true },
+    { name: "Science building", ok: false },
+  ];
   return (
-    <svg
-      viewBox="0 0 500 420"
-      data-part="wall"
-      data-z={index * WALL_STEP}
-      className="absolute inset-0 size-full"
-      style={{ transform: `translateZ(${index * WALL_STEP}px)` }}
-      aria-hidden="true"
-    >
-      <g fill="none" stroke={top ? "#2F4A3A" : "#5E6B60"} strokeOpacity={top ? 1 : 0.55} strokeWidth="7" strokeLinecap="square">
-        {WALLS.map((d) => (
-          <path key={d} d={d} />
-        ))}
-      </g>
-    </svg>
-  );
-}
-
-/** A label that stands up out of the tilted plan (it undoes the plan's rotation). */
-function Standing({ x, y, children, part, tone = "label" }: { x: number; y: number; children: ReactNode; part: string; tone?: "label" | "question" }) {
-  return (
-    <div
-      data-part={part}
-      className="absolute"
-      style={{ ...(part === "question" ? { opacity: 0, visibility: "hidden" } : null), left: `${(x / 500) * 100}%`, top: `${(y / 420) * 100}%`, transform: `translateZ(${WALL_LAYERS * WALL_STEP + 4}px)` }}
-    >
-      <div className="origin-bottom -translate-x-1/2 -translate-y-full [transform:rotateZ(var(--plan-spin))_rotateX(calc(var(--plan-tilt)*-1))]">
-        {tone === "question" ? (
-          <span className="grid size-10 place-items-center rounded-full bg-paper font-display text-2xl font-black text-rust shadow-md ring-2 ring-rust">
-            {children}
-          </span>
-        ) : (
-          <span className="block rounded-full bg-night px-3 py-1.5 text-sm font-bold whitespace-nowrap text-paper shadow-lg ring-2 ring-coral">
-            {children}
-          </span>
-        )}
+    <div className="absolute inset-0 grid content-center gap-2.5 px-[8%]">
+      <div className="pb-rise flex items-center gap-2 rounded-xl bg-paper/10 px-4 py-3 text-sm text-sage ring-1 ring-sage/25">
+        <span aria-hidden="true">⌕</span> Indoor maps near you
       </div>
+      {rows.map((row, i) => (
+        <div
+          key={row.name}
+          className={`pb-rise flex items-center justify-between gap-3 rounded-xl px-4 py-3 ring-1 ${
+            row.ok ? "bg-[#1B2A21]/80 ring-sage/25" : "pb-shake bg-[#1B2A21]/80 ring-coral/70"
+          }`}
+          style={{ animationDelay: row.ok ? `${0.25 + i * 0.25}s` : "0.75s, 1.7s" }}
+        >
+          <span className="font-bold text-paper">{row.name}</span>
+          <span className={`flex items-center gap-1.5 text-sm ${row.ok ? "text-sage" : "text-paper"}`}>
+            <span
+              aria-hidden="true"
+              className={`grid size-5 place-items-center rounded-full text-xs font-black ${row.ok ? "bg-sage text-ink" : "bg-coral text-ink"}`}
+            >
+              {row.ok ? "✓" : "✕"}
+            </span>
+            {row.ok ? "Indoor map" : "No indoor map"}
+          </span>
+        </div>
+      ))}
+      <p className="pb-rise text-center font-mono text-xs text-sage" style={delay(1.2)}>
+        Added by the venue owner. Mostly airports and malls.
+      </p>
     </div>
   );
 }
 
-function Sign({ sign, index, answer }: { sign: (typeof SIGNS)[number]; index: number; answer: boolean }) {
+function FloorPlanScene() {
   return (
-    <li
-      data-part="sign"
-      className={`rounded-2xl p-1.5 shadow-[0_10px_30px_-18px_rgb(18_28_22/0.7)] ${answer ? "bg-coral text-ink" : "bg-forest text-paper"}`}
-    >
-      <div className={`rounded-xl px-5 py-4 ring-2 ${answer ? "ring-ink/70" : "ring-paper/80"}`}>
-        <p className="flex items-center gap-2 font-mono text-sm tracking-wide uppercase">
-          <span className={`grid size-6 place-items-center rounded-full ${answer ? "bg-ink text-coral" : "bg-coral text-ink"}`} aria-hidden="true">
-            {answer ? "→" : index + 1}
-          </span>
-          {sign.kicker}
-        </p>
-        <h3 className="mt-2 font-display text-2xl leading-tight font-black">{sign.title}</h3>
-        <p className={`mt-1 leading-snug ${answer ? "text-ink" : "text-paper/90"}`}>{sign.body}</p>
-      </div>
-    </li>
+    <div className="absolute inset-[7%] overflow-hidden rounded-lg bg-paper shadow-2xl [transform:rotate(-1.5deg)]">
+      <svg viewBox="0 0 500 420" className="pb-zoom size-full origin-[16%_84%]" aria-hidden="true">
+        <defs>
+          <pattern id="pb-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <path d="M0 0 V8" stroke="#2F4A3A" strokeOpacity="0.45" strokeWidth="2" />
+          </pattern>
+        </defs>
+        <g fill="none" stroke="#2F4A3A" strokeWidth="6" strokeLinecap="square">
+          {WALLS.map((d) => (
+            <path key={d} d={d} />
+          ))}
+        </g>
+        <rect x="200" y="300" width="100" height="100" fill="url(#pb-hatch)" />
+        <g fontFamily="Atkinson Hyperlegible Mono, monospace" fontSize="12" fill="#5E6B60">
+          <text x="40" y="350">RM 1.12</text>
+          <text x="330" y="345">RM 1.06</text>
+          <text x="40" y="232">MECH</text>
+          <text x="400" y="232">STOR.</text>
+          <text x="216" y="290">STAIRS</text>
+          <text x="221" y="164">ELEV?</text>
+          <text x="210" y="30">ENTR. B</text>
+          <text x="360" y="410" fontSize="10">REV. 2014 · NOT TO SCALE</text>
+        </g>
+        <path className="pb-draw" d="M36 346 H100" stroke="#A8421F" strokeWidth="3" pathLength={1} style={delay(2)} />
+        <text className="pb-pop-svg" x="40" y="376" fontFamily="Atkinson Hyperlegible Next, sans-serif" fontWeight="700" fontSize="16" fill="#A8421F" style={delay(2.3)}>
+          now 1.04?
+        </text>
+      </svg>
+    </div>
   );
 }
 
+function CheckmarkScene() {
+  return (
+    <>
+      <svg viewBox="0 0 500 420" className="absolute inset-x-[10%] top-[24%] bottom-[4%] m-auto h-[72%]" aria-hidden="true">
+        <g fill="none" stroke="#A9C4AE" strokeOpacity="0.45" strokeWidth="6" strokeLinecap="square">
+          {WALLS.map((d) => (
+            <path key={d} d={d} />
+          ))}
+        </g>
+        <g stroke="#A9C4AE" strokeOpacity="0.6" strokeWidth="4">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <path key={i} d={`M205 ${300 + i * 16} H295`} />
+          ))}
+        </g>
+        <path className="pb-draw" d="M250 20 V290" fill="none" stroke="#F48057" strokeWidth="8" strokeLinecap="round" strokeDasharray="1" pathLength={1} style={delay(0.8)} />
+        <circle className="pb-flash" cx="250" cy="340" r="62" fill="none" stroke="#F48057" strokeWidth="6" style={delay(2.3)} />
+      </svg>
+      <At x={200} y={20} className="pb-rise -translate-x-1/2">
+        <div className="flex items-center gap-3 rounded-2xl bg-[#1B2A21]/85 px-4 py-2.5 text-paper ring-1 ring-sage/25 backdrop-blur">
+          <span className="font-bold whitespace-nowrap">Science building</span>
+          <span className="rounded-full bg-sage px-2.5 py-1 text-xs font-bold whitespace-nowrap text-ink">Accessible entrance ✓</span>
+        </div>
+      </At>
+      <At x={262} y={236} className="pb-pop" style={delay(2.5)}>
+        <Chip tone="paper">Stairs. Now what?</Chip>
+      </At>
+    </>
+  );
+}
+
+/** The fixture's T corridor as dots, seen from above at an angle (isometric). */
+function useIsoDots() {
+  return useMemo(() => {
+    const cloud = buildVenueCloud(1200);
+    const k = 26;
+    const iso = (x: number, y: number, z: number) => ({ sx: 152 + (x - z) * 0.866 * k, sy: 214 + (x + z) * 0.5 * k - y * k * 0.85 });
+    const dots: { x: number; y: number; fill: string }[] = [];
+    for (let i = 0; i < cloud.count; i++) {
+      const x = cloud.positions[i * 3]!;
+      const y = cloud.positions[i * 3 + 1]!;
+      const z = cloud.positions[i * 3 + 2]!;
+      const p = iso(x, y, z);
+      const c = (j: number) => Math.round((cloud.colors[i * 3 + j] ?? 0) * 255);
+      dots.push({ x: p.sx, y: p.sy, fill: `rgb(${c(0)} ${c(1)} ${c(2)})` });
+    }
+    return { dots, iso };
+  }, []);
+}
+
+function PathScene() {
+  const { dots, iso } = useIsoDots();
+  const entrance = iso(0, 0, 0);
+  const junction = iso(0, 0, -4);
+  const room = iso(-3, 0, -4);
+  const stairs = iso(3, 0, -4);
+  return (
+    <>
+      <svg viewBox="0 0 400 300" className="absolute inset-0 size-full" aria-hidden="true">
+        <g className="pb-assemble">
+          {dots.map((d, i) => (
+            <circle key={i} cx={d.x} cy={d.y} r="1.35" fill={d.fill} />
+          ))}
+        </g>
+        <path
+          className="pb-draw"
+          d={`M${entrance.sx} ${entrance.sy} L${junction.sx} ${junction.sy} L${room.sx} ${room.sy}`}
+          fill="none"
+          stroke="#F48057"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          pathLength={1}
+          style={delay(0.9)}
+        />
+        <g className="pb-pop-svg" style={delay(2.2)}>
+          <line x1={room.sx} y1={room.sy} x2={room.sx} y2={room.sy - 34} stroke="#F48057" strokeWidth="2.5" />
+          <circle cx={room.sx} cy={room.sy - 38} r="7" fill="#F48057" />
+        </g>
+        <g className="pb-pop-svg" style={delay(1.6)}>
+          <circle cx={stairs.sx} cy={stairs.sy - 18} r="11" fill="#121C16" stroke="#F48057" strokeWidth="2.5" />
+          <path d={`M${stairs.sx - 5} ${stairs.sy - 23} l10 10 m0 -10 l-10 10`} stroke="#F48057" strokeWidth="2.5" strokeLinecap="round" />
+        </g>
+      </svg>
+      <At x={room.sx} y={room.sy - 70} className="pb-pop -translate-x-1/2" style={delay(2.3)}>
+        <Chip>Room 204</Chip>
+      </At>
+      <At x={stairs.sx + 14} y={stairs.sy - 30} className="pb-pop" style={delay(1.7)}>
+        <Chip>Stairs skipped</Chip>
+      </At>
+      <At x={14} y={14} className="pb-rise right-[4%]" style={delay(2.6)}>
+        <div className="max-w-[17rem] rounded-xl bg-paper px-3.5 py-2.5 text-ink shadow-xl">
+          <p className="text-sm leading-tight font-bold">At the junction, turn left to the amber door</p>
+          <p className="mt-0.5 font-mono text-[0.7rem] text-muted">Approved by the map owner</p>
+        </div>
+      </At>
+    </>
+  );
+}
+
+const POINTS: Point[] = [
+  {
+    id: "map-apps",
+    tool: "Map apps",
+    title: "Google Maps and Apple Maps get you to the door.",
+    body: "Then the building is a grey box, and indoors the blue dot drifts.",
+    seconds: 5,
+    scene: () => <MapAppScene />,
+  },
+  {
+    id: "indoor",
+    tool: "Indoor maps",
+    title: "Only for the big venues.",
+    body: "Mostly airports and malls, added by the venue owner. Your lecture building or this weekend's venue usually isn't there.",
+    seconds: 4.5,
+    scene: () => <IndoorMapsScene />,
+  },
+  {
+    id: "plans",
+    tool: "Floor plans",
+    title: "Flat, and out of date.",
+    body: "A PDF or a board on the wall. Rooms get renamed, and you can't see what the turn looks like.",
+    seconds: 4.5,
+    scene: () => <FloorPlanScene />,
+  },
+  {
+    id: "checkmark",
+    tool: "“Accessible entrance ✓”",
+    title: "A checkmark, not a route.",
+    body: "It says yes or no. You find the stairs when you get to them.",
+    seconds: 4.5,
+    scene: () => <CheckmarkScene />,
+  },
+  {
+    id: "path",
+    tool: "Path",
+    title: "The real place, mapped by people who know it.",
+    body: "Scan it with a phone, label the rooms, share a link. Visitors see it in 3D and follow a route that can skip the stairs.",
+    seconds: 6.5,
+    scene: () => <PathScene />,
+  },
+];
+
+/* -------------------------------------------------------------- section */
+
 export default function Problem() {
   const reduce = useReducedMotion();
-  const animate = !reduce;
-  const root = useRef<HTMLElement>(null);
+  const [active, setActive] = useState(0);
+  const [run, setRun] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [hovering, setHovering] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const screen = useRef<HTMLDivElement>(null);
 
-  useGSAP(
-    () => {
-      if (!animate || !root.current) return;
-      const q = gsap.utils.selector(root);
-      const stage = q("[data-part=stage]")[0] as HTMLElement | undefined;
-      if (!stage) return;
-      const signs = q("[data-part=sign]");
-      const walls = q("[data-part=wall]");
-      const navOffset = () => (document.querySelector("header")?.getBoundingClientRect().height ?? 0) + 0;
-      const mm = gsap.matchMedia();
+  // Play only while the screen itself is mostly in view.
+  useEffect(() => {
+    const element = screen.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(([entry]) => setVisible((entry?.intersectionRatio ?? 0) >= 0.4), { threshold: [0, 0.4, 0.8] });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
-      mm.add({ wide: WIDE, narrow: "(max-width: 767.98px)" }, (context) => {
-        const wide = Boolean(context.conditions?.wide);
-        // Wide: every sign stays on screen and the current one lights up.
-        // Narrow: the signs share one spot and swap.
-        const off = wide ? { opacity: 0.28, scale: 0.97 } : { autoAlpha: 0, y: 16 };
-        const on = wide ? { opacity: 1, scale: 1 } : { autoAlpha: 1, y: 0 };
+  const autoplay = !reduce;
+  const playing = autoplay && !paused && !hovering && !focused && visible;
 
-        const tl = gsap.timeline({
-          defaults: { ease: "none" },
-          scrollTrigger: {
-            trigger: root.current,
-            start: () => `top ${navOffset()}`,
-            end: "+=260%",
-            pin: true,
-            scrub: 0.6,
-            invalidateOnRefresh: true,
-          },
-        });
-
-        gsap.set(signs.slice(1), off);
-        gsap.set(stage, { "--plan-tilt": "0deg", "--plan-spin": "0deg" });
-        gsap.set(walls, { z: 0, autoAlpha: (i: number) => (i === WALL_LAYERS - 1 ? 1 : 0) });
-        gsap.set(q("[data-part=detail]"), { autoAlpha: 0 });
-        gsap.set(q("[data-part=question]"), { autoAlpha: 0, scale: 0.4 });
-        gsap.set(q("[data-part=label], [data-part=pin]"), { autoAlpha: 0, y: 10 });
-        gsap.set(q("[data-part=route]"), { strokeDasharray: 1, strokeDashoffset: 1 });
-        gsap.set(q("[data-part=arrive]"), { autoAlpha: 1 });
-
-        // 1 → 2: the floor plan appears.
-        tl.to(signs[0]!, { ...off, duration: 0.3 }, 1)
-          .to(signs[1]!, { ...on, duration: 0.3 }, 1)
-          .to(q("[data-part=arrive]"), { autoAlpha: 0, duration: 0.3 }, 1)
-          .to(q("[data-part=detail]"), { autoAlpha: 1, duration: 0.4 }, 1.05)
-          // 2 → 3: questions where the plan can't help.
-          .to(signs[1]!, { ...off, duration: 0.3 }, 2)
-          .to(signs[2]!, { ...on, duration: 0.3 }, 2)
-          .to(q("[data-part=question]"), { autoAlpha: 1, scale: 1, duration: 0.3, stagger: 0.12, ease: "back.out(2)" }, 2.05)
-          // 3 → 4: the plan tilts, walls rise, the route draws.
-          .to(signs[2]!, { ...off, duration: 0.3 }, 3)
-          .to(signs[3]!, { ...on, duration: 0.3 }, 3)
-          .to(q("[data-part=question]"), { autoAlpha: 0, scale: 0.4, duration: 0.2 }, 3)
-          .to(stage, { "--plan-tilt": "55deg", "--plan-spin": "-32deg", duration: 0.8, ease: "power2.inOut" }, 3)
-          .to(walls, { z: (i: number) => i * WALL_STEP, autoAlpha: 1, duration: 0.6, ease: "power2.out" }, 3.4)
-          .to(q("[data-part=detail]"), { autoAlpha: 0.35, duration: 0.4 }, 3.4)
-          .to(q("[data-part=route]"), { strokeDashoffset: 0, duration: 0.7 }, 3.9)
-          .to(q("[data-part=label], [data-part=pin]"), { autoAlpha: 1, y: 0, duration: 0.3, stagger: 0.1 }, 4.4)
-          .to({}, { duration: 0.4 });
-      });
-    },
-    { scope: root, dependencies: [animate], revertOnUpdate: true },
-  );
+  const choose = (index: number) => {
+    setActive(index);
+    setRun((n) => n + 1);
+  };
+  const next = () => choose((active + 1) % POINTS.length);
 
   return (
-    <section
-      ref={root}
-      id="problem"
-      aria-labelledby="problem-heading"
-      className="relative overflow-hidden bg-paper py-14 md:flex md:min-h-[calc(100dvh-4.5rem)] md:items-center md:py-10"
-    >
-      <Container className="grid items-center gap-8 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:gap-12">
-        <div className="grid gap-5">
-          <div className="grid gap-2">
-            <Eyebrow>The problem</Eyebrow>
-            <h2 id="problem-heading" className="font-display text-4xl leading-none font-black text-balance md:text-5xl">
-              Maps stop at the door.
-            </h2>
-          </div>
-          <ol
-            className={
-              animate
-                ? "grid max-md:[&>li]:col-start-1 max-md:[&>li]:row-start-1 md:gap-3"
-                : "grid gap-3"
-            }
-          >
-            {SIGNS.map((sign, i) => (
-              <Sign key={sign.kicker} sign={sign} index={i} answer={i === SIGNS.length - 1} />
-            ))}
-          </ol>
+    <section id="problem" aria-labelledby="problem-heading" className="bg-paper py-20 md:py-28">
+      <Container>
+        <div className="mx-auto grid max-w-2xl gap-4 text-center">
+          <h2 id="problem-heading" className="font-display text-[clamp(2rem,3.6vw,3rem)] leading-none font-black text-balance">
+            Maps stop at the front door.
+          </h2>
+          <p className="text-lg leading-relaxed text-muted">
+            Google Maps and Apple Maps are great at getting you to a building. Step inside and you're mostly on your own.
+            Here's what people use instead, and where each one runs out.
+          </p>
         </div>
 
-        <div className="relative mx-auto w-full max-w-xl max-md:order-first [perspective:1600px]">
+        <div
+          onPointerEnter={(e) => e.pointerType === "mouse" && setHovering(true)}
+          onPointerLeave={() => setHovering(false)}
+          onFocus={(e) => e.target.matches(":focus-visible") && setFocused(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
+          }}
+          className="mt-12 grid items-center gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12 xl-text:lg:grid-cols-1"
+        >
+          <ol className="grid gap-1.5 max-lg:order-last">
+            {POINTS.map((point, i) => {
+              const isActive = i === active;
+              const isPath = point.id === "path";
+              return (
+                <li key={point.id}>
+                  <button
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => choose(i)}
+                    className={`relative grid w-full gap-1 overflow-hidden rounded-2xl py-3.5 pr-4 pl-6 text-left transition-colors duration-300 ${
+                      isActive ? "bg-surface shadow-[0_12px_30px_-22px_rgb(18_28_22/0.6)] ring-1 ring-forest/15" : "hover:bg-surface/60"
+                    }`}
+                  >
+                    {/* Progress line: fills while this point plays, then moves on. */}
+                    <span aria-hidden="true" className={`absolute top-3 bottom-3 left-2.5 w-1 rounded-full ${isActive ? "bg-forest/12" : "bg-transparent"}`}>
+                      {isActive ? (
+                        <span
+                          key={run}
+                          className={`block w-full rounded-full bg-coral ${autoplay ? "pb-progress" : "h-full"}`}
+                          style={autoplay ? { animationDuration: `${point.seconds}s`, animationPlayState: playing ? "running" : "paused" } : undefined}
+                          onAnimationEnd={autoplay ? next : undefined}
+                        />
+                      ) : null}
+                    </span>
+                    <span className={`font-mono text-sm tracking-wide uppercase ${isPath ? "text-rust" : "text-muted"}`}>{point.tool}</span>
+                    <span className="font-display text-xl leading-tight font-black">{point.title}</span>
+                    <span className="leading-snug text-muted">{point.body}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+
           <div
-            data-part="stage"
-            className="relative aspect-[500/420] w-full [transform-style:preserve-3d] [transform:rotateX(var(--plan-tilt))_rotateZ(var(--plan-spin))] max-md:mx-auto max-md:w-[min(100%,calc(40dvh*1.19))]"
-            style={{ "--plan-tilt": "55deg", "--plan-spin": "-32deg" } as CSSProperties}
+            ref={screen}
+            data-surface="night"
+            className="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-night shadow-[0_40px_80px_-40px_rgb(18_28_22/0.9)]"
           >
-            <Plan />
-            {Array.from({ length: WALL_LAYERS }, (_, i) => (
-              <WallLayer key={i} index={i} />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_15%_0%,rgb(47_74_58/0.9),transparent_70%),radial-gradient(45%_40%_at_60%_95%,rgb(244_128_87/0.12),transparent_70%)]"
+            />
+            {POINTS.map((point, i) => (
+              <div
+                key={point.id}
+                aria-hidden="true"
+                className="absolute inset-0 transition-opacity duration-500"
+                style={{ opacity: i === active ? 1 : 0 }}
+              >
+                {i === active ? <div key={run} className="absolute inset-0">{point.scene()}</div> : null}
+              </div>
             ))}
-            <Standing part="question" x={250} y={160} tone="question">?</Standing>
-            <Standing part="question" x={250} y={330} tone="question">?</Standing>
-            <Standing part="question" x={100} y={290} tone="question">?</Standing>
-            <Standing part="label" x={250} y={60}>You are here</Standing>
-            <Standing part="pin" x={100} y={350}>
-              <span className="inline-flex items-center gap-1">
-                Workshop room <ArrowUpRight className="size-4" aria-hidden />
+            <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-3">
+              <span className="rounded-full bg-[#1B2A21]/80 px-3 py-1.5 font-mono text-xs text-sage ring-1 ring-sage/25 backdrop-blur">
+                {active + 1} / {POINTS.length} · {POINTS[active]!.tool}
               </span>
-            </Standing>
-            <Standing part="label" x={250} y={225}>Step-free route</Standing>
+              {autoplay ? (
+                <button
+                  type="button"
+                  onClick={() => setPaused((p) => !p)}
+                  aria-label={paused ? "Play the comparison" : "Pause the comparison"}
+                  className="grid size-11 place-items-center rounded-full bg-paper text-ink shadow-lg"
+                >
+                  {paused ? <Play className="size-4" aria-hidden /> : <Pause className="size-4" aria-hidden />}
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       </Container>
