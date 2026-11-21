@@ -1,5 +1,9 @@
 # Developing Path App
 
+## Backend direction
+
+Sam owns a single Next.js/TypeScript backend with Tiger Data PostgreSQL, Drizzle ORM and migrations, Auth0, private Vultr Object Storage, and Gemini. Start with the [backend plan](docs/backend-plan.md), [core API contract](docs/core-api.md), and [API workspace](services/api/README.md). The database, Auth0, and core space/graph/path/event routes live in `services/api/`. Apply server-side ownership and visibility checks on every new route; never commit real credentials. The Python mock remains a fixture-only integration tool. Keep scan geometry in object storage and protect every metadata, graph and asset URL read on the server. Coordinate scan transform ordering and real export format with the capture team before finalizing that contract.
+
 Use these instructions for Codex, Claude Code, and other coding agents. If your tool needs explicit context, attach this file, the task, and the relevant component files when you start a session. The [project README](README.md) records the demo goal and team ownership.
 
 ## Start a task
