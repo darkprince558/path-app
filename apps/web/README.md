@@ -56,6 +56,8 @@ py -3 -B tools/scan_mock.py --port 8001        # from the repo root (or: make de
 cd apps/web && pnpm install && API_TARGET=http://127.0.0.1:8001 pnpm dev
 ```
 
+To try the landmark direction screens without Sam's backend, start the mock with `--demo-cues`. Every upload then gets two draft directions to review on Manage map; approved ones appear under **Directions** on the guest map.
+
 Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), choose `fixtures/venue/scene.ply`, pick a visibility and upload. The page shows the guest link, a copy button and a QR code, and lets you change visibility or private viewers afterwards. You can also upload with the curl command in the [API README](../../services/api/README.md). Then open `http://localhost:5173/s/<shareId>`. The guest page sends no `X-Dev-User` header, so it is a signed-out guest. Owner calls (upload, sharing) send `X-Dev-User: demo-owner` in development only (override with `VITE_DEV_USER`). A production build sends none, because the hosted API reads the signed-in session. `pnpm build` type-checks and writes static files to `dist/`. `pnpm preview` serves them with the same proxy on port 4173. The host must serve `index.html` for `/s/<shareId>`.
 
 | Path | What it does |
@@ -66,7 +68,9 @@ Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), c
 | `src/components/ScanViewer.tsx` | Colored points on `night`, DPR capped at 2, orbit (one finger turns, two fingers zoom and pan), framed from behind the entrance (+Z). Loaded lazily alongside the metadata request. |
 | `src/components/AppLayout.tsx` | Signed-in shell: forest sidebar (My maps, Community, New map, account) on desktop, top bar and bottom tab bar on phones. |
 | `src/routes/MyMaps.tsx` | `/maps`: your maps (`GET /api/scans/mine`) and maps shared with you (`GET /api/scans/shared`), with All, Public, Unlisted, Private and Shared with me filters. Each card's ⋯ menu offers Copy link, Manage map and Delete… (with a confirmation). |
-| `src/routes/ManageMap.tsx` | `/maps/:shareId`: rename, link and QR code, change who can open it, and delete. Only for the map's owner. |
+| `src/routes/ManageMap.tsx` | `/maps/:shareId`: rename, link and QR code, change who can open it, review landmark directions, and delete. Only for the map's owner. |
+| `src/components/CueReview.tsx` | Landmark directions on Manage map: each of Gemini's drafts with its source photo (owner-only), landmark and confidence, editable text, and Approve, Reject, Unapprove or Undo reject. Needs the map's `revisionId`; uploaded files have none and say so. |
+| `src/lib/cues.ts` | Cue client for Sam's proposed endpoints: `GET /api/scan-revisions/<id>/cues` (owner), `PATCH /api/cues/<id>` with `{instruction?, status?}`, and `GET /api/shares/<id>/cues` (guests, approved only; any failure just hides directions). |
 | `src/components/ConfirmDialog.tsx` | Modal confirmation on `<dialog>`: focus starts on Cancel, Escape cancels, focus returns afterward. |
 | `src/routes/Community.tsx` | `/community`: public maps from `GET /api/scans/public` with their names, and loading placeholders, empty and error states. |
 | `src/lib/session.ts` | Stand-in signed-in account for development (`VITE_DEV_USER`, `VITE_DEV_NAME`) until real sign-in exists. |
@@ -75,7 +79,7 @@ Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), c
 | `src/routes/Upload.tsx` | `/maps/new` (`/upload` redirects here): an optional name (suggested from the file name), choose a PLY or GLB (checked for type, size and header before sending), pick Public, Unlisted or Private, upload with progress and cancel. Uses the mock's `POST /api/scans`; the Next.js API receives scans from the iPhone app instead. |
 | `src/components/SharePanel.tsx` | After upload: guest link, copy, QR code, preview, and visibility changes through `PATCH /api/scans/<id>` (the scan's `id` from `/mine` on the Next.js API, the share ID on the mock). People already added to a private map are listed read-only; adding and removing people waits for a people picker. If the Next.js API refuses Public because the map's space is private, it says "To make this map public, its parent space must also be public." Warns when the link is `localhost`, which a phone can't open. |
 | `src/lib/scans.ts` | Owner API client (upload, sharing) with readable messages for 400, 401, 413, 415 and network failures. |
-| `src/routes/GuestView.tsx` | `/s/:shareId`: PLY point clouds (`ScanViewer`) or GLB models (`SpaceViewer`, with the share's saved transform), with loading, not-found/denied, download and parse-failure states. |
+| `src/routes/GuestView.tsx` | `/s/:shareId`: PLY point clouds (`ScanViewer`) or GLB models (`SpaceViewer`, with the share's saved transform), with loading, not-found/denied, download and parse-failure states. When the owner approved landmark directions, a **Directions** button opens them above the map controls, each marked "Approved by the map owner". |
 | `src/routes/SpaceView.tsx` | Accessible Next.js scans and graph, route selection, owner upload/alignment and graph tools. |
 | `src/components/SpaceViewer.tsx` | GLTFLoader meshes/materials, combined transformed bounds, graph/route overlays and orbit controls. |
 | `src/routes/Home.tsx`, `src/landing/` | The landing page at `/`, described below. |

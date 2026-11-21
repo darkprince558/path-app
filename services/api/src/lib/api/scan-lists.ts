@@ -33,8 +33,9 @@ export async function listMyScans(db: Db, user: AppUser) {
   return rows.map(scan => {
     const viewers = grants.filter(grant => grant.scanId === scan.id)
       .map(grant => ({ id: grant.userId, displayName: grant.displayName }));
+    // revisionId lets the owner's review screen load this scan's landmark cues (null for manual uploads).
     return { id: scan.id, shareId: scan.shareId, sharePath: sharePath(scan), name: scan.name,
-      format: scan.format, visibility: scan.visibility, status: scan.status,
+      format: scan.format, visibility: scan.visibility, status: scan.status, revisionId: scan.sourceRevisionId,
       viewerIds: viewers.map(viewer => viewer.id), viewers, updatedAt: scan.updatedAt };
   });
 }

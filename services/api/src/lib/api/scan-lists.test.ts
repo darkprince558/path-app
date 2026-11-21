@@ -61,6 +61,7 @@ test('mine, public and shared lists follow the scan access rules', { skip: !proc
     assert.equal(grantedRow?.shareId, granted.shareId);
     assert.equal(grantedRow?.sharePath, `/s/${granted.shareId}`);
     assert.deepEqual(grantedRow?.viewers, [{ id: viewer.id, displayName: 'Viewer' }]);
+    assert.equal(grantedRow?.revisionId, null); // manual upload: no processed revision, so no cues
     assert.deepEqual(await listMyScans(db, stranger), []);
 
     // Public lists ready public scans in readable spaces only, for anyone.

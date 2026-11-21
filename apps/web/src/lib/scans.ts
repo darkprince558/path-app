@@ -47,6 +47,8 @@ export interface OwnedMap extends SharingState {
   sharePath: string;
   format: ScanFormat;
   updatedAt: string;
+  /** The processed phone scan behind this map, for landmark cues. Null or missing for uploaded files. */
+  revisionId?: string | null;
   /** People added to a private map, with names to show. The local mock sends only viewerIds. */
   viewers?: { id: string; displayName: string }[];
 }

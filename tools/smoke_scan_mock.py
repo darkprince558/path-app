@@ -160,6 +160,43 @@ def manage(server, ply, binary):
     assert request(server, "DELETE", "/api/scans/" + library["shareId"], headers=OWNER)[0] == 404
 
 
+def cues(server, ply):
+    """Landmark cues (--demo-cues): owner reviews drafts, guests see approved directions only."""
+    status, _, body = request(server, "POST", "/api/scans?format=ply&visibility=public", ply,
+                              {"Content-Type": "application/octet-stream", **OWNER})
+    assert status == 201
+    share = json.loads(body)["shareId"]
+    status, _, body = request(server, "GET", f"/api/shares/{share}")
+    assert status == 200 and json.loads(body)["revisionId"] == share
+    assert [s.get("revisionId") for s in listed(server, "/api/scans/mine", OWNER) if s["shareId"] == share] == [share]
+    review = f"/api/scan-revisions/{share}/cues"
+    for user in (None, GUEST):
+        assert request(server, "GET", review, headers=user)[0] == 404, user
+    status, _, body = request(server, "GET", review, headers=OWNER)
+    drafts = json.loads(body)["cues"]
+    assert status == 200 and len(drafts) == 2 and {c["status"] for c in drafts} == {"draft"}
+    assert set(drafts[0]) == {"id", "routeSegmentId", "landmark", "instruction", "confidence", "status", "sourceFrameIds"}
+    guest_view = f"/api/shares/{share}/cues"
+    assert json.loads(request(server, "GET", guest_view)[2])["cues"] == []
+
+    def edit(cue_id, change, user=OWNER):
+        status, _, body = request(server, "PATCH", f"/api/cues/{cue_id}", json.dumps(change).encode(),
+                                  {"Content-Type": "application/json", **user})
+        return status, json.loads(body) if body else None
+
+    first, second = drafts[0]["id"], drafts[1]["id"]
+    assert edit(first, {"status": "approved"}, GUEST)[0] == 404
+    for bad in ({}, {"status": "published"}, {"instruction": " "}, {"instruction": "x" * 201}, {"other": 1}):
+        assert edit(first, bad)[0] == 400, bad
+    status, body = edit(first, {"instruction": "  Turn left at the   amber door. ", "status": "approved"})
+    assert status == 200 and body["cue"]["instruction"] == "Turn left at the amber door."
+    assert edit(second, {"status": "rejected"})[1]["cue"]["status"] == "rejected"
+    approved = json.loads(request(server, "GET", guest_view)[2])["cues"]
+    assert [c["instruction"] for c in approved] == ["Turn left at the amber door."]
+    assert edit(first, {"status": "draft"})[0] == 200
+    assert json.loads(request(server, "GET", guest_view)[2])["cues"] == []
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("fixture", type=Path, nargs="?",
@@ -173,8 +210,16 @@ def main():
         finally:
             server.shutdown()
             thread.join()
+    with TemporaryDirectory() as directory, ScanServer(0, directory, with_demo_cues=True) as server:
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        try:
+            cues(server, args.fixture.read_bytes())
+        finally:
+            server.shutdown()
+            thread.join()
     print("Verified scan bytes, all three visibility modes, grants, revocation, upload failures, "
-          "names, owner and shared lists, partial changes, and deletion.")
+          "names, owner and shared lists, partial changes, deletion, and landmark cue review.")
 
 
 if __name__ == "__main__":

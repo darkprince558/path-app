@@ -1,9 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
 import { Wordmark } from "../components/Logo";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
-import { ArrowLeft, Settings as SettingsIcon } from "lucide-react";
+import { ArrowLeft, Milestone, Settings as SettingsIcon, X } from "lucide-react";
 import { LoadingPanel, MessagePanel } from "../components/StatusPanel";
 import type { SpaceModel } from "../components/SpaceViewer";
+import { fetchShareCues, type Cue } from "../lib/cues";
 import { readMapOrigin } from "../lib/maps";
 import { useReducedMotion, useTripAvoidStairs } from "../lib/preferences";
 import type { PointScan } from "../lib/ply";
@@ -48,6 +49,17 @@ export default function GuestView() {
   const reduceMotion = useReducedMotion();
   const [avoidStairs, setAvoidStairs] = useTripAvoidStairs(shareId);
   const resetView = useCallback(() => setResetToken((n) => n + 1), []);
+  // Approved landmark directions load alongside the map; without any, nothing extra shows.
+  const [cues, setCues] = useState<Cue[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setCues([]);
+    void fetchShareCues(shareId, controller.signal).then((list) => {
+      if (!controller.signal.aborted) setCues(list);
+    });
+    return () => controller.abort();
+  }, [shareId]);
 
   useEffect(() => {
     const ready = state.phase === "ready" || state.phase === "ready-glb";
@@ -126,6 +138,7 @@ export default function GuestView() {
           onReset={resetView}
           avoidStairs={avoidStairs}
           onAvoidStairsChange={setAvoidStairs}
+          cues={cues}
         >
           <div
             className="absolute inset-0 touch-none"
@@ -157,6 +170,7 @@ export default function GuestView() {
           onReset={resetView}
           avoidStairs={avoidStairs}
           onAvoidStairsChange={setAvoidStairs}
+          cues={cues}
         >
           <div className="absolute inset-0 touch-none" onPointerDown={() => setTouched(true)}>
             <Suspense fallback={<LoadingPanel label="Building the 3D view…" />}>
@@ -212,6 +226,7 @@ function ViewerChrome({
   onReset,
   avoidStairs,
   onAvoidStairsChange,
+  cues,
   children,
 }: {
   /** Map name from the API, if it sent one. */
@@ -220,6 +235,8 @@ function ViewerChrome({
   onReset: () => void;
   avoidStairs: boolean;
   onAvoidStairsChange: (value: boolean) => void;
+  /** Approved landmark directions for this map, if any. */
+  cues: Cue[];
   /** The 3D map, placed between the top bar and the bottom controls in reading order. */
   children: ReactNode;
 }) {
@@ -231,6 +248,7 @@ function ViewerChrome({
   // Going back through history keeps the previous page's filters and scroll position.
   // A map opened straight from a link or QR has no previous page in Not 404.
   const canGoBack = origin !== null && (window.history.state as { idx?: number } | null)?.idx !== 0;
+  const [directionsOpen, setDirectionsOpen] = useState(false);
   return (
     <>
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-gradient-to-b from-night/90 to-transparent px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-8">
@@ -273,22 +291,73 @@ function ViewerChrome({
 
       <p
         className={`pointer-events-none absolute inset-x-0 bottom-24 z-10 mx-auto xl-text:bottom-40 w-fit max-w-[calc(100%-2rem)] truncate rounded-full bg-night/80 px-3 py-2 text-sm text-paper ring-1 ring-sage/30 transition-opacity duration-500 ${
-          showHint ? "opacity-100" : "opacity-0"
+          showHint && !directionsOpen ? "opacity-100" : "opacity-0"
         }`}
         aria-hidden="true"
       >
         Drag to turn · pinch to zoom
       </p>
 
-      <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-end justify-between gap-3 bg-gradient-to-t from-night/90 to-transparent px-4 pt-10 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <TripSwitch checked={avoidStairs} onChange={onAvoidStairsChange} />
-        <button
-          type="button"
-          onClick={onReset}
-          className="pointer-events-auto ml-auto min-h-11 shrink-0 rounded-full bg-night/80 px-4 text-sm font-bold text-paper ring-1 ring-sage/50 active:bg-forest"
-        >
-          Reset view
-        </button>
+      {/* Controls first in reading order; flex-col-reverse draws the open Directions panel above them,
+          however many rows the controls wrap to. */}
+      <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col-reverse gap-3 bg-gradient-to-t from-night/90 to-transparent px-4 pt-10 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <TripSwitch checked={avoidStairs} onChange={onAvoidStairsChange} />
+          {cues.length ? (
+            <button
+              type="button"
+              aria-expanded={directionsOpen}
+              aria-controls="map-directions"
+              onClick={() => setDirectionsOpen((open) => !open)}
+              className={`pointer-events-auto flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold ring-1 ${
+                directionsOpen ? "bg-sage text-ink ring-sage" : "bg-night/80 text-paper ring-sage/50"
+              }`}
+            >
+              <Milestone className="size-5" aria-hidden />
+              Directions · {cues.length}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onReset}
+            className="pointer-events-auto ml-auto min-h-11 shrink-0 rounded-full bg-night/80 px-4 text-sm font-bold text-paper ring-1 ring-sage/50 active:bg-forest"
+          >
+            Reset view
+          </button>
+        </div>
+
+        {cues.length && directionsOpen ? (
+          <section
+            id="map-directions"
+            aria-labelledby="map-directions-title"
+            className="pointer-events-auto mx-auto max-h-[40dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-night/95 p-4 text-paper ring-1 ring-sage/40"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h2 id="map-directions-title" className="font-display text-lg font-black">
+                Directions
+              </h2>
+              <button
+                type="button"
+                onClick={() => setDirectionsOpen(false)}
+                aria-label="Hide directions"
+                className="-mt-1 -mr-1 grid size-11 shrink-0 place-items-center rounded-full text-paper ring-1 ring-sage/40"
+              >
+                <X className="size-5" aria-hidden />
+              </button>
+            </div>
+            <ol className="mt-2 grid gap-3">
+              {cues.map((cue) => (
+                <li key={cue.id} className="flex gap-3">
+                  <span aria-hidden="true" className="mt-2 size-2.5 shrink-0 rounded-full bg-coral" />
+                  <div>
+                    <p className="text-lg leading-snug">{cue.instruction}</p>
+                    <p className="text-sm text-sage">Approved by the map owner</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
       </footer>
     </>
   );

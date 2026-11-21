@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import ConfirmDialog from "../components/ConfirmDialog";
+import CueReview from "../components/CueReview";
 import SharePanel from "../components/SharePanel";
 import {
   cleanMapName,
@@ -190,6 +191,8 @@ function ManageReady({
         viewers={viewerNames(map)}
         heading="Link and QR code"
       />
+
+      <CueReview shareId={map.shareId} revisionId={map.revisionId} />
 
       <section aria-labelledby="delete-title" className="grid gap-2 rounded-2xl p-5 ring-2 ring-rust/40">
         <h2 id="delete-title" className="font-display text-xl font-extrabold">

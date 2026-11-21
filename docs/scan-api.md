@@ -12,7 +12,7 @@ Capture and frontend teams share the [GLB and navigation coordinate contract](sc
 | `GET /api/scans/:id/file` | Authorized GLB bytes, `model/gltf-binary`, with `Cache-Control: private, no-store`. |
 | `PATCH /api/scans/:id` | Owner changes `name`, `visibility`, `transform` or `metadata`; returns `{scan}`. |
 | `DELETE /api/scans/:id` | Owner removes the row and local object; returns 204. |
-| `GET /api/scans/mine` | Signed-in account's own readable scans, newest first: `{scans: [{id, shareId, sharePath, name, format, visibility, status, viewerIds, viewers: [{id, displayName}], updatedAt}]}`. 401 when signed out. The website edits and deletes with `id`. |
+| `GET /api/scans/mine` | Signed-in account's own readable scans, newest first: `{scans: [{id, shareId, sharePath, name, format, visibility, status, revisionId, viewerIds, viewers: [{id, displayName}], updatedAt}]}`. 401 when signed out. The website edits and deletes with `id`, and loads landmark cues with `revisionId` (null for manual uploads). |
 | `GET /api/scans/public` | Ready public scans that a signed-out visitor may read (the space must be public too), newest first: `{scans: [{shareId, sharePath, name, updatedAt}]}`. |
 | `GET /api/scans/shared` | Other accounts' scans with a `scan_viewers` grant for this account, newest first: `{scans: [{shareId, sharePath, name, format, visibility, owner, updatedAt}]}`, where `owner` is the display name. No viewer lists. 401 when signed out. |
 
