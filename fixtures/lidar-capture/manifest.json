@@ -1,0 +1,75 @@
+{
+  "captureId" : "b4ca8f7e-14a8-4fdc-9e54-0ea7936ff501",
+  "coordinateSystem" : {
+    "handedness" : "right",
+    "matrixOrder" : "column-major",
+    "units" : "meters",
+    "upAxis" : "Y"
+  },
+  "createdAt" : "2026-11-21T18:00:00Z",
+  "device" : {
+    "model" : "synthetic wall fixture",
+    "platform" : "iOS",
+    "scanner" : "ARKit"
+  },
+  "entrancePose" : [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+  ],
+  "files" : [
+    {
+      "byteSize" : 660,
+      "path" : "frames.json",
+      "sha256" : "6f14d1cba9666c773f2269e3e152822b357f5c5a2f0b493bc4d07bff6803637e",
+      "type" : "frame_metadata"
+    },
+    {
+      "byteSize" : 811,
+      "path" : "frames/frame-0000.jpg",
+      "sha256" : "c5b1fec7938257b6509e0e0a9c268ab96b4511b93199f85f63625f5669c39a62",
+      "type" : "camera_frame"
+    },
+    {
+      "byteSize" : 1027,
+      "path" : "frames/frame-0007.jpg",
+      "sha256" : "86287b3453b6092fa25f8fb7ed5e47668a77ea1e7fbe04e2ff377bf693d47436",
+      "type" : "camera_frame"
+    },
+    {
+      "byteSize" : 2043,
+      "path" : "points.ply",
+      "sha256" : "aec8c81b6babc423baf3d58845be0731e33a2b885dd338b69d2bd4f06874c37a",
+      "type" : "pointcloud"
+    },
+    {
+      "byteSize" : 811,
+      "path" : "preview.jpg",
+      "sha256" : "c5b1fec7938257b6509e0e0a9c268ab96b4511b93199f85f63625f5669c39a62",
+      "type" : "preview"
+    },
+    {
+      "byteSize" : 16856,
+      "path" : "source.glb",
+      "sha256" : "0788aa8a6ec6ce408a598852b2a27a031dc059a4e3d165156e1f2a66b7bb824c",
+      "type" : "mesh"
+    }
+  ],
+  "trackingWarnings" : [
+    "tracking: limited"
+  ],
+  "version" : "1.0"
+}
