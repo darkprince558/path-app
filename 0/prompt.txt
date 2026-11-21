@@ -1,0 +1,13 @@
+Okay now we should see how it is on actually phones before we fully approve, what is the localhost ip for me to see on my phone?
+
+---
+
+hmmm I tried that on safari on the same wifi but its not working :(( should i try starting the server from my vscode?
+
+---
+
+Okay the port forwarding worked! Looks good!! Now let's work on the rest of the sections. So next one is the problem section. I dont really like these styles where scrolling feels blocked and like the cards are cutoff so you can't even read them, especially annoying and doesnt perform well in mobile. I also feel like the cards look very cluttered, and maybe now we can continue using theme aspects from the hero to make everything look cohesive.. We need to highlight the problem with the other options a little better. Especially since google maps has similar features but where does it lack? Maybe if these different stages/highlights/changing the map happened on like a loop, like automatically, idk brainstorm a little more on how we can make this more clear and truly like why is there a problem? what's lacking in everything else
+
+---
+
+Okay i think it sounds good. Idk what do you think? I think its good to have a reference or like acknowledge that there are huge company products that everyone uses but why ours solves problems they dont. So like map apps, like Google and Apple maps, are great for getting you places, but not so much when you enter a building sort of thing. I think wiht the loop, all the points will be visible they will just be looping which is highlighted and that corresponds with the map. this should be smooth
