@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens from apps/web/DESIGN.md.
+ * Contrast rules: coral is a fill only (route, pins, CTA background) — never text,
+ * never white-on-coral. Coral buttons use `ink` text. Coral-flavored text uses `rust`.
+ * Every 3D view sits on `night`.
+ */
+@theme {
+  --color-paper: #f3ebd0;
+  --color-surface: #faf5e6;
+  --color-forest: #2f4a3a;
+  --color-coral: #f48057;
+  --color-rust: #a8421f;
+  --color-night: #121c16;
+  --color-sage: #a9c4ae;
+  --color-ink: #15221b;
+  --color-muted: #5e6b60;
+
+  --font-display: "Overpass", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper font-sans text-forest antialiased;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-coral);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
