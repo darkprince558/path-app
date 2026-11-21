@@ -1,5 +1,7 @@
 # Website
 
+[Record a hallway on your phone, process it on your Mac and share the textured scan over Wi-Fi](../../docs/phone-recorder.md).
+
 ## Textured GLB spaces and navigation
 
 The integration preserves this React/Vite/Three.js architecture and adds `/spaces`,

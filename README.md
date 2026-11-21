@@ -1,5 +1,7 @@
 # Path App
 
+[Record a hallway on your phone, process it on your Mac and share the textured scan over Wi-Fi](docs/phone-recorder.md).
+
 Path App is a collaborative 3D mapping and navigation project for Hack Western 13. Walk a route with a LiDAR-capable phone, turn the capture into an interactive 3D view, and send someone a link or QR code they can use to find their way.
 
 Visitors can see what a hallway, entrance, or turn looks like before they reach it. Event organizers can map rooms and booths, schools and companies can share routes across their campuses, and hikers can share trails they’ve walked. Capture can be handheld or hands-free with a custom 3D-printed wearable phone mount.
