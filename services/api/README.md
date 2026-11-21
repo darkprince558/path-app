@@ -2,6 +2,9 @@
 
 The implemented space, graph, destination, saved-path and event routes are documented in [Core API contract](../../docs/core-api.md).
 Local GLB upload, metadata and authorized download routes are documented in [Scan API contract](../../docs/scan-api.md).
+LiDAR registration, per-file upload and finalization are documented in the [Capture API contract](../../docs/capture-api.md).
+The [processing worker runbook](../../docs/capture-processing.md) covers queued jobs,
+`GET /api/jobs/:jobId`, mock outputs, immutable revisions and restart recovery.
 
 ## Auth0 login shell
 
@@ -46,7 +49,11 @@ The seed should match the [venue fixture](../../fixtures/README.md): entrance `(
 Migration `0002_lidar_capture_foundation.sql` adds `captures`, `capture_frames`,
 `processing_jobs`, and `scan_revisions`. It uses the existing Tiger Data PostgreSQL
 connection through `DATABASE_URL`; no new database service or extension is required.
-It does not add upload APIs, workers, publication behavior or access grants.
+The schema migration itself does not add workers, publication behavior or access grants.
+The capture ingestion routes now register and verify bundles; see the capture API
+contract above. Finalization now enqueues one job for the separate mock processing
+worker; existing scans/graphs remain unchanged. Review and manually apply migration
+`0003_durable_capture_processing.sql` before using the worker.
 
 - Captures store manifest inventory/checksum, device, entrance pose, coordinate declaration,
   tracking warnings and upload state. `(owner_id, device_capture_id)` identifies retries;

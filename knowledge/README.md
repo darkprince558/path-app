@@ -12,6 +12,9 @@ Use this folder for knowledge a teammate will still need after your branch merge
 
 ## Add a finding
 
+[LiDAR ingestion contract and exporter handoff](lidar-ingestion.md) records the
+implemented backend example and native capture checks still required.
+
 Create a short Markdown file here such as `capture-export.md` for a finding worth reusing. Use the real device, command or example that produced it. Link to the implementation PR or issue and add a link to the note here. If the result changes the first supported format or another team decision, update the linked architecture or plan as part of the same PR.
 
 ```markdown

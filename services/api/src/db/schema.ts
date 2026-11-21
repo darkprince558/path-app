@@ -215,6 +215,7 @@ export const processingJobs = pgTable('processing_jobs', {
   unique('processing_jobs_id_capture_unique').on(t.id, t.captureId),
   index('processing_jobs_queue_idx').on(t.status, t.createdAt),
   index('processing_jobs_lease_idx').on(t.status, t.leaseExpiresAt),
+  uniqueIndex('processing_jobs_one_running').on(sql`(1)`).where(sql`${t.status} = 'running'`),
   check('processing_jobs_key_check', sql`length(trim(${t.idempotencyKey})) > 0`),
   check('processing_jobs_type_check', sql`length(trim(${t.jobType})) > 0`),
   check('processing_jobs_version_check', sql`length(trim(${t.processorVersion})) > 0`),
@@ -239,6 +240,7 @@ export const scanRevisions = pgTable('scan_revisions', {
   createdAt: createdAt(), updatedAt: updatedAt(),
 }, (t) => [
   unique('scan_revisions_capture_revision_unique').on(t.captureId, t.revision),
+  unique('scan_revisions_job_unique').on(t.processingJobId),
   foreignKey({ columns: [t.captureId, t.spaceId], foreignColumns: [captures.id, captures.spaceId], name: 'scan_revisions_capture_space_fk' }),
   foreignKey({ columns: [t.processingJobId, t.captureId], foreignColumns: [processingJobs.id, processingJobs.captureId], name: 'scan_revisions_job_capture_fk' }),
   foreignKey({ columns: [t.scanId, t.spaceId], foreignColumns: [scans.id, scans.spaceId], name: 'scan_revisions_scan_space_fk' }),

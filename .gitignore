@@ -18,3 +18,5 @@ xcuserdata/
 # Local camera captures, device recordings, and venue exports
 /captures-local/
 /services/api/.local-scans/
+/services/api/.local-captures/
+/services/api/.local-revisions/

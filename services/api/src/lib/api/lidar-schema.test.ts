@@ -70,21 +70,22 @@ test('LiDAR provenance, retries and approval are isolated from existing scans', 
       await reject(n => n.update(processingJobs).set({ leaseToken: randomUUID() }).where(eq(processingJobs.id, job.id)), '23514');
       const [secondCapture] = await tx.insert(captures).values({ ...captureInput,
         deviceCaptureId: `${suffix}-second`, bundleObjectPrefix: `captures/${suffix}-second` }).returning();
+      const [spareJob] = await tx.insert(processingJobs).values({ ...jobInput, idempotencyKey: 'unlinked' }).returning();
       const revisionInput = { captureId: capture.id, spaceId: space.id, processingJobId: job.id,
         scanId: legacyScan.id, revision: 1, objectKey: `outputs/${suffix}.glb`,
         outputSha256: digest, transform: matrix, metadata: { evidenceFrameIds: ['junction-02'] } };
       const [revision] = await tx.insert(scanRevisions).values(revisionInput).returning();
       assert.equal(revision.status, 'draft');
       await reject(n => n.insert(scanRevisions).values({ ...revisionInput,
-        objectKey: 'wrong-job', captureId: secondCapture.id }), '23503');
+        objectKey: 'wrong-job', captureId: secondCapture.id, processingJobId: spareJob.id }), '23503');
       await reject(n => n.insert(scanRevisions).values({ ...revisionInput,
-        objectKey: 'wrong-space', spaceId: otherSpace.id, revision: 2 }), '23503');
+        objectKey: 'wrong-space', spaceId: otherSpace.id, revision: 2, processingJobId: spareJob.id }), '23503');
       const [foreignScan] = await tx.insert(scans).values({
         ownerId: other.id, spaceId: otherSpace.id, name: 'Other GLB', objectKey: `other/${suffix}.glb`,
         format: 'glb', status: 'ready', transform: matrix,
       }).returning();
       await reject(n => n.insert(scanRevisions).values({ ...revisionInput,
-        objectKey: 'wrong-scan', scanId: foreignScan.id, revision: 2 }), '23503');
+        objectKey: 'wrong-scan', scanId: foreignScan.id, revision: 2, processingJobId: spareJob.id }), '23503');
       await reject(n => n.update(scanRevisions).set({ status: 'approved' }).where(eq(scanRevisions.id, revision.id)), '23514');
       await reject(n => n.update(scanRevisions).set({ approvedBy: owner.id }).where(eq(scanRevisions.id, revision.id)), '23514');
       await tx.update(scanRevisions).set({ status: 'approved', approvedBy: owner.id, approvedAt: new Date() })
