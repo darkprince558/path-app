@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")" && pwd)"
+app="$root/apps/capture/video3d"
+cache="$root/captures-local/video3d-tools"
+python="$cache/.venv/bin/python"
+
+case "${1:-}" in
+  setup)
+    exec bash "$app/setup.sh"
+    ;;
+  preview)
+    shift
+    exec python3 "$app/preview.py" "$@"
+    ;;
+  ""|-h|--help)
+    cat <<'HELP'
+Build a colored 3D point cloud from a phone video and open it in Path.
+
+  ./hallway3d setup                         Prepare this Mac once
+  ./hallway3d "/path/to/hallway.MOV"        Reconstruct and open the viewer
+  ./hallway3d VIDEO --no-preview            Export without opening a browser
+  ./hallway3d preview /path/to/scene.ply    Reopen an existing export
+  ./hallway3d demo                          Reconstruct a synthetic hallway
+HELP
+    exit 0
+    ;;
+esac
+
+if [[ ! -x "$python" ]]; then
+  echo "Run ./hallway3d setup first to prepare the reconstruction tools." >&2
+  exit 1
+fi
+if [[ "$1" == demo ]]; then
+  shift
+  sample="$root/captures-local/video3d-smoke/hallway.mp4"
+  if [[ ! -f "$sample" ]]; then
+    "$python" "$app/testdata/make_hallway.py" "$sample"
+  fi
+  set -- "$sample" "$@"
+fi
+exec "$python" "$app/reconstruct.py" "$@"

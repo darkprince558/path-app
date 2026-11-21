@@ -14,6 +14,8 @@ The [editable roadmap](planning/ROADMAP.md) shows the next milestones. The [plan
 
 Our first milestone is to upload one real scan, share an unlisted link, and open the interactive 3D view on a second phone. Scans can be **Public** (listed for everyone), **Unlisted** (anyone with the link), or **Private** (owner and invited accounts).
 
+To try your own hallway video locally, follow the [phone video to 3D instructions for Mac](apps/capture/README.md#try-a-regular-phone-video-on-a-mac). One command exports a colored PLY and opens it in the Path viewer.
+
 | Building | Start with |
 | --- | --- |
 | Website and 3D viewer | [Arielle’s web workspace](apps/web/README.md) |
