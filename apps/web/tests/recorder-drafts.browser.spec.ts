@@ -46,3 +46,26 @@ test("a stale recorder tab keeps its own draft and cannot discard a newer tab's 
     expect(await tab.evaluate(() => sessionStorage.getItem("path.recorder.take"))).toBe(b);
   }
 });
+
+test("a take survives reload when the browser cannot store native video blobs", async ({ page }) => {
+  if (!url) throw new Error("Set TEST_RECORDER_URL to the recorder's /record route.");
+  await page.addInitScript(() => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function(value, key) {
+      if (value?.video instanceof Blob) throw new DOMException("Blob storage unavailable", "UnknownError");
+      return put.call(this, value, key);
+    };
+  });
+  const entry = new URL(url); entry.hash = "key=test-recorder";
+  await page.goto(entry.href);
+  await record(page);
+  const video = () => page.locator("video").evaluate(async (el) => {
+    const blob = await (await fetch(el.currentSrc || el.src)).blob();
+    return { bytes: blob.size, type: blob.type };
+  });
+  const before = await video();
+  expect(before.bytes).toBeGreaterThan(0);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Process on Mac" })).toBeVisible();
+  expect(await video()).toEqual(before);
+});

@@ -62,23 +62,36 @@ async function draftStore<T>(mode: IDBTransactionMode, action: (store: IDBObject
       const tx = db.transaction("drafts", mode);
       const req = action(tx.objectStore("drafts"));
       tx.oncomplete = () => resolve(req.result);
-      tx.onabort = tx.onerror = () => reject(tx.error || req.error);
+      req.onerror = () => reject(req.error);
+      tx.onabort = () => reject(tx.error || new Error("Draft storage was interrupted."));
     });
   } finally {
     db.close();
   }
 }
+type StoredTake = Omit<Take, "video"> & { video: Blob | ArrayBuffer; mimeType?: string };
 export async function readTake(): Promise<Take | undefined> {
   const id = tabTake();
   if (id === "") return;
-  if (id) return draftStore("readonly", (store) => store.get(id));
-  const latest = await draftStore("readonly", (store) => store.index("savedAt").openCursor(null, "prev"));
-  if (latest) selectTake(latest.value.id);
-  return latest?.value;
+  const stored: StoredTake | undefined = id
+    ? await draftStore("readonly", (store) => store.get(id))
+    : (await draftStore("readonly", (store) => store.index("savedAt").openCursor(null, "prev")))?.value;
+  if (!stored) return;
+  selectTake(stored.id);
+  const video = stored.video instanceof Blob ? stored.video : new Blob([stored.video], { type: stored.mimeType });
+  return { ...stored, video };
 }
 export async function writeTake(take: Take) {
   selectTake(take.id);
-  await draftStore("readwrite", (store) => store.put({ ...take, savedAt: Date.now() }, take.id));
+  const savedAt = Date.now();
+  try {
+    await draftStore("readwrite", (store) => store.put({ ...take, savedAt }, take.id));
+  } catch (error) {
+    // Private WebKit can accept binary buffers in IndexedDB while rejecting Blobs.
+    if (!(error instanceof DOMException) || !["UnknownError", "DataCloneError"].includes(error.name)) throw error;
+    const video = await take.video.arrayBuffer();
+    await draftStore("readwrite", (store) => store.put({ ...take, video, mimeType: take.video.type, savedAt }, take.id));
+  }
 }
 export async function clearTake(id: string) {
   await draftStore("readwrite", (store) => store.delete(id));
