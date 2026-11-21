@@ -4,7 +4,7 @@
 
 ## System and ownership
 
-The diagram below covers publication of a finished scan. The [offline website architecture](../planning/offline-web-product.md#architecture) adds camera capture, an on-device preview, resumable video ingest and a reconstruction worker ahead of publication.
+The diagram below covers publication of a finished scan. The [offline website architecture](../planning/offline-web-product.md#architecture) adds camera capture, a choice of on-device or live server preview, resumable video ingest and a reconstruction worker ahead of publication.
 
 ```mermaid
 flowchart LR

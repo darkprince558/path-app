@@ -4,7 +4,7 @@
 
 An organizer uploads a real venue scan as **Unlisted**. Someone on a second phone opens the link while signed out, rotates the scene, and recognizes the turn.
 
-Use one ordinary phone video for the first capture handoff. The [offline website product plan](offline-web-product.md) sequences the real 3D trial, offline recording, delayed upload, live preview and accessible guest directions.
+Use one ordinary phone video for the first capture handoff. The [offline website product plan](offline-web-product.md) sequences the real 3D trial, offline recording, delayed upload, selectable on-device or live server previews, and accessible guest directions.
 
 [Edit this roadmap on GitHub](https://github.com/darkprince558/path-app/edit/main/planning/ROADMAP.md) · [Live team board and checkpoints](https://github.com/darkprince558/path-app/issues/8)
 
