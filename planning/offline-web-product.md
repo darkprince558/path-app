@@ -6,6 +6,8 @@
 
 **Starting evidence.** The repository has a synthetic venue and a local PLY/GLB sharing API. Arielle reported rendering the unlisted fixture and exercising organizer upload in desktop Chromium at phone width. The separate ARKit experiment exercised a simulated device and synthetic export. The camera-only offline capture, physical phone walkthrough, real video reconstruction and hosted sharing described below are proposed device trials. [Guest viewer checkpoint](https://github.com/darkprince558/path-app/issues/2#issuecomment-7057388724) · [Organizer upload checkpoint](https://github.com/darkprince558/path-app/issues/13#issuecomment-7057554875) · [Capture checkpoint](https://github.com/darkprince558/path-app/issues/4#issuecomment-7057179801)
 
+The [engineering blueprint](../docs/web-scan-engineering.md) gives the build team the library list, deployment boundaries, live session protocol, persistent records, API handoffs, capacity worksheet, and implementation gates.
+
 ## What each person experiences
 
 | Person | What Path should let them do |

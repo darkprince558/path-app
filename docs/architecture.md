@@ -2,6 +2,8 @@
 
 **First milestone:** An organizer uploads one real phone scan, chooses **Unlisted**, copies the link, and a teammate opens and orbits the scan on a second phone while signed out. Record the file size and time to first interactive view. A successful download proves transport. The second-phone test proves the user experience.
 
+For implementation, use the [engineering blueprint](web-scan-engineering.md) and its [library choices](web-scan-engineering.md#library-choices-at-a-glance). It covers both scanner modes, binary uploads, source and event revisions, worker recovery, deployment, and physical-device acceptance.
+
 ## System and ownership
 
 The diagram below covers publication of a finished scan. The [offline website architecture](../planning/offline-web-product.md#architecture) adds camera capture, a choice of on-device or live server preview, resumable video ingest and a reconstruction worker ahead of publication.
