@@ -98,6 +98,7 @@ class RecorderTransport(unittest.TestCase):
     def test_upload_queue_share_restart(self):
         with self.serve():
             self.assertEqual((self.data / "organizer.key").stat().st_mode & 0o777, 0o600)
+            self.assertEqual(self.request("GET", "/", auth=False)[0], 302)
             self.assertEqual(self.request("GET", "/record", auth=False)[0], 200)
             for suffix in ("", "/video", "/motion", "/process"):
                 self.assertEqual(self.request("GET", self.prefix + suffix, auth=False)[0], 401)

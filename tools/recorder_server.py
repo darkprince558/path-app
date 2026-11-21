@@ -333,7 +333,13 @@ class RecorderHandler(BaseHTTPRequestHandler):
             guest = re.fullmatch(rf"/s/({SHARE})/?", path)
             if guest:
                 captures.shared_asset(guest.group(1))
-            if path in ("/", "/record", "/record/") or guest:
+            if path == "/":
+                self.send_response(302)
+                self.send_header("Location", "/record")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            if path in ("/record", "/record/") or guest:
                 return self.file_reply(self.server.dist / "index.html", "text/html; charset=utf-8")
             # Only Vite's built assets are addressable, including when a path is guessed.
             if re.fullmatch(r"/assets/[A-Za-z0-9._/-]+", path):
