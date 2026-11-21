@@ -138,6 +138,12 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate {
             id: take.id, created: take.created, duration: take.seconds, mode: mode,
             pointCount: 0, triangles: 0, photoFaces: 0, poseCount: take.poseCount,
             gyroCount: media.motion, classes: [:], hasVideo: media.hasVideo, partial: true)
+          var system = utsname()
+          if uname(&system) == 0 {
+            record.deviceModel = withUnsafeBytes(of: &system.machine) { raw in
+              String(decoding: raw.prefix(while: { $0 != 0 }), as: UTF8.self)
+            }
+          }
           // The library can recover the video if iOS suspends a long mesh export.
           if media.hasVideo { try record.persist() }
           if cloud.count > 0 {

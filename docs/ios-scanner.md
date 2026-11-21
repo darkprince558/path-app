@@ -33,6 +33,12 @@ Use **Prepare complete scan archive**, then **Share complete scan archive** to s
 | `depth-*.f32`, `confidence-*.u8` | When ARKit supplies scene depth, tightly packed row-major float32 little-endian depth in metres. The optional confidence map uses one byte per pixel. Dimensions and filenames are in the corresponding keyframe. |
 | `scan.json` | Take identity, mode, duration, counts, partial status and publication state. The scan coordinate frame still needs alignment to any venue map. |
 
+## Export a LiDAR upload bundle
+
+In Scan Review, enter the capture UUID issued by Sam’s backend under **LiDAR upload bundle**. Tap **Prepare LiDAR bundle**, then **Share LiDAR bundle**. The ZIP contains a `capture/` directory with the mesh, colored cloud, selected JPEGs, camera poses, preview and SHA-256 manifest. Recording can happen offline before the server allocates the UUID. Keep original camera frames in private storage.
+
+To send the simulator export directly through the CPU processor, pass the installed worker executable as a second argument to `scripts/check-ios-scanner.sh`.
+
 ## Verify
 
 ```sh

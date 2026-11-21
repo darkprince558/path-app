@@ -23,6 +23,15 @@ final class PathCaptureUITests: XCTestCase {
     attachment.name = "Offline native mesh review"
     attachment.lifetime = .keepAlways
     add(attachment)
+    let captureID = app.textFields["Capture ID from the server"]
+    for _ in 0..<4 where !captureID.isHittable { app.swipeUp() }
+    XCTAssertTrue(captureID.isHittable)
+    captureID.tap()
+    captureID.typeText("b4ca8f7e-14a8-4fdc-9e54-0ea7936ff501\n")
+    let prepare = app.buttons["Prepare LiDAR bundle"]
+    XCTAssertTrue(prepare.isEnabled)
+    prepare.tap()
+    XCTAssertTrue(app.buttons["Share LiDAR bundle"].waitForExistence(timeout: 15))
     app.buttons["Done"].tap()
     XCTAssertTrue(fixture.waitForExistence(timeout: 5))
   }

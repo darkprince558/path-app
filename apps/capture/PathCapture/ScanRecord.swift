@@ -9,6 +9,7 @@ struct ScanRecord: Codable, Identifiable {
   var classes: [String: Int]
   let hasVideo: Bool
   var partial: Bool
+  var deviceModel: String?
   var guestURL: URL?
   var videoJob: UUID?
   var videoGuestURL: URL?
@@ -18,8 +19,19 @@ struct ScanRecord: Codable, Identifiable {
       .appendingPathComponent("Scans", isDirectory: true)
   }
   func archive() throws -> URL {
+    try Self.zip(folder, name: "PathScan-" + id.uuidString + ".zip")
+  }
+  func bundleArchive(captureID: UUID) throws -> URL {
+    let fm = FileManager.default
+    let staging = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try fm.createDirectory(at: staging, withIntermediateDirectories: false)
+    defer { try? fm.removeItem(at: staging) }
+    let bundle = staging.appendingPathComponent("capture", isDirectory: true)
+    try CaptureBundle.write(take: folder, record: self, captureID: captureID, to: bundle)
+    return try Self.zip(bundle, name: "capture-" + captureID.uuidString.lowercased() + ".zip")
+  }
+  private static func zip(_ folder: URL, name: String) throws -> URL {
     let coordinator = NSFileCoordinator(filePresenter: nil)
-    let name = "PathScan-" + id.uuidString + ".zip"
     let staging = FileManager.default.temporaryDirectory.appendingPathComponent(
       UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
