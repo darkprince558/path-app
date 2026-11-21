@@ -15,7 +15,7 @@ import { Container } from "./shared";
 
 interface Link {
   label: "GitHub" | "LinkedIn" | "Résumé" | "Portfolio";
-  /** Leave out until there's a real link; the button then shows "coming soon". */
+  /** Missing until we have the link; the button then shows "coming soon". */
   href?: string;
 }
 
@@ -27,18 +27,66 @@ interface Person {
   links: Link[];
 }
 
-const links = (github?: string, linkedin?: string, resume?: string, portfolio?: string): Link[] => [
-  { label: "GitHub", href: github },
-  { label: "LinkedIn", href: linkedin },
-  { label: "Résumé", href: resume },
-  { label: "Portfolio", href: portfolio },
-];
+/**
+ * The four buttons on the back of a card, in a fixed order. Pass a URL, `undefined`
+ * for "coming soon", or `null` when the person doesn't have one (no button).
+ * Résumés are PDFs in public/resumes/.
+ */
+type Href = string | null | undefined;
+const links = (github: Href, linkedin: Href, resume: Href, portfolio: Href): Link[] =>
+  (
+    [
+      ["GitHub", github],
+      ["LinkedIn", linkedin],
+      ["Résumé", resume],
+      ["Portfolio", portfolio],
+    ] as const
+  )
+    .filter(([, href]) => href !== null)
+    .map(([label, href]) => ({ label, href: href ?? undefined }));
 
 const TEAM: Person[] = [
-  { name: "Arielle", role: "Frontend, 3D viewer and UX", photo: arielle, initials: "AB", links: links("https://github.com/AryBaum") },
-  { name: "Sam", role: "Backend and sharing", photo: sam, initials: "S", links: links() },
-  { name: "Krishna", role: "Phone capture", initials: "K", links: links() },
-  { name: "Anish", role: "Phone capture and testing", initials: "A", links: links() },
+  {
+    name: "Arielle",
+    role: "Frontend, 3D viewer and UX",
+    photo: arielle,
+    initials: "AT",
+    links: links(
+      "https://github.com/AryBaum",
+      "https://www.linkedin.com/in/arielle-tetelbaum",
+      "/resumes/arielle-tetelbaum.pdf",
+      "https://arii-website.vercel.app/",
+    ),
+  },
+  {
+    name: "Sam",
+    role: "Backend and sharing",
+    photo: sam,
+    initials: "SD",
+    links: links("https://github.com/samdeitz", undefined, "/resumes/sam-deitz.pdf", "https://samdeitz.ca/"),
+  },
+  {
+    name: "Krishna",
+    role: "Phone capture",
+    initials: "KP",
+    links: links(
+      "https://github.com/Krishna-Panicker12",
+      "https://www.linkedin.com/in/krishna-panicker-b72604372/",
+      "/resumes/krishna-panicker.pdf",
+      null,
+    ),
+  },
+  {
+    name: "Anish",
+    role: "Phone capture and testing",
+    initials: "AJ",
+    links: links(
+      "https://github.com/darkprince558",
+      "https://www.linkedin.com/in/anish-jami/",
+      "/resumes/anish-jami.pdf",
+      "https://anish-jami.vercel.app/",
+    ),
+  },
 ];
 
 /** Contour lines, like a topographic map, for people without a photo yet. */
