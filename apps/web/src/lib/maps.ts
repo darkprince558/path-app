@@ -59,7 +59,7 @@ export function filterMaps(maps: MapSummary[], filter: MapFilter): MapSummary[] 
 /**
  * Where a map was opened from, carried in the router's location state so the map
  * page can offer "← Community" or "← Your maps". Maps opened from a shared link or
- * QR code have none, and show the Path logo instead.
+ * QR code have none, and show the Not 404 logo instead.
  */
 export interface MapOrigin {
   from: string;

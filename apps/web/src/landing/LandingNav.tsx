@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { LogoMark } from "./shared";
+import { Wordmark } from "../components/Logo";
 
 const SECTIONS = [
-  { href: "#problem", label: "Why Path" },
+  { href: "#problem", label: "Why Not 404" },
   { href: "#tour", label: "How it works" },
   { href: "#who", label: "Who it's for" },
   { href: "#team", label: "Team" },
@@ -28,9 +28,8 @@ export default function LandingNav() {
       className={`sticky top-0 z-40 text-paper transition-colors duration-300 ${scrolled ? "bg-night/80 backdrop-blur-md" : "bg-transparent"}`}
     >
       <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto] items-center gap-4 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-6 md:grid-cols-[1fr_auto_1fr]">
-        <Link to="/" className="flex w-fit items-center gap-2 font-display text-2xl font-black tracking-wide">
-          <LogoMark className="size-7 text-paper" />
-          Path
+        <Link to="/" className="w-fit text-[1.7rem]">
+          <Wordmark />
         </Link>
         <nav aria-label="Sections" className="hidden items-center gap-8 md:flex">
           {SECTIONS.map((s) => (

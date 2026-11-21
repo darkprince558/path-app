@@ -3,6 +3,7 @@ import { useEffect, useState, type ComponentType } from "react";
 import { Link, NavLink, Outlet } from "react-router";
 import { Toaster } from "sonner";
 import { currentUser } from "../lib/session";
+import { Wordmark } from "./Logo";
 
 interface NavItem {
   to: string;
@@ -39,8 +40,8 @@ export default function AppLayout() {
       <SkipLink />
       {/* Desktop sidebar */}
       <aside data-surface="forest" className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col bg-forest px-4 py-6 text-paper md:flex">
-        <Link to="/" className="px-3 font-display text-3xl font-black tracking-wide">
-          Path
+        <Link to="/" className="px-3 text-3xl">
+          <Wordmark />
         </Link>
         <nav aria-label="Main" className="mt-8 grid gap-1">
           {NAV.map(({ to, label, icon: Icon }) => (
@@ -74,8 +75,8 @@ export default function AppLayout() {
 
       {/* Phone top bar */}
       <header className="sticky top-0 z-10 flex items-center justify-between bg-paper/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur md:hidden">
-        <Link to="/" className="font-display text-2xl font-black tracking-wide">
-          Path
+        <Link to="/" className="text-2xl">
+          <Wordmark />
         </Link>
         <div className="-mr-1 flex items-center gap-1">
           <Link to="/settings" aria-label="Settings" className="grid size-11 place-items-center rounded-full text-muted">

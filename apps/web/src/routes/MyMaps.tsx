@@ -23,7 +23,7 @@ export default function MyMaps() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    document.title = "Your maps · Path";
+    document.title = "Your maps · Not 404";
   }, []);
 
   useEffect(() => {

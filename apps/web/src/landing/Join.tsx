@@ -55,7 +55,7 @@ export default function Join() {
           </div>
           <figcaption className="max-w-[11rem] leading-snug">
             <span className="block font-display text-xl font-black">Try it on your phone</span>
-            <span className="mt-1 block text-sage">Scan to open a sample map. No app, no account.</span>
+            <span className="mt-1 block text-sage">Never 404 in real life. Scan to open a sample map.</span>
           </figcaption>
         </figure>
       </Container>

@@ -1,4 +1,6 @@
-# Path web design direction
+# Not 404 web design direction
+
+The product is **Not 404** (domain `not404.vodka`): a 404 means "not found", and the app makes indoor places found. Write it "Not 404" in sentences and "not404" in the logo, where the 0 is a coral "you are here" ring (`src/components/Logo.tsx`). The favicon is the ring alone on night (`public/favicon.svg`). Tagline: "Never 404 in real life." Keep the .vodka to the address and one line in the footer.
 
 Owner: Arielle. This is the agreed visual and UX direction for the landing page and the app in `apps/web/`. The live, interactive version (hero prototype, flip cards, footprint trail, guest-view mockup) is the playbook artifact: https://claude.ai/artifact/Abt1dfRD8khy9gxW5pDNJV (private to Arielle until shared).
 

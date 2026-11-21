@@ -6,7 +6,7 @@ import { buildVenueCloud } from "./venue";
 
 /*
  * "The problem": what people use today to find their way inside, and where each one
- * runs out, ending with Path. All five points stay readable in a list. A dark screen
+ * runs out, ending with Not 404. All five points stay readable in a list. A dark screen
  * beside them (styled like the hero) plays a short scene for the highlighted point,
  * then moves on by itself. The loop pauses while you hover, focus or are scrolled
  * away, has a Pause button, and with Reduce motion it doesn't move on its own: each
@@ -239,7 +239,7 @@ function PathScene() {
       <At x={room.sx} y={room.sy - 70} className="pb-pop -translate-x-1/2" style={delay(2.3)}>
         <Chip>Room 204</Chip>
       </At>
-      {/* What Path does that the others can't, one answer per problem. */}
+      {/* What Not 404 does that the others can't, one answer per problem. */}
       <div className="absolute inset-x-[3%] bottom-[4%] flex flex-wrap justify-center gap-1.5 sm:gap-2">
         {["Works indoors", "Anyone can map it", "Real 3D, kept current", "Skips the stairs"].map((label, i) => (
           <span
@@ -261,7 +261,7 @@ const POINTS: Point[] = [
   { id: "indoor", tool: "Indoor maps", line: "Only for big venues like airports and malls.", seconds: 4.5, scene: () => <IndoorMapsScene /> },
   { id: "plans", tool: "Floor plans", line: "Flat, out of date, and hard to read.", seconds: 4.5, scene: () => <FloorPlanScene /> },
   { id: "checkmark", tool: "“Accessible” ✓", line: "A checkmark, not a route.", seconds: 4.5, scene: () => <CheckmarkScene /> },
-  { id: "path", tool: "Path", line: "The real place in 3D, mapped by people who know it.", seconds: 7.5, scene: () => <PathScene /> },
+  { id: "path", tool: "Not 404", line: "The real place in 3D, mapped by people who know it.", seconds: 7.5, scene: () => <PathScene /> },
 ];
 
 /* -------------------------------------------------------------- section */
@@ -303,7 +303,7 @@ export default function Problem() {
       <Container>
         <div className="mx-auto grid max-w-2xl gap-3 text-center">
           <h2 id="problem-heading" className="font-display text-[clamp(2rem,3.6vw,3rem)] leading-none font-black text-balance">
-            Maps stop at the front door.
+            Inside, every map says 404.
           </h2>
           <p className="text-lg text-muted">Google and Apple Maps get you to the building. Inside, you&apos;re on your own.</p>
         </div>

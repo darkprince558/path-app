@@ -34,7 +34,7 @@ export default function Community() {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    document.title = "Community · Path";
+    document.title = "Community · Not 404";
   }, []);
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function Community() {
         if (controller.signal.aborted) return;
         setState({
           phase: "error",
-          message: error instanceof TypeError ? "Couldn't reach the Path server." : (error as Error).message,
+          message: error instanceof TypeError ? "Couldn't reach the server." : (error as Error).message,
         });
       });
     return () => controller.abort();

@@ -44,7 +44,7 @@ Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), c
 | Section | File | Motion |
 | --- | --- | --- |
 | Hero | `Hero.tsx`, `HeroScene.tsx` | A 3D scan of the fixture's T corridor assembles from scattered dots, a coral route draws with footprints, and dots near the mouse glow. Replays after 20 s idle. Route to and QR panels float over it. |
-| Why Path | `Problem.tsx` | A looping player: map apps, indoor maps, floor plans, the "accessible" checkmark, then Path. Pauses on hover, keyboard focus, off screen, or with Pause. |
+| Why Not 404 | `Problem.tsx` | A looping player: map apps, indoor maps, floor plans, the "accessible" checkmark, then Not 404. Pauses on hover, keyboard focus, off screen, or with Pause. |
 | How it works | `AppTour.tsx` | Laptop: a sticky CSS phone swaps screens for the step in the middle. Phone: one row per step, alternating sides. |
 | Who it's for | `WhoUses.tsx` | Sign-style people walk to their signs one after another along one route. |
 | Team | `Creators.tsx` | Cards start as a pile and fan out; they turn over to links on hover, tap or keyboard focus. Photos are in `src/assets/team/`, résumés in `public/resumes/`. |

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
+import { Wordmark } from "../components/Logo";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Settings as SettingsIcon } from "lucide-react";
 import { LoadingPanel, MessagePanel } from "../components/StatusPanel";
@@ -45,7 +46,7 @@ export default function GuestView() {
   const resetView = useCallback(() => setResetToken((n) => n + 1), []);
 
   useEffect(() => {
-    document.title = state.phase === "ready" && state.meta.name ? `${state.meta.name} · Path` : "Shared map · Path";
+    document.title = state.phase === "ready" && state.meta.name ? `${state.meta.name} · Not 404` : "Shared map · Not 404";
   }, [state]);
 
   useEffect(() => {
@@ -202,7 +203,7 @@ function ViewerChrome({
   // The API's name wins. Older servers send none, so fall back to the card's name.
   const mapName = name ?? origin?.mapName ?? "Shared map";
   // Going back through history keeps the previous page's filters and scroll position.
-  // A map opened straight from a link or QR has no previous page in Path.
+  // A map opened straight from a link or QR has no previous page in Not 404.
   const canGoBack = origin !== null && (window.history.state as { idx?: number } | null)?.idx !== 0;
   return (
     <>
@@ -225,9 +226,9 @@ function ViewerChrome({
           ) : (
             <Link
               to="/"
-              className="pointer-events-auto font-display text-2xl leading-none font-black tracking-wide text-paper"
+              className="pointer-events-auto text-2xl text-paper"
             >
-              Path
+              <Wordmark />
             </Link>
           )}
           <h1 className="mt-2 truncate font-display text-xl leading-tight font-black text-paper">{mapName}</h1>

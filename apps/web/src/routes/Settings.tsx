@@ -37,7 +37,7 @@ export default function Settings() {
   const { from: backTo, origin } = (location.state as { from?: string; origin?: unknown } | null) ?? {};
 
   useEffect(() => {
-    document.title = "Settings · Path";
+    document.title = "Settings · Not 404";
   }, []);
 
   return (

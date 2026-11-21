@@ -38,7 +38,7 @@ async function request(url: string, signal: AbortSignal): Promise<Response> {
     response = await fetch(url, { signal, credentials: "same-origin" });
   } catch (error) {
     if (signal.aborted) throw error;
-    throw new ShareError("network", "Could not reach the Path server.");
+    throw new ShareError("network", "Couldn't reach the server.");
   }
   if (response.status === 404) {
     throw new ShareError("not-found", "This scan link doesn't exist or isn't shared with you.", 404);

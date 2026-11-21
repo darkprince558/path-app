@@ -176,7 +176,7 @@ export default function Hero() {
           </div>
           <figcaption className="max-w-[9rem] text-left leading-snug">
             <span className="block font-bold">Try it on your phone</span>
-            <span className="text-sm text-sage">Scan to open a sample map</span>
+            <span className="text-sm text-sage">Never 404 in real life. Scan to open a sample map.</span>
           </figcaption>
         </figure>
       </div>

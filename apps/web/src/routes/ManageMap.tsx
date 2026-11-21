@@ -51,7 +51,7 @@ export default function ManageMap() {
   }, [shareId]);
 
   useEffect(() => {
-    document.title = state.phase === "ready" ? `Manage ${state.map.name} · Path` : "Manage map · Path";
+    document.title = state.phase === "ready" ? `Manage ${state.map.name} · Not 404` : "Manage map · Not 404";
   }, [state]);
 
   return (

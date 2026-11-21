@@ -37,7 +37,7 @@ export default function Upload() {
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
-    document.title = "New map · Path";
+    document.title = "New map · Not 404";
     return () => abortRef.current?.abort();
   }, []);
 

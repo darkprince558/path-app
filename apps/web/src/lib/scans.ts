@@ -123,7 +123,7 @@ export function formatBytes(bytes: number): string {
 function messageFor(status: number, serverError: string | undefined, format: ScanFormat): string {
   switch (status) {
     case 0:
-      return "Couldn't reach the Path server. Check your connection and try again.";
+      return "Couldn't reach the server. Check your connection and try again.";
     case 400:
       return serverError === "Invalid model header"
         ? `The server couldn't read this as a ${format.toUpperCase()} scan. Export it again from the capture app.`
@@ -208,7 +208,7 @@ export async function updateMap(
       body: JSON.stringify(change),
     });
   } catch {
-    throw new UploadError(`Couldn't reach the Path server. The ${what} didn't change.`);
+    throw new UploadError(`Couldn't reach the server. The ${what} didn't change.`);
   }
   if (response.status === 404) {
     throw new UploadError("This map no longer exists, or it was uploaded from a different account.", 404);
@@ -235,7 +235,7 @@ export async function deleteMap(shareId: string): Promise<void> {
   try {
     response = await fetch(`/api/scans/${encodeURIComponent(shareId)}`, { method: "DELETE", headers: ownerHeaders() });
   } catch {
-    throw new UploadError("Couldn't reach the Path server. The map wasn't deleted.");
+    throw new UploadError("Couldn't reach the server. The map wasn't deleted.");
   }
   if (response.status === 404) {
     throw new UploadError("This map is already gone, or it was uploaded from a different account.", 404);
@@ -252,7 +252,7 @@ async function fetchList<T>(path: string, signal?: AbortSignal): Promise<T[]> {
     response = await fetch(path, { headers: ownerHeaders(), signal });
   } catch (error) {
     if (signal?.aborted) throw error;
-    throw new UploadError("Couldn't reach the Path server.");
+    throw new UploadError("Couldn't reach the server.");
   }
   if (response.status === 404) throw new ListUnavailableError("This server can't list maps yet.");
   if (response.status === 401) throw new UploadError("Sign in to see your maps.", 401);

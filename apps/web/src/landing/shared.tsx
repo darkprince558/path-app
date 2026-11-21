@@ -17,20 +17,3 @@ export function demoUrl(): string {
 export function isLocalhost(): boolean {
   return ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
 }
-
-/** Logo mark: a dotted route bending into a "you are here" dot. */
-export function LogoMark({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 26 26" className={className} aria-hidden="true">
-      <path
-        d="M5 23 V9 a6 6 0 0 1 12 0 a6 6 0 0 1 -6 6 H9"
-        fill="none"
-        stroke="#F48057"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray="0.1 5.2"
-      />
-      <circle cx="9" cy="15" r="2.6" fill="currentColor" />
-    </svg>
-  );
-}
