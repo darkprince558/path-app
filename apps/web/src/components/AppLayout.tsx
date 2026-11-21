@@ -1,6 +1,7 @@
 import { Map as MapIcon, Plus, Settings as SettingsIcon, Users } from "lucide-react";
-import type { ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { Link, NavLink, Outlet } from "react-router";
+import { Toaster } from "sonner";
 import { currentUser } from "../lib/session";
 
 interface NavItem {
@@ -89,6 +90,8 @@ export default function AppLayout() {
         <Outlet />
       </main>
 
+      <AppToaster />
+
       {/* Phone tab bar */}
       <nav
         aria-label="Main"
@@ -136,5 +139,40 @@ export function SkipLink() {
     >
       Skip to main content
     </a>
+  );
+}
+
+/** True while the sidebar layout is showing (Tailwind's md breakpoint, 48rem). */
+function useWideLayout(): boolean {
+  const query = "(min-width: 48rem)";
+  const [wide, setWide] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const list = window.matchMedia(query);
+    const onChange = () => setWide(list.matches);
+    list.addEventListener("change", onChange);
+    return () => list.removeEventListener("change", onChange);
+  }, []);
+  return wide;
+}
+
+/**
+ * Pop-up messages ("Link copied", "Map deleted"). With the sidebar they sit at the
+ * bottom left of the content, just right of the sidebar (w-60 = 15rem). Without it
+ * they're centered above the phone tab bar. Offsets use rem, so they follow the
+ * text size setting like the sidebar does.
+ */
+function AppToaster() {
+  const wide = useWideLayout();
+  const offset = wide
+    ? { left: "calc(15rem + 1.5rem)", bottom: "1.5rem" }
+    : { bottom: "calc(5.75rem + env(safe-area-inset-bottom))" };
+  return (
+    <Toaster
+      position={wide ? "bottom-left" : "bottom-center"}
+      offset={offset}
+      mobileOffset={offset}
+      // Forest toasts with paper text (8.1:1). Sonner announces them in a polite live region.
+      toastOptions={{ className: "!bg-forest !text-paper !border-0 !font-sans", descriptionClassName: "!text-sage" }}
+    />
   );
 }

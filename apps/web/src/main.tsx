@@ -2,7 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Navigate } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import { Toaster } from "sonner";
 import "./index.css";
 import AppLayout from "./components/AppLayout";
 import { PreferencesProvider } from "./lib/preferences";
@@ -39,11 +38,6 @@ createRoot(root).render(
   <StrictMode>
     <PreferencesProvider>
       <RouterProvider router={router} />
-      <Toaster
-        position="top-center"
-        // Forest toasts with paper text (8.1:1). Sonner announces them in a polite live region.
-        toastOptions={{ className: "!bg-forest !text-paper !border-0 !font-sans", descriptionClassName: "!text-sage" }}
-      />
     </PreferencesProvider>
   </StrictMode>,
 );
