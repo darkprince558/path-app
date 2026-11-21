@@ -1,0 +1,1250 @@
+Background (from the session that started this one):
+Not 404 (domain not404.vodka; formerly "Path") is a Hack Western 13 project. People scan a place (building, campus, trail, event venue) with a LiDAR iPhone, upload it, and share a 3D map by link or QR as Public, Unlisted or Private; visitors open it signed out in the browser. It's community maps for any place, not just events: the uploader is the "map owner", never "organizer" (except the real Hack Western organizers). Team: Sam (backend API, #3), Krishna and Anish (phone capture, #4; second-phone trial #5), Arielle (all frontend UI/UX). The website lives in `apps/web/` (Vite, React 19, TypeScript, Tailwind v4, React Router, @react-three/fiber and drei, pnpm with a 14-day minimumReleaseAge). A local mock API runs with `py -3 -B tools/scan_mock.py --port 8001`. Arielle's web work is in stacked PRs merging in order #15, #16, #18, #21, #29 (landing page), #30 (Not 404 rebrand); this checkout is on `feature/not404-brand`. Colors: paper #F3EBD0, forest #2F4A3A, coral #F48057 (fills only, never text), rust #A8421F, night #121C16 behind 3D; fonts Overpass and Atkinson Hyperlegible Next. Arielle prefers plain language with jargon in brackets, wants to be told how to see results, and wants to be asked before anything is pushed, posted on GitHub, or turned into an issue. Run `gh` from `C:\Program Files\GitHub CLI` and `scripts/tasks.py` with PYTHONUTF8=1.
+
+Task:
+Arielle (GitHub AryBaum, frontend owner) wants to talk through whether and how the app part of Not 404 could become an iPhone app. This is a discussion first: no code, installs, branches, issues or pushes until she agrees to a plan.
+
+Start by reading enough to ground the conversation, then ask her what she wants out of an iPhone app before recommending anything:
+- `apps/web/README.md` and `apps/web/DESIGN.md` (pages, design rules, accessibility)
+- `apps/web/src/components/ScanViewer.tsx`, `src/lib/ply.ts`, `src/routes/GuestView.tsx` (the 3D viewer), `src/lib/scans.ts` and `src/lib/shares.ts` (API clients)
+- `apps/capture/README.md` and the capture PRs (#12 "first-party iPhone LiDAR demo recorder", #27 "Capture, review and share metric hallway scans from an ARKit iPhone") with `gh pr view`
+- `services/api/README.md`, `docs/architecture.md`, `planning/ROADMAP.md`
+
+Things worth covering, in plain language with the technical term in brackets:
+- What "the app" would include: owner side (scan, upload, waypoints, sharing, Your maps, Community) versus guest side (opening a shared map from a link or QR, which today needs no install).
+- Options and trade-offs: a native SwiftUI app (ARKit/RealityKit, reusing the capture work), wrapping the existing React site (Capacitor or a WebView), React Native, or keeping the web app and adding an installable home-screen web app (PWA). Include what each means for the 3D viewer, LiDAR capture, sign-in, offline use and App Store review.
+- What realistically fits before the deadline (Sun Nov 22, 2026, 9:00 a.m. Toronto) versus after the hackathon, and who would own what (Krishna and Anish own phone capture).
+- Keeping guest links working signed out in the browser regardless.
+
+Done for this session means: a short recommendation Arielle agrees with, and, if she wants it, a written plan (which she can ask you to publish or turn into a GitHub issue; ask before creating issues or pushing).
+
+Shared notes folder for this group of sessions (outside the repo; read siblings' notes there, leave hand-over notes or large findings there instead of pasting them into messages): C:\Users\tetea\AppData\Local\Claude-Data\claude_pzs8sxrjxfjjc\side-session-notes\local_0b8a6f20-e2b9-4ae4-b15c-fd687096a0c5
+
+---
+
+Wait wait can you summarize again in simple terms. So basically we will keep my website the same but we can make an iphone app to do the scans and send them directly to our web app? So it's not doable to do just the my maps, comunity, settings software stuff as an iphone app because .... . And this path capture app, how would we download it on our iphones if its not in the app store? should I still help build ui for that?
+
+---
+
+so it would need a mac to do the community and your maps etc but we wouldnt need it for the scanner? how does that work?
+
+---
+
+Okay sounds good, so my job here is kinda stand still for now. Sam asked me to look into how we will integrate everything
+
+---
+
+hmm let's lay off the glb files for now, Sam attempted to do the Vultr server but vultr wasn't working for him even tho we got a whole promo and like $100 in it to spend from this event. Will you help me and see if maybe we can get it working? apparently someone else was able to do it with CLI or smth. Btw i forgot to add this context in from the HW13 document: 
+
+<pasted_content id="6775">
+LiDAR Capture Bundle — manifest.json Contract
+Draft for Anish + Sam • HW13 / !404 • 21 November 2026
+Anish produces one portable capture bundle. Sam's backend validates it, runs the CPU processor, stores an immutable processed revision, and exposes only approved revisions. Database: existing Tiger Data PostgreSQL (no migration).
+
+1. Required capture bundle
+capture/
+├── manifest.json
+├── source.glb
+├── points.ply
+├── frames.json
+├── frames/
+│   └── frame-0012.jpg  (and other selected frames)
+└── preview.jpg
+
+2. Proposed manifest.json
+Valid JSON structure shown below. All file sizes, UUIDs and SHA-256 strings are illustrative—replace with actual capture values before uploading.
+{
+  "version": "1.0",
+  "captureId": "b4ca8f7e-14a8-4fdc-9e54-0ea7936ff501",
+  "createdAt": "2026-11-21T18:00:00Z",
+  "device": {
+    "model": "iPhone 15 Pro",
+    "platform": "iOS",
+    "scanner": "ARKit"
+  },
+  "coordinateSystem": {
+    "units": "meters",
+    "upAxis": "Y",
+    "handedness": "right",
+    "matrixOrder": "column-major"
+  },
+  "entrancePose": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+  ],
+  "files": [
+    {
+      "path": "source.glb",
+      "type": "mesh",
+      "byteSize": 12500000,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "path": "points.ply",
+      "type": "pointcloud",
+      "byteSize": 8400000,
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "path": "frames.json",
+      "type": "frame_metadata",
+      "byteSize": 2500,
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "path": "frames/frame-0012.jpg",
+      "type": "camera_frame",
+      "byteSize": 350000,
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "path": "preview.jpg",
+      "type": "preview",
+      "byteSize": 150000,
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  ],
+  "trackingWarnings": []
+}
+
+3. Proposed frames.json
+Each selected camera image must have a stable frame ID, relative file path and camera-to-world 4×4 pose in the same capture coordinate system as the mesh. Matrix entries are column-major. Frame IDs must remain unchanged across processing revisions.
+{
+  "frames": [
+    {
+      "frameId": "frame-0012",
+      "path": "frames/frame-0012.jpg",
+      "timestampMs": 12340,
+      "cameraPose": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2,
+        1.6,
+        3.4,
+        1
+      ]
+    }
+  ]
+}
+
+4. Required field semantics
+version — Manifest schema version, initially "1.0".
+captureId — UUID issued by Sam's backend when a capture is created; identical across its upload bundle.
+createdAt — ISO-8601 UTC timestamp.
+device — iPhone model, platform and ARKit scanner identification.
+coordinateSystem — Geometry, entrance pose and camera poses must agree: metres, right-handed, Y-up; flattened 4×4 transforms in column-major order.
+entrancePose — Camera-to-world/reference transform marking the entrance or capture starting location. Agree explicitly whether this is an actual doorway or simply scan origin.
+files — Every uploaded file except manifest.json has its own unique relative path, file type, byte size and SHA-256 checksum. The backend rejects unlisted or missing files.
+trackingWarnings — Array of strings for degraded tracking, incomplete surfaces or other capture-quality concerns.
+
+5. Backend validation and storage
+1. Create capture via POST /api/captures; backend issues captureId and upload targets.
+2. On finalize, verify authenticated owner, manifest schema/version, required paths, safe relative paths (no ../), unique paths, byte sizes, checksums and frame references.
+3. Reject broken bundles before processing; never publish raw or failed scans.
+4. Run Anish's CPU processor with one active job at a time; use local temporary space for intermediate files.
+5. Store source bundles and processed models privately in object storage; store capture, revision, frame, job and approval metadata in Tiger Data PostgreSQL.
+6. Publish approved processed revisions only. Keep revision IDs immutable so routes and Gemini landmark cues always reference the correct scan.
+
+6. CPU processing contract
+process_lidar_capture --input <bundle-directory> --output <revision-directory>
+
+revision/
+├── master.glb     (processed full-quality model)
+├── scene.glb      (simplified model for mobile/web)
+├── scene.ply      (optional point-cloud preview)
+├── preview.jpg
+└── report.json
+
+7. Decisions Anish + Sam must confirm
+1. Can ARKit export source.glb, points.ply and selected JPEG frames reliably? If not, agree on the conversion performed before upload.
+2. Are all poses in the same captured world space and metres, and are transforms exported Y-up, right-handed, column-major? Specify any mesh-to-world conversion.
+3. Which frames are retained, and can each keep a stable frameId and camera pose? Confirm cameraPose is camera-to-world.
+4. Will Anish provide process_lidar_capture and a fixture bundle, including exact dependencies and exit codes?
+
+8. Acceptance test
+A real room scan uploads with a passing manifest, processes into master.glb and scene.glb, survives an API/worker restart, remains private until approval, and opens through a stable share URL. Krishna can later request specific frames by stable frame ID and the correct scan revision.
+
+Three-Person LiDAR Pipeline Plan
+
+## Anish — LiDAR Scanner and 3D Model
+
+Build the iOS ARKit scanning app.
+
+The app captures:
+
+- ARKit mesh anchors and transforms
+- Colored LiDAR points
+- Selected camera frames with stable IDs and camera poses
+- Entrance pose, metre scale, tracking warnings, and device details
+
+Export one scan bundle:
+
+```text
+manifest.json
+source.glb
+points.ply
+frames.json
+frames/*.jpg
+preview.jpg
+```
+
+Provide Sam with a CPU command that validates and cleans the bundle:
+
+```sh
+process_lidar_capture --input <bundle> --output <revision>
+```
+
+It produces:
+
+```text
+master.glb
+scene.glb
+scene.ply
+preview.jpg
+report.json
+```
+
+`scene.glb` is the simplified website model. `scene.ply` is the optional point-cloud view.
+
+Anish is finished when a real room scan is recognizable, metric, correctly oriented, and loads smoothly on a phone.
+
+## Sam — Vultr Backend and Storage
+
+Deploy the API, Postgres, one CPU worker, and private object storage on the Vultr VX1 server.
+
+Implement:
+
+```text
+POST /api/captures
+POST /api/captures/{captureId}/uploads
+POST /api/captures/{captureId}/finalize
+GET  /api/jobs/{jobId}
+GET  /api/shares/{shareId}
+GET  /api/shares/{shareId}/scene
+GET  /api/shares/{shareId}/points
+GET  /api/shares/{shareId}/frames/{frameId}
+```
+
+Sam must:
+
+- Give Anish private upload targets.
+- Verify manifest checksums and ownership.
+- Run Anish’s processor with one active job at a time.
+- Store source bundles and processed revisions privately.
+- Keep temporary processing files on local NVMe.
+- Store scan, revision, frame, route, and Gemini metadata in Postgres.
+- Expose only approved revisions.
+- Preserve stable frame IDs and scan revision IDs.
+- Give Krishna Gemini service private access to selected frame bytes.
+- Prevent failed jobs from exposing models.
+
+Sam is finished when one real scan uploads, processes, survives a service restart, and opens through a stable share URL.
+
+## You — Gemini Landmark Assistance
+
+Build the server-side Gemini module.
+
+Krishna input comes from Sam:
+
+```json
+{
+  "scanRevisionId": "revision-id",
+  "routeSegmentId": "segment-id",
+  "verifiedDirection": "left",
+  "sourceWaypointId": "junction-1",
+  "destinationWaypointId": "hall-left",
+  "frames": [
+    {
+      "frameId": "capture-id/frame-0012",
+      "image": "private image bytes",
+      "cameraPose": [16 numbers]
+    }
+  ]
+}
+```
+
+The route direction is already verified. Gemini only identifies visible signs or landmarks and writes a short cue.
+
+Expected output:
+
+```json
+{
+  "landmark": "purple mural",
+  "instruction": "Turn left at the purple mural.",
+  "confidence": "high",
+  "visibleText": null,
+  "sourceFrameIds": ["capture-id/frame-0012"],
+  "warnings": []
+}
+```
+
+Krishna module must:
+
+- Confirm every frame belongs to the requested revision.
+- Send two or three selected frames to Gemini.
+- Require structured JSON output.
+- Return an empty cue when the images are unclear.
+- Store model ID and prompt version.
+- Save responses as drafts.
+- Support accept, edit, and reject decisions.
+- Prevent cues from being reused after the scan revision changes.
+- Keep the Gemini key server-side.
+
+You are finished when one real landmark cue is approved, an unclear image produces no invented cue, and all outputs remain tied to their original frames and revision.
+
+## Integration Order
+
+1. Anish and Sam agree on `manifest.json`.
+2. Anish supplies one fixture bundle and one real LiDAR scan.
+3. Sam uploads, processes, and stores an immutable revision.
+4. Sam stores verified waypoints and a route segment.
+5. Sam gives Krishna module selected frame bytes and verified route context.
+6. Krishna Gemini module generates a draft landmark instruction.
+7. The organizer approves the model, route, and cue.
+8. The website loads the approved GLB and displays the approved instruction.
+</pasted_content id="6775">
+
+About the Hack:
+Devpost: https://hack-western-13.devpost.com/ 
+
+Theme: Discover the unknown.
+
+Judging Criteria:
+
+Innovation & Creativity
+
+* How unique or original is the project idea? Does it present a new solution to a problem or use technology in an unexpected way?
+
+
+Technical Complexity
+
+* How technically challenging is the project? Did the team push the boundaries with complex algorithms, integrations, or hardware?
+
+
+Completeness
+
+* Does the project work as intended? Are there any major bugs or broken features?
+
+
+Design
+
+* How user-friendly and visually appealing is the project? Is the interface intuitive and easy to navigate?
+
+
+The Demo:
+
+* 3 min demo showcasing product + 1-2 mins Q&A
+* 3 different judges will come around to our table for general judging
+* If we are chosen by a sponsor for sponsor track, we will be told to go and demo to them in one of the second-floor rooms, we must be ready to go if that happens
+* No slidesdeck
+* We should probably start with a quick statement of the problem we aim to solve followed by us demoing features
+
+
+The Devpost:
+
+* Media (appears at top of post):
+   * Short demo video, can even just be recorded video from phone, upload to YT
+   * Product logo/design?
+   * Product photos ex/ screenshot of software or pic of hardware
+   * Team photo with caption of names left-to-right
+* Inspiration
+   * The problem and why we care about it
+   * Relatable moment, say who else has it, say why existing solutions fall short
+   * 1-2 short paragraphs
+* What it does
+   * What the product does from user’s POV, plain language no technical jargon
+   * Describe main features and end result, not tech stack
+* How we built it
+   * The architecture and how the pieces connect
+   * Specific tools and APIs by name
+   * Break it into parts and follow the data flow from input to output
+   * Technical section
+* Accomplishments that we’re proud of
+   * 3-4 bullets on what we’re proud of
+   * Ex: working demo, something hard we got running, how we worked as a team
+* What’s next
+   * 3-4 bullets on realistic next steps that show our project has a future
+   * Worth including privacy if our project touches personal data
+
+
+Our Planning:
+
+Roles (what are we good at):
+Arielle: Design, Frontend dev
+Sam: Frontend dev, Backend dev
+Krishna: Frontend and backend, computer vision
+Anish: Hardware and software
+
+Types of projects:
+
+* Hardware
+* Web apps
+* Mobile apps
+* AI/ML tools
+
+
+Reading the theme (discover the unknown):
+
+* Exploring physical places (space, ocean, nature)
+* Discovering new things for yourself (curiosity, serendipity)
+* Making the unknown visible (data, science)
+* The unknown in everyday life (accessibility, learning)
+* Mystery and play (uncover things through experiences?)
+
+Remember to solve a problem
+
+Ideas (Goal: have an idea of what to build before hack start):
+
+* Exploring physical places (space, ocean, nature)
+* Map for hikers: track where you’ve been, map the area around, turn camera feed into real data, map it 3D with computer vision
+   * See trails in advance and where ppl liked, maybe even like google maps into it and you can “walk” the trail before time and see just how difficult it can be etc.
+   * As you walking, you can leave comments or likes on places that you thought were cool, especially nice for solo travellers you can see comments of what other ppl said in real time, share experiences
+   * Meta glasses app
+   * Emergency services: find ppl who are lost based on their surroundings? Alr exists kinda tho, does our product make a diff for this?
+   * Have glasses identify things in everyday life like poison ivy, mushrooms, animals, bird noises
+
+
+What tools will we need to accomplish projects? (software, AIs, hardware tools):
+
+* Any 3D prints? 
+* AI subscriptions? (Ari has Claude, Sam has ChatGPT)
+* If we build hardware, what tools will we need? HW says we can borrow tools but not sure what
+* Chargers, extension cords, monitors
+* Figma for designing? 
+* If we do an web app, React, Next? javascript or typescript?
+
+
+Outfits for demo:
+For presenting, we should prepare to look professional and like a team. It would help if we planned our dress code in advance for Sunday. Something simple, like black office-style pants and navy shirt or sweater. We should aim to present like a company with a product uk?
+
+Questions:
+
+* Can we bring our own resources?
+* Can we leave? Sleep at home?
+
+
+PROJECT PLAN - EVENT WAYFINDING
+PROBLEM
+Visitors reach an event but struggle to find rooms, booths, and activities. Static floor plans are difficult to follow and quickly become outdated.
+SOLUTION
+A collaborative 3D pathfinding app for indoor/outdoor events. Organizers scan venues using phones, create walkable paths and destinations, then share an event link or QR code. Guests see the shared environment and navigate to a selected location.
+MVP DATA FLOW
+1. Capture: Use a LiDAR-capable phone to scan a small venue section; export 3D geometry and camera images.
+2. Transform: Convert scans into viewable scene assets and a connected waypoint/edge graph. Use manually verified anchors to join sections.
+3. Store/share: Upload scene assets to cloud storage; save events, scans, destinations, waypoints, edges, and access permissions in the backend. Organizers approve contributed scans.
+4. Navigate: Frontend renders the 3D venue, lets hosts label/connect paths, and runs A*/Dijkstra from a QR-marked start point to a destination.
+GEMINI API
+Analyze scan images to suggest room numbers, signs, entrances, stairs, and recognizable landmarks; return structured JSON annotations and draft route instructions. Require organizer approval before publishing.
+TEAM OWNERSHIP
+Sam - backend APIs, database/data model, cloud asset storage, uploads, events and sharing.
+Krishna + Anish - phone LiDAR capture, scan-to-3D/graph transformation, alignment and upload integration.
+Arielle - frontend, 3D viewer, route creation, interactive pathfinding and event UX.
+PRIZE TRACKS
+[MLH] Best Use of Gemini API; Organizers Choice: Most Adventurous (help people discover unfamiliar spaces). Phone-only hardware; not entering QNX.
+DEMO / DONE WHEN
+Scan one real venue section, create an event with two destinations, share via QR, navigate a 3D route, and show an approved contributed scan appear for attendees. Out of scope: automatic scan merging and live indoor positioning.
+
+GitHubs
+AryBaum
+samdeitz
+Krishna-Panicker12 
+https://www.mlh.com/events/hack-western-13/prizes 
+
+
+GEMINI API KEY
+REDACTED
+
+https://chatgpt.com/share/6b01d508-68b4-83ea-8cf9-9e14e239729f 
+Vultr stuff given by MLH: 
+
+<pasted_content id="6775">
+[Skip to main content](https://www.mlh.com/partners/vultr?utm_source=mlh&utm_medium=referral&utm_content=Best+Use+of+Vultr#main-content)
+ParticipateOrganizersCommunityAbout[DEV](https://dev.to/?utm_source=mlh&utm_medium=referral&utm_content=DEV)[Attend](https://www.mlh.com/events)[For Businesses](https://sponsor.mlh.com/?utm_source=mlh&utm_medium=referral&utm_content=For+Businesses)
+[Sign In](https://www.mlh.com/signin)
+Build with Vultr
+The Cloud for Hackers
+Vultr offers instant, high-performance cloud infrastructure, from the latest GPUS and Virtual Machines to Managed Kubernetes; built to empower hackers like you!
+AI
+Agents
+Infrastructure
+Cloud
+[Build with Vultr](https://docs.vultr.com/products?utm_source=mlh&utm_medium=referral&utm_content=Build+with+Vultr)
+Resources
+Bring your projects to life instantly with Vultr; a cloud platform that offers everything from one-click deployment and cloud compute, to cloud GPUs for AI applications!
+Quick Start Guide
+Follow the steps below to get started with Vultr Cloud! (Please note that multiple registrations are not allowed. All registrants must comply with Vultr’s Terms of Service / Acceptable Use Policy)
+1
+Get your MLH promo code
+Register at [mlh.link/vultr-discover](https://mlh.link/vultr-discover).
+Students should use their School Name for Company and Student for Job Title.
+2
+Check your email
+Head back to your inbox and verify your registration email. If you don’t see the email in your primary inbox, check your spam and promotional folders.
+3
+Create your Vultr account
+Sign up at [mlh.link/vultr-signup](https://mlh.link/vultr-signup)
+4
+Claim your Credits
+Enter the Promo into the Gift Code field in the Billing section of your account dashboard for $100 in credits.
+5
+Explore Vultr's cloud platform.
+Find all of Vultr’s products at [mlh.link/vultr-products](https://mlh.link/vultr-products)
+6
+Start hacking!
+Build & deploy your next AI-powered hack using Vultr Cloud!
+Join the Vultr Community
+Ship projects, take on challenges and meet builders worldwide — earn points and recognition for everything you do.
+[Join the Vultr Community](https://mlh.link/vultr-community?utm_source=mlh&utm_medium=referral&utm_content=Join+the+Vultr+Community)
+Vultr Reference Documentation
+Vultr Reference Documentation provides technical information for developers working with Vultr services. The documentation covers command-line tools and infrastructure automation.
+[Vultr Reference Documentation](https://mlh.link/vultr-reference?utm_source=mlh&utm_medium=referral&utm_content=Vultr+Reference+Documentation)
+Vultr Tech Talks
+More of a visual learner? Watch solution implementations and product updates related to Vultr infrastructure.
+[Vultr Tech Talks](https://mlh.link/vultr-videos?utm_source=mlh&utm_medium=referral&utm_content=Vultr+Tech+Talks)
+Vultr Marketplace
+Find dozens of useful blogs and articles on how to use Vultr in your next hack!
+[Vultr Marketplace](https://mlh.link/vultr-marketplace?utm_source=mlh&utm_medium=referral&utm_content=Vultr+Marketplace+)
+Vultr API Documentation
+The Vultr API v2 is a set of HTTP endpoints that adhere to RESTful design principles and CRUD actions with predictable URIs.
+[Vultr API Documentation](https://mlh.link/vultr-api?utm_source=mlh&utm_medium=referral&utm_content=Vultr+API+Documentation)
+Vultr CLI GitHub Repository
+Vultr CLI is a command line interface for the Vultr API.
+[Vultr CLI GitHub Repository](https://mlh.link/vultr-CLI?utm_source=mlh&utm_medium=referral&utm_content=Vultr+CLI+GitHub+Repository)
+Vultr FAQs | Support Documentation
+Vultr Support Documentation provides answers to commonly asked questions about Vultr products and services. This documentation helps users find solutions to problems and understand how to use different features.
+[Vultr FAQs | Support Documentation](https://mlh.link/vultr-support?utm_source=mlh&utm_medium=referral&utm_content=Vultr+FAQs+%7C+Support+Documentation)
+Footer
+[Major League Hacking](https://www.mlh.com/)
+We help run the global hacker community. It's our mission to empower hackers, just like you.
+[Instagram](https://www.instagram.com/mlhacks/)[Discord](https://discord.mlh.io/)[X](https://x.com/mlhacks)[DEV](https://dev.to/mlh)[LinkedIn](https://www.linkedin.com/company/major-league-hacking/)[YouTube](https://www.youtube.com/majorleaguehacking)
+Hackathons
+
+* [Upcoming Hackathons](https://www.mlh.com/seasons/2027/events)
+* [Global Hack Week](https://ghw.mlh.com/)
+* [TechTogether](https://techtogether.io/)
+
+Fellowship
+
+* [Programs](https://fellowship.mlh.com/#programs)
+* [Fellowship FAQ](https://mlh.link/fellowship-faq)
+* [Apply](https://fellowship.mlh.com/apply)
+
+Resources
+
+* [Code of Conduct](http://www.mlh.com/code-of-conduct)
+* [Prizes & Freebies](https://www.mlh.com/events/prizes)
+* [Branding Guidelines](https://www.mlh.com/brand-guidelines)
+
+About MLH
+
+* [Contact Us](https://www.mlh.com/contact)
+* [Blog](https://blog.mlh.com/)
+* [Partners](https://sponsor.mlh.com/)
+* [Work at MLH](https://careers.mlh.io/)
+
+* [Privacy](https://www.mlh.com/privacy)
+* [Terms of Service](https://www.mlh.com/terms)
+
+Major League Hacking © 2026
+</pasted_content id="6775">
+
+---
+
+Here is some context from Sam asking others in the slack chat: 
+
+<pasted_content id="6775">
+guys did anyone deploy a gpu instance on vultr? it keeps telling me my monthly fee limit was reached
+11 replies[ORGANIZER] Brittney Chong  [12:51 AM]
+I don't know what vultr is
+[12:51 AM]You can try asking the mentor @[MENTOR] Rafay Kashif 
+Nathan  [12:55 AM]
+it needs to be under 1k/month
+sdeitz  [12:59 AM]
+i tried doing the cheapest gpu it was like .471 an hour but it wouldnt work
+
+thats like 350ish a month
+[1:00 AM]what one did you do?
+Nathan  [1:13 AM]
+dont remember but it was ~650 with 2 16gb gpus
+sdeitz  [1:31 AM]
+did u put ur card info?
+Nathan  [1:33 AM]
+Yeah i had to in order to claim the free credits
+sdeitz  [2:00 AM]
+so weird its not workin for me
+Nathan  [2:04 AM]
+I gave my agent api key and told it to use vultr cli to set up deployment. That might help idk
+sdeitz  [2:05 AM]
+mmm weird ill try it thanks for the help :pray:
+</pasted_content id="6775">
+
+   unfortunately it still didnt work. we learned we couldn't do the gpu or whatever with those credits. I can try and claim it for myself, we all get our own thing in this event so i can make my own account and maybe itll work for me if i have your instructions?
+
+---
+
+yeah but I think he tried just basic server whatever he tried troubleshooting with his AI and could never work
+
+---
+
+opps wait i didnt do this: Company and “Student” as Job Title but i got the emial and code
+
+---
+
+It says i need to verify my account my attaching a card and it says this: 
+
+<pasted_content id="6775">
+Choose Amount
+I just want to link my credit card -
+$0.00 deposit
+$10
+$25
+$50
+$100
+$250
+Other
+I Agree to the [Terms of Service](https://www.vultr.com/legal/tos/)
+</pasted_content id="6775">
+
+   do I need to pay like 1 cent for it to work?
+
+---
+
+Okie this is what i got, i also verified my email: 
+
+<pasted_content id="6775">
+Vultr logo
+Vultr
+[Dashboard](https://console.vultr.com/dashboard/)
+
+Compute
+
+Storage
+
+Network
+
+Orchestration
+[Marketplace](https://console.vultr.com/marketplace/)
+
+Help and Support
+
+[Trust & Compliance](https://console.vultr.com/trust-and-compliance/)
+
+Quick Deploy
+Ctrl ⇧ E
+My Org
+Arielle Tetelbaum
+
+
+Billing
+[$0.00](https://console.vultr.com/billing/invoice/0)
+Charges This Month
+[$100.00](https://console.vultr.com/billing/#billinghistory)
+Remaining Credit
+Account Limits
+Max Instances:
+30
+Current Instances:
+0
+Max Instance Cost:
+$1,000/month
+[Request Limit Increase](https://console.vultr.com/billing/limit_increase/)
+Notifications
+[Edit Preferences](https://console.vultr.com/settings/#settingsnotifications)
+</pasted_content id="6775">
+
+.    So what server thingy am i getting? where do i go?
+
+---
+
+does it have to be the 24.04 LTS, default is 26?
+
+---
+
+Okay i did it??!! 
+
+<pasted_content id="6775">
+Vultr logo
+Vultr
+Dashboard
+
+Compute
+Instances
+Clusters
+Kubernetes
+Serverless Inference
+
+Storage
+
+Network
+
+Orchestration
+Marketplace
+
+Help and Support
+
+Trust & Compliance
+
+Quick Deploy
+Ctrl ⇧ E
+My Org
+Arielle Tetelbaum
+1
+
+Notifications
+Edit Preferences
+Instances
+DocumentationOpens in new tab
+APIOpens in new tab
+Search instances
+Create Instance
+
+Virtual MachinesToggle Virtual Machines
+1 instance
+Name / UUID	Location	Image	IP / Connectivity	Created	Status	Charges	
+Actions
+
+not404
+
+b4af81c6-30d8-46e6-b6b4-06295ea43612
+CA
+Toronto
+, CA (AMER)
+Ubuntu 24.04 LTS x64
+155.138.139.241
+Public: IPv4
+2026-11-21 20:45:26	
+stopped
+$0.03	
+Actions for not404
+
+
+Page1
+
+
+10 / page
+Bulk Actions
+</pasted_content id="6775">
+
+---
+
+its done!!!
+
+---
+
+I own the domain too, got it from godaddy for free from this event too. 
+
+<pasted_content id="6775">
+[porkbun](https://porkbun.com/account/domains)
+
+* [products](https://porkbun.com/account/domainsSpeedy?fo=1&oid=12653189)
+* [transfer](https://porkbun.com/account/transfers)
+* [Black Friday](https://porkbun.com/event/blackfriday)
+* [About](https://porkbun.com/account/domainsSpeedy?fo=1&oid=12653189)
+* [Resources](https://porkbun.com/account/domainsSpeedy?fo=1&oid=12653189)
+
+* [ACCOUNT](https://porkbun.com/account/domainsSpeedy?fo=1&oid=12653189)
+
+Suggestion  Two-factor authentication adds a second step at sign-in and is the best way to keep your account safe. [How it works](https://kb.porkbun.com/article/19-how-to-enable-two-factor-authentication)
+Dismiss
+DNS Powered by Cloudflare
+[Switch to classic view](https://porkbun.com/account/domainsSpeedy?fo=1&oid=12653189#)×
+Filter records
+[Delete all records](https://porkbun.com/account/domainsSpeedy?fo=1&oid=12653189#)
+Add Record
+ManualQuick Setup
+Type A – Address recordAAAA – IPv6 address recordALIAS – CNAME flattening recordCAA – Certification Authority AuthorizationCNAME – Canonical name recordDS – Delegation signer recordHTTPS – HTTPS Service RecordMX – Mail exchange recordNS – Name server recordSRV – Service recordSSHFP – Secure Shell fingerprint recordSVCB – Service Binding RecordTLSA – TLS Authentication RecordTXT – Text record
+Host
+Leave blank for root domain. Use * for wildcard.
+Answer / Value
+TTL
+Notes (private, optional — does not affect DNS)
+[ Need help? How to edit DNS records](https://kb.porkbun.com/article/68-how-to-edit-dns-records)
+Edit Authoritative Nameservers
+ ·  [Switch to classic view](https://porkbun.com/account/domainsSpeedy?fo=1&oid=12653189#)
+×
+Enter the nameservers you would like to use for your domain in the text area below. Put one nameserver per line, please.
+Please note: Although we update your nameservers immediately, this change can take up to 48 hours to propagate due to DNS caching.
+
+
+Nameservers (one per line)
+Domain Management
+Logged in as: yoVodka404
+
+Register a New Domain
+[AI Search](https://porkbun.com/checkout/ai) | [Auction Search](https://porkbun.com/auctions) | [Marketplace Search](https://porkbun.com/marketplace)
+
+
+×
+One quick question
+How did you first hear about Porkbun?
+A friend, coworker, or word of mouthYouTubeX, Bluesky, or another social networkRedditGoogle or another search engineA podcast or newsletterHacker NewsChatGPT, Claude, or another AI assistantA hackathon or eventProton (Mail, VPN, or Drive)A news article or reviewSomething else
+Submit
+Displaying ? ?
+name
+website
+email
+renew
+lock
+whois
+market
+expires
+New Domain!
+not404.vodka
+|
+2027-11-21
+364 d
+Displaying ? ?.
+
+
+ porkbun
+Porkbun is an amazingly awesome ICANN accredited domain name registrar based out of the Pacific Northwest. We're different, we're easy, and we're affordable. Use us, you won't be sorry. If you don't use us we'll be sad, but we'll still love you.
+Get Pork-Puns In Your Inbox
+Stay in the loop on all things Porkbun by signing up for our newsletter!
+Email address
+
+11575 SW Pacific Hwy PMB 40649
+Tigard, OR 97223, US
+If you're looking for support, you might be able to answer your own question using our [Knowledge Base](https://kb.porkbun.com/).
+Reach our USA-Based phone support team:
+1.855.PORKBUN (1.855.767.5286)
+Every day, 9AM - 5PM Pacific Time
+Weekends and holidays included.
+support@porkbun.com
+24 / 7 / 365 Email Support
+Chat Support
+Every day, 9AM - 5PM Pacific Time
+Weekends and holidays included.
+If chat is full, you'll see an email option instead.
+
+Products
+[Domain Names](https://porkbun.com/products/domains)
+[Greatest Deals](https://porkbun.com/products/deals)
+[Local Marketplace](https://porkbun.com/marketplace)
+[Domain Auctions](https://porkbun.com/auctions)
+[Expired Closeouts](https://porkbun.com/closeouts)
+[3rd Party Aftermarket](https://porkbun.com/aftermarket)
+[Web Hosting](https://porkbun.com/products/web_hosting)
+[Link In Bio](https://porkbun.com/products/webhosting/managedLinks)
+[Articulation Sitebuilder](https://porkbun.com/products/webhosting/articulation)
+[Cloud for WordPress](https://porkbun.com/products/webhosting/cloudWordPress)
+[cPanel Hosting](https://porkbun.com/products/webhosting/cPanelHosting)
+[Static Hosting](https://porkbun.com/products/webhosting/secureStaticHosting)
+[Easy PHP](https://porkbun.com/products/webhosting/managedPHP)
+[Email Hosting](https://porkbun.com/products/email)
+[WHOIS Privacy](https://porkbun.com/products/whois_privacy)
+[DNS Management](https://porkbun.com/products/dns_management)
+[SSL Certificates](https://porkbun.com/products/ssl)
+[Email Forwarding](https://porkbun.com/products/email_forwarding)
+[URL Forwarding](https://porkbun.com/products/url_forwarding)
+[Domain Transfer](https://porkbun.com/transfer)
+[API Access](https://porkbun.com/api/json/v3/documentation)
+[MCP Server](https://porkbun.com/mcp)
+[For AI Agents](https://porkbun.com/ai-agents)
+[Terraform & DNS as Code](https://porkbun.com/terraform)
+Support
+[Contact Us](https://porkbun.com/contact)
+[Knowledge Base](https://kb.porkbun.com/)
+[Payment Options](https://porkbun.com/support/payment_options)
+[Security](https://porkbun.com/security)
+[Report Abuse](https://porkbun.com/abuse)
+Tools
+[Domain Search](https://porkbun.com/checkout/search)
+[RDAP (WHOIS)](https://porkbun.com/whois)
+[Password Generator](https://porkbun.com/tools/password)
+[DMARC Generator](https://porkbun.com/tools/dmarc_generator)
+[What's My IP Address?](https://porkbun.com/tools/whats_my_ip_address)
+[Service Status](https://status.porkbun.com/)
+Clear Saved Coupons
+External Tools
+[nTLDData – New gTLD Statistics](https://ntlddata.com/)
+Our Company
+[About Us](https://porkbun.com/about)
+[Our Official Blog](https://blog.porkbun.com/)
+[Careers](https://porkbun.com/careers)
+[Branding Guidelines](https://porkbun.design/)
+[Policies and Legal](https://porkbun.com/legal)
+[Data Disclosure Policy](https://porkbun.com/legal/agreement/data_disclosure_policy)
+[Bug Bounty Program](https://porkbun.com/products/bug_bounty)
+[Awesomeness](https://porkbun.com/awesome)
+
+PRIVACY
+Your Privacy Choices
+[Privacy Policy](https://porkbun.com/legal/agreement/privacy_policy)
+
+Account
+[Settings / Billing](https://porkbun.com/account)
+[View Orders](https://porkbun.com/account/orders)
+[Messages](https://porkbun.com/account/messages)
+[API Access](https://porkbun.com/account/api)
+[Simple Domain List](https://porkbun.com/account/domainList)
+[Logout](https://porkbun.com/account/domainsSpeedy?fo=1&oid=12653189#)
+
+Nonsense
+[Don't like our name?](https://porkbun.com/single-tear.html)
+[The Buniverse](https://porkbun.com/buniverse.html)
+[Porkbun the Game](https://porkapult.com/)
+
+Copyright © Porkbun LLC. All rights reserved.
+Porkbun is a [Top Level Design](https://toplevel.design/) Company
+Made in the USA 🇺🇸
+WARNING: This site has been known to cause a mind blowing experience. We recommend you prepare yourself mentally and if possible be sitting down. Side effects may include saving money, letting out a chuckle, and sporadic oinking.
+AI-Powered Support Assistant
+Online
+Hi there! 👋
+I'm your hopefully not annoying AI support assistant. Ask me anything!
+If I can't help, you can connect with our human support team.
+Transfer domainEmail forwardingTurn off Auto-RenewEnable 2FA
+Type your question
+
+Talk to a real human
+AI assistant writing for someone? Say so, and see what you can do directly: [porkbun.com/llms/support](https://porkbun.com/llms/support)
+Powered by Claude AI + Helpscout
+</pasted_content id="6775">
+
+---
+
+How do i get to that filter records? 
+
+<pasted_content id="6775">
+[porkbun](https://porkbun.com/account/domains)
+
+* [products](https://porkbun.com/account/domainsSpeedy)
+* [transfer](https://porkbun.com/account/transfers)
+* [Black Friday](https://porkbun.com/event/blackfriday)
+* [About](https://porkbun.com/account/domainsSpeedy)
+* [Resources](https://porkbun.com/account/domainsSpeedy)
+
+* [ACCOUNT](https://porkbun.com/account/domainsSpeedy)
+
+Suggestion  Two-factor authentication adds a second step at sign-in and is the best way to keep your account safe. [How it works](https://kb.porkbun.com/article/19-how-to-enable-two-factor-authentication)
+Dismiss
+DNS Powered by Cloudflare
+[Switch to classic view](https://porkbun.com/account/domainsSpeedy#)×
+Filter records
+[Delete all records](https://porkbun.com/account/domainsSpeedy#)
+Add Record
+ManualQuick Setup
+Type A – Address recordAAAA – IPv6 address recordALIAS – CNAME flattening recordCAA – Certification Authority AuthorizationCNAME – Canonical name recordDS – Delegation signer recordHTTPS – HTTPS Service RecordMX – Mail exchange recordNS – Name server recordSRV – Service recordSSHFP – Secure Shell fingerprint recordSVCB – Service Binding RecordTLSA – TLS Authentication RecordTXT – Text record
+Host
+Leave blank for root domain. Use * for wildcard.
+Answer / Value
+TTL
+Notes (private, optional — does not affect DNS)
+[ Need help? How to edit DNS records](https://kb.porkbun.com/article/68-how-to-edit-dns-records)
+Edit Authoritative Nameservers
+ ·  [Switch to classic view](https://porkbun.com/account/domainsSpeedy#)
+×
+Enter the nameservers you would like to use for your domain in the text area below. Put one nameserver per line, please.
+Please note: Although we update your nameservers immediately, this change can take up to 48 hours to propagate due to DNS caching.
+
+
+Nameservers (one per line)
+Domain Management
+Logged in as: yoVodka404
+
+Register a New Domain
+[AI Search](https://porkbun.com/checkout/ai) | [Auction Search](https://porkbun.com/auctions) | [Marketplace Search](https://porkbun.com/marketplace)
+
+
+×
+One quick question
+How did you first hear about Porkbun?
+ChatGPT, Claude, or another AI assistantA news article or reviewRedditX, Bluesky, or another social networkProton (Mail, VPN, or Drive)Hacker NewsA friend, coworker, or word of mouthA podcast or newsletterA hackathon or eventGoogle or another search engineYouTubeSomething else
+Submit
+Displaying 1 out of 1 domains in your account
+name
+website
+email
+renew
+lock
+whois
+market
+expires
+not404.vodka
+|
+2027-11-21
+364 d
+Registration
+Registry Create Date
+2026-11-21T06:57:23.029Z
+Registry Expire Date
+2027-11-21T06:57:23.029Z
+Renewal
+estimated
+$26.26 USD
+Auto Renew
+toggle auto renew for not404.vodka
+[Add Renewal to Cart](https://porkbun.com/account/domainsSpeedy#)
+Domain Lock
+toggle domain lock for not404.vodka
+Contact Privacy
+Using Privacy
+Contacts
+Registrant Contact
+Krishna Panicker
+669 Eclipse Walk
+London, Ontario N5X 0J9, CA
++1.2262365067
+krishna.panicker2006@gmail.com
+Statuses
+[clientTransferProhibited ](http://icann.org/epp#clientTransferProhibited)
+[clientDeleteProhibited ](http://icann.org/epp#clientDeleteProhibited)
+[serverTransferProhibited](http://icann.org/epp#serverTransferProhibited)
+DNS & Nameservers
+Nameservers
+curitiba.ns.porkbun.com
+fortaleza.ns.porkbun.com
+maceio.ns.porkbun.com
+salvador.ns.porkbun.com
+DNS Records
+2 records set
+Glue Records
+Registry DNSSEC
+0 records
+Porkbun DNSSEC
+toggle domain dnssec for not404.vodka
+Your Cloudflare
+URL Forwarding
+Not Set
+Park Domain
+Products & Services
+SSL
+Nothing Yet
+Email Hosting
+Web Hosting
+API Access
+toggle auto renew for not404.vodka
+Transfers & Lifecycle
+Registrar Transfer
+Account Transfer
+Refund Registration
+Delete Domain
+Marketplace
+Porkbun Marketplace
+none
+Afternic Settings
+These settings affect the data we put into the Afternic formatted CSV file you can download from the "Bulk Actions" menu.
+Main Category
+ Acronyms Business Careers Computers Education Family Life Financial Health Home Photography Recreation Reference Region Shopping Society Special Events Sports Travel Uncategorized
+The top level category name used when downloading an Afternic CSV file.
+Sub Category
+The second level category name used when downloading an Afternic CSV file.
+CSV Download
+Include Do not include
+Whether or not to include the domain in the Afternic CSV file.
+Advanced
+Dejigamaflipper
+Displaying 1 out of 1 domains in your account.
+
+
+ porkbun
+Porkbun is an amazingly awesome ICANN accredited domain name registrar based out of the Pacific Northwest. We're different, we're easy, and we're affordable. Use us, you won't be sorry. If you don't use us we'll be sad, but we'll still love you.
+Get Pork-Puns In Your Inbox
+Stay in the loop on all things Porkbun by signing up for our newsletter!
+Email address
+
+11575 SW Pacific Hwy PMB 40649
+Tigard, OR 97223, US
+If you're looking for support, you might be able to answer your own question using our [Knowledge Base](https://kb.porkbun.com/).
+Reach our USA-Based phone support team:
+1.855.PORKBUN (1.855.767.5286)
+Every day, 9AM - 5PM Pacific Time
+Weekends and holidays included.
+support@porkbun.com
+24 / 7 / 365 Email Support
+Chat Support
+Every day, 9AM - 5PM Pacific Time
+Weekends and holidays included.
+If chat is full, you'll see an email option instead.
+
+Products
+[Domain Names](https://porkbun.com/products/domains)
+[Greatest Deals](https://porkbun.com/products/deals)
+[Local Marketplace](https://porkbun.com/marketplace)
+[Domain Auctions](https://porkbun.com/auctions)
+[Expired Closeouts](https://porkbun.com/closeouts)
+[3rd Party Aftermarket](https://porkbun.com/aftermarket)
+[Web Hosting](https://porkbun.com/products/web_hosting)
+[Link In Bio](https://porkbun.com/products/webhosting/managedLinks)
+[Articulation Sitebuilder](https://porkbun.com/products/webhosting/articulation)
+[Cloud for WordPress](https://porkbun.com/products/webhosting/cloudWordPress)
+[cPanel Hosting](https://porkbun.com/products/webhosting/cPanelHosting)
+[Static Hosting](https://porkbun.com/products/webhosting/secureStaticHosting)
+[Easy PHP](https://porkbun.com/products/webhosting/managedPHP)
+[Email Hosting](https://porkbun.com/products/email)
+[WHOIS Privacy](https://porkbun.com/products/whois_privacy)
+[DNS Management](https://porkbun.com/products/dns_management)
+[SSL Certificates](https://porkbun.com/products/ssl)
+[Email Forwarding](https://porkbun.com/products/email_forwarding)
+[URL Forwarding](https://porkbun.com/products/url_forwarding)
+[Domain Transfer](https://porkbun.com/transfer)
+[API Access](https://porkbun.com/api/json/v3/documentation)
+[MCP Server](https://porkbun.com/mcp)
+[For AI Agents](https://porkbun.com/ai-agents)
+[Terraform & DNS as Code](https://porkbun.com/terraform)
+Support
+[Contact Us](https://porkbun.com/contact)
+[Knowledge Base](https://kb.porkbun.com/)
+[Payment Options](https://porkbun.com/support/payment_options)
+[Security](https://porkbun.com/security)
+[Report Abuse](https://porkbun.com/abuse)
+Tools
+[Domain Search](https://porkbun.com/checkout/search)
+[RDAP (WHOIS)](https://porkbun.com/whois)
+[Password Generator](https://porkbun.com/tools/password)
+[DMARC Generator](https://porkbun.com/tools/dmarc_generator)
+[What's My IP Address?](https://porkbun.com/tools/whats_my_ip_address)
+[Service Status](https://status.porkbun.com/)
+Clear Saved Coupons
+External Tools
+[nTLDData – New gTLD Statistics](https://ntlddata.com/)
+Our Company
+[About Us](https://porkbun.com/about)
+[Our Official Blog](https://blog.porkbun.com/)
+[Careers](https://porkbun.com/careers)
+[Branding Guidelines](https://porkbun.design/)
+[Policies and Legal](https://porkbun.com/legal)
+[Data Disclosure Policy](https://porkbun.com/legal/agreement/data_disclosure_policy)
+[Bug Bounty Program](https://porkbun.com/products/bug_bounty)
+[Awesomeness](https://porkbun.com/awesome)
+
+PRIVACY
+Your Privacy Choices
+[Privacy Policy](https://porkbun.com/legal/agreement/privacy_policy)
+
+Account
+[Settings / Billing](https://porkbun.com/account)
+[View Orders](https://porkbun.com/account/orders)
+[Messages](https://porkbun.com/account/messages)
+[API Access](https://porkbun.com/account/api)
+[Simple Domain List](https://porkbun.com/account/domainList)
+[Logout](https://porkbun.com/account/domainsSpeedy#)
+
+Nonsense
+[Don't like our name?](https://porkbun.com/single-tear.html)
+[The Buniverse](https://porkbun.com/buniverse.html)
+[Porkbun the Game](https://porkapult.com/)
+
+Copyright © Porkbun LLC. All rights reserved.
+Porkbun is a [Top Level Design](https://toplevel.design/) Company
+Made in the USA 🇺🇸
+WARNING: This site has been known to cause a mind blowing experience. We recommend you prepare yourself mentally and if possible be sitting down. Side effects may include saving money, letting out a chuckle, and sporadic oinking.
+AI-Powered Support Assistant
+Online
+Hi there! 👋
+I'm your hopefully not annoying AI support assistant. Ask me anything!
+If I can't help, you can connect with our human support team.
+Transfer domainEmail forwardingTurn off Auto-RenewEnable 2FA
+Type your question
+
+Talk to a real human
+AI assistant writing for someone? Say so, and see what you can do directly: [porkbun.com/llms/support](https://porkbun.com/llms/support)
+Powered by Claude AI + Helpscout
+</pasted_content id="6775">
+
+---
+
+yayay its working, did the powershell command and its there! what's next
+
+---
+
+Yes, go ahead
+
+---
+
+Here's his key
+
+---
+
+ssh-ed25519 REDACTED sdeitz@uwo.ca
+
+---
+
+Can you add Krishna's photo in to the creators section? nd again if you can try to make it so that our bodies/heads are all similar sizes on the website
+
+---
+
+Yes, update live site
+
+---
+
+What should we do now, the glb file stuff or whatever?
+
+---
+
+Did you update yourself with the most recent prs? in the 30s? read the branch feature lidar pipeline, just familiarize yourself with everything that my team is doing so you are up to date before working
+
+---
+
+Plan the merge with Sam
+
+---
+
+wait before we continue can you quickly add anish's photo? unfortunately the quality/exposure is not as good are you able to edit or crop it a little so the sky isnt so pure white?
+
+---
+
+Yes, update live site
+
+---
+
+Here is sam's response: 
+
+<pasted_content id="6775">
+Sounds good!
+For the demo, let's use Public maps for now. We can add signed-out Unlisted sharing afterward with proper permission checks. I don't want to accidentally expose private scans.
+I'll handle the backend additions:
+
+* GET /api/scans/mine
+* GET /api/scans/public
+* GET /api/scans/shared
+* PATCH/DELETE by shareId
+
+I'll match the response shapes in the API README and preserve ownership checks. Your upload change to POST /api/spaces/:id/scans sounds good.
+For deployment, we'll use port 3000 and update Auth0 to allow https://not404.vodka/auth/callback, plus the appropriate web origin and logout URL.
+Thanks for handling the frontend conflicts!
+</pasted_content id="6775">
+
+---
+
+What do you mean by clashing website files?
+
+---
+
+how is that taking 1-1.5 hours?
+
+---
+
+hmmm but based on the google doc plan that i gave you before (the three tabs) isnt the scanner app with lidar in charge of the uploading and not us anymore?
+
+---
+
+if we do the merge now and then decide to change to the other option later how difficult would that be? is it worth it to get merging now and fix if the case arises later?
+
+---
+
+okok lets start!

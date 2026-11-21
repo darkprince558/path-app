@@ -1,0 +1,44 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M803VH5HC91XAHGVQQPJECSZ",
+  "strategy": "manual-commit",
+  "branch": "feature/not404-brand",
+  "checkpoints_count": 31,
+  "files_touched": [
+    "apps/web/src/assets/team/anish.jpg",
+    "apps/web/src/assets/team/arielle.jpg",
+    "apps/web/src/assets/team/krishna.jpg",
+    "apps/web/src/assets/team/sam.jpg",
+    "apps/web/src/landing/Creators.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 296,
+    "cache_creation_tokens": 208452,
+    "cache_read_tokens": 21521153,
+    "output_tokens": 85914,
+    "api_call_count": 117
+  },
+  "redaction": {
+    "replacements": 57,
+    "layers": {
+      "betterleaks": 1,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 2,
+      "credentialed_uri": 0,
+      "entropy": 30,
+      "key_context": 29,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
