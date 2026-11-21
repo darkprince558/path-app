@@ -101,6 +101,13 @@ Missing declarations mean unknown scale, never an implicit metric guarantee. `up
 names the intended space axis; `orientationVerified` separately records whether a
 human checked the reconstruction against the room.
 
+The integration viewer also requires `scan.metadata.alignmentVerified: true` before
+displaying navigation. The owner sets this after checking floor orientation, origin,
+and scale (measured for a metric space). Until then the mesh can be inspected and
+aligned, but route overlays stay hidden. This is a human assertion, not a computed
+accuracy score. In a metric space, the scan's `calibrated` flag remains false until
+that confirmation. For relative scans it remains false even after alignment.
+
 Example initial upload from an authenticated browser on the API origin:
 
 ```js
@@ -112,6 +119,7 @@ form.set('transform', JSON.stringify([
   1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1
 ]));
 form.set('metadata', JSON.stringify({
+  alignmentVerified: false,
   coordinateSystem: { units: 'relative', upAxis: 'Y', calibrated: false },
   reconstruction: {
     source: 'monocular-video', exportedUnits: 'relative',
@@ -156,6 +164,13 @@ IDs and `spaceId`, never filenames, to identify scene objects.
    scale, rotation and translation. Check at least three separated landmarks, with
    a floor/vertical reference, so one coincident point cannot hide a bad alignment.
 
+In the owner UI, picking a point records the scan ID with a new graph node. Alignment
+is locked once that scan has navigation nodes, while new scans can still be aligned.
+Legacy graph nodes without scan IDs conservatively lock all scan alignments; prepare
+the new scan's final matrix before upload in that case. Manual matrix edits clear
+the previous calibration evidence and require alignment confirmation again. Graph
+nodes remain in space coordinates when a new scan is added.
+
 A single measured baseline establishes scale; it does not establish the accuracy of
 the whole mesh. Record the baseline and check another independent distance before
 making an accuracy claim. Holes, warped walls and drift can remain after calibration.
@@ -166,7 +181,7 @@ Graph coordinates are already space-local. Never apply an individual scan transf
 to graph nodes or route overlays. Overlay nodes and edges in a sibling group to the
 transformed scans. Every node must have the selected `spaceId`. Destinations reference
 nodes in that space. A route uses only explicit graph edges, respecting their direction
-and stored nonnegative cost; geometry alone does not establish walkability. Manual
+and stored positive cost; geometry alone does not establish walkability. Manual
 nodes should be placed on verified traversable floor, including turns, with each edge
 checked against the room. Rendering a line is not proof that it avoids a wall.
 

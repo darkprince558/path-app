@@ -59,6 +59,7 @@ test("malformed GLB lengths and alignment are rejected before decoding", () => {
   assert.throws(() => scanMatrix(identity.map((value, i) => i === 3 ? 1 : value)), /affine/);
   assert.throws(() => scanMatrix(identity.map((value, i) => i === 0 ? 0 : value)), /zero scale/);
   assert.throws(() => scanMatrix(identity.map((value, i) => i === 12 ? NaN : value)), /finite/);
+  assert.doesNotThrow(() => scanMatrix(identity.map((value, i) => [0, 5, 10].includes(i) ? 1e-6 : value)));
 });
 
 test("empty GLB scenes do not report successful loading", async () => {

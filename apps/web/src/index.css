@@ -37,6 +37,17 @@
   }
 }
 
+@layer components {
+  .editor-grid { @apply grid gap-3; }
+  .editor-grid label { @apply grid gap-1 text-sm; }
+  .editor-grid input:not([type="checkbox"]), .editor-grid select, .editor-grid textarea {
+    @apply min-h-11 min-w-0 w-full rounded-lg border border-forest/40 bg-surface px-2 py-2 text-ink;
+  }
+  .editor-grid input[type="checkbox"] { @apply h-5 w-5 shrink-0; }
+  .action-button { @apply min-h-11 rounded-lg bg-forest px-3 py-2 font-bold text-paper disabled:opacity-50; }
+  .secondary-button { @apply min-h-11 rounded-lg border border-forest/40 px-3 py-2 font-bold disabled:opacity-50; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

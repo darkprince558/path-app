@@ -50,6 +50,17 @@ test("public GLB supports dynamic and saved routes, orbit, and isolated sharing"
   await expect(page.getByRole("alert")).toHaveCount(0);
   await page.screenshot({ path: info.outputPath("dynamic-route.png"), fullPage: true });
 
+  if (process.env.TEST_START_NODE_ID && process.env.TEST_END_NODE_ID) {
+    await start.selectOption(process.env.TEST_END_NODE_ID);
+    await destination.selectOption(process.env.TEST_START_NODE_ID);
+    await page.getByRole("button", { name: "Show route", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText("not connected");
+    await start.selectOption(process.env.TEST_START_NODE_ID);
+    await destination.selectOption(process.env.TEST_END_NODE_ID);
+    await page.getByRole("button", { name: "Show route", exact: true }).click();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  }
+
   const graph = page.getByRole("checkbox", { name: "Show navigation graph", exact: true });
   await graph.uncheck(); await expect(graph).not.toBeChecked();
   await graph.check(); await expect(graph).toBeChecked();
@@ -79,6 +90,13 @@ test("public GLB supports dynamic and saved routes, orbit, and isolated sharing"
     await ready(second);
     await expect(second.getByText(/\d+ connected segments/)).toBeVisible();
     await second.screenshot({ path: info.outputPath("second-session-mobile.png"), fullPage: true });
+
+    if (process.env.TEST_EVENT_URL) {
+      await second.goto(process.env.TEST_EVENT_URL);
+      await second.locator(`a[href*="path=${savedPathId}"]`).click();
+      await ready(second);
+      await expect(second.getByText(/\d+ connected segments/)).toBeVisible();
+    }
 
     await second.goto(privateUrl);
     await expect(second.getByRole("alert")).toContainText("unavailable or private");

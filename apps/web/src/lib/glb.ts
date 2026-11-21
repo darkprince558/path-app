@@ -58,7 +58,12 @@ export function scanMatrix(elements: readonly number[]): Matrix4 {
     throw new ModelParseError("The scan alignment must be a finite, affine 4×4 matrix.");
   }
   const matrix = new Matrix4().fromArray(elements);
-  if (Math.abs(matrix.determinant()) < 1e-15) {
+  const scale = Math.max(...[0, 1, 2, 4, 5, 6, 8, 9, 10].map(i => Math.abs(elements[i]!)));
+  const normalized = elements.map(value => value / scale);
+  const determinant = normalized[0]! * (normalized[5]! * normalized[10]! - normalized[9]! * normalized[6]!)
+    - normalized[4]! * (normalized[1]! * normalized[10]! - normalized[9]! * normalized[2]!)
+    + normalized[8]! * (normalized[1]! * normalized[6]! - normalized[5]! * normalized[2]!);
+  if (!Number.isFinite(determinant) || Math.abs(determinant) <= Number.EPSILON) {
     throw new ModelParseError("The scan alignment has zero scale and cannot be displayed.");
   }
   return matrix;

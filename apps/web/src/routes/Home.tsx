@@ -9,6 +9,7 @@ export default function Home() {
       <p className="text-muted">
         Open a guest link at <span className="font-mono text-rust">/s/&lt;shareId&gt;</span> to view a shared scan.
       </p>
+      <a className="font-bold underline" href="/spaces">Open 3D spaces and navigation</a>
     </main>
   );
 }
