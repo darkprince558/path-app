@@ -1,0 +1,129 @@
+Read docs/lidar-pipeline-plan.md and the new database schema.
+
+Implement only LiDAR capture ingestion:
+
+POST /api/captures
+POST /api/captures/:captureId/uploads
+POST /api/captures/:captureId/finalize
+
+Use the existing Auth0 authentication and permissions.
+
+Validate manifest.json and frames.json using Zod.
+
+Enforce safe relative paths, required files, stable frame references, file sizes and SHA-256 checksums.
+
+For development, use local private filesystem storage behind an abstraction that can support S3-compatible storage later.
+
+Create a synthetic capture fixture and tests.
+
+Do not implement the processing worker, Gemini, or frontend changes.
+
+---
+
+Read docs/lidar-pipeline-plan.md and the existing capture ingestion implementation.
+
+Implement asynchronous capture processing.
+
+Requirements:
+- GET /api/jobs/:jobId
+- Persistent job states in PostgreSQL.
+- One active processing job at a time.
+- Processing errors must be saved.
+- Jobs must not be lost or silently marked successful after a restart.
+- Create immutable scan revisions.
+- Use a replaceable processor adapter.
+
+Anish will eventually supply:
+process_lidar_capture --input <bundle> --output <revision>
+
+Expected outputs:
+master.glb, scene.glb, optional scene.ply, preview.jpg, report.json.
+
+For now, provide a mock processor that copies the synthetic source.glb into the expected output structure.
+
+Do not implement the real LiDAR processor, Gemini, or frontend changes.
+
+Add tests for successful processing, failures, and restart recovery.
+
+---
+
+# !404 — Task 5: LiDAR Publishing and Viewer Integration
+
+We have completed Tasks 1–4 of our LiDAR backend pipeline.
+
+Existing stack:
+- Next.js App Router API
+- Auth0 authentication
+- Tiger Data PostgreSQL + Drizzle
+- Private capture file storage
+- Asynchronous capture processing worker
+- Immutable draft scan revisions
+- Existing spaces, scans, sharing, navigation and GLB viewer
+
+Read AGENTS.md, docs/lidar-pipeline-plan.md, the processing runbook, and the actual implementation before making changes.
+
+## Goal
+
+Allow organizers to approve processed LiDAR scan revisions and make their 3D models available to the existing viewer.
+
+## Requirements
+
+1. Implement an approval workflow for processed scan revisions.
+   - Only authorized space owners can approve revisions.
+   - Failed, incomplete or unapproved revisions cannot be published.
+   - Preserve immutable revision IDs.
+
+2. Implement or extend retrieval endpoints:
+   - GET /api/shares/:shareId
+   - GET /api/shares/:shareId/scene
+   - GET /api/shares/:shareId/points
+   - GET /api/shares/:shareId/frames/:frameId
+
+3. Respect existing permissions:
+   - Private spaces and scans remain private.
+   - Public shares expose only approved resources.
+   - Camera frames must not become publicly accessible by default.
+   - Prevent path traversal and unauthorized file access.
+
+4. Connect approved scene.glb files to the existing frontend viewer.
+   - Preserve existing manual GLB uploads.
+   - Preserve model transforms and coordinate metadata.
+   - Avoid breaking existing navigation and saved routes.
+
+5. Store the relationship between:
+   - Space
+   - Capture
+   - Scan revision
+   - Approved model
+   - Existing scan/viewer records
+
+6. Add automated tests covering:
+   - Owner approval
+   - Unauthorized approval attempts
+   - Private/public access
+   - Unapproved and failed revisions
+   - GLB retrieval
+   - Existing scan compatibility
+
+## Constraints
+
+- Keep Tiger Data as our PostgreSQL provider.
+- Reuse existing APIs and permission helpers wherever possible.
+- Do not implement Gemini, NavMesh generation or mobile migration yet.
+- Do not rewrite working functionality.
+- Do not apply remote database migrations automatically.
+- Keep modifications limited to Task 5.
+
+## Deliverables
+
+- Working approval and retrieval endpoints.
+- Existing viewer displays an approved processed scene.glb.
+- Tests, typecheck and build pass.
+- Documentation explaining approval and retrieval.
+- Exact instructions to test the complete workflow locally.
+
+Implement Task 5, run verification, and report results.
+
+---
+
+Commit our task 3 and 4 work before beginning task 5
