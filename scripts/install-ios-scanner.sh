@@ -36,4 +36,5 @@ xcodebuild -quiet -project "$root/apps/capture/PathCapture.xcodeproj" -scheme Pa
 app="$scratch/build/Build/Products/Release-iphoneos/PathCapture.app"
 codesign --verify --deep --strict "$app"
 xcrun devicectl device install app --device "$device" "$app"
-xcrun devicectl device process launch --device "$device" com.pathapp.demo.capture
+bundle=$(plutil -extract CFBundleIdentifier raw "$app/Info.plist")
+xcrun devicectl device process launch --device "$device" "$bundle"

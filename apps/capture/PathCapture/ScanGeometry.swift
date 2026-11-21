@@ -30,12 +30,13 @@ struct ScanPhoto {
       (intrinsics[0].x * p.x / z + intrinsics[2].x) / size.x,
       (intrinsics[2].y - intrinsics[1].y * p.y / z) / size.y)
     guard uv.x > 0.012, uv.y > 0.012, uv.x < 0.988, uv.y < 0.988 else { return nil }
-    if !depth.isEmpty {
-      let measured = depth[
-        Int(uv.y * Float(depthSize.y)) * depthSize.x + Int(uv.x * Float(depthSize.x))]
-      guard measured.isFinite, measured > 0, abs(measured - z) < max(0.12, z * 0.06) else {
-        return nil
-      }
+    guard depthSize.x > 0, depthSize.y > 0, depth.count / depthSize.x == depthSize.y else {
+      return nil
+    }
+    let measured = depth[
+      Int(uv.y * Float(depthSize.y)) * depthSize.x + Int(uv.x * Float(depthSize.x))]
+    guard measured.isFinite, measured > 0, abs(measured - z) < max(0.12, z * 0.06) else {
+      return nil
     }
     return (uv, z)
   }

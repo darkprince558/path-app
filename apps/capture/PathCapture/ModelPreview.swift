@@ -35,13 +35,16 @@ enum ModelPreview {
         access.indices.contains(pi), let count = access[pi]["count"] as? Int
       else { throw ScanFailure.empty }
       var sources: [SCNGeometrySource] = []
-      for (name, semantic, components, width) in [
-        ("POSITION", SCNGeometrySource.Semantic.vertex, 3, 4), ("COLOR_0", .color, 4, 1),
-        ("TEXCOORD_0", .texcoord, 2, 4),
+      for (name, semantic, components) in [
+        ("POSITION", SCNGeometrySource.Semantic.vertex, 3), ("COLOR_0", .color, 4),
+        ("TEXCOORD_0", .texcoord, 2),
       ] {
         if let a = attr[name], access.indices.contains(a), let v = access[a]["bufferView"] as? Int {
           var data = try bytes(v)
-          if name == "TEXCOORD_0" {
+          if semantic == .color {
+            let normalized = data.map { Float($0) / 255 }
+            data = normalized.withUnsafeBytes { Data($0) }
+          } else if semantic == .texcoord {
             data.withUnsafeMutableBytes { raw in
               let values = raw.bindMemory(to: Float.self)
               for n in stride(from: 1, to: values.count, by: 2) { values[n] = 1 - values[n] }
@@ -49,9 +52,9 @@ enum ModelPreview {
           }
           sources.append(
             SCNGeometrySource(
-              data: data, semantic: semantic, vectorCount: count, usesFloatComponents: width == 4,
-              componentsPerVector: components, bytesPerComponent: width, dataOffset: 0,
-              dataStride: width * components))
+              data: data, semantic: semantic, vectorCount: count, usesFloatComponents: true,
+              componentsPerVector: components, bytesPerComponent: MemoryLayout<Float>.size, dataOffset: 0,
+              dataStride: MemoryLayout<Float>.size * components))
         }
       }
       let triangles = (p["mode"] as? Int) == 4

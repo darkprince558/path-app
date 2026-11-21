@@ -12,6 +12,7 @@ Use this folder for knowledge a teammate will still need after your branch merge
 | A plain phone video can produce a local RGB PLY for visual review. Keep its arbitrary scale and first-camera orientation out of metric route planning until a person aligns and measures the scan. | The guest viewer rendered the reconstructed synthetic hallway. A real indoor RGB run recovered most camera positions but left gaps across smooth surfaces. | [Mac trial and reproducible synthetic check](mac-video-trial.md) |
 | Bound planar repairs by measured points and check each patch against the original viewpoints. | The phone trial recovered some missing floor, while cameras near the tightest turn supplied little independent depth. | [Measured plane trial](mac-video-trial.md#plane-fills-at-the-turn) · [Mapping research and library trials](indoor-surface-research.md) |
 | Keep the phone recorder queue and OpenMVS working files in local Application Support on the Mac. | During browser capture verification, macOS evicted active depth maps in cloud-managed Documents. The same class of reconstruction ran on local storage. | [Phone recorder setup and acceptance check](../docs/phone-recorder.md) |
+| Use the same guest viewer for the native LiDAR mesh and the sparse non-LiDAR model. | The Swift exporter produced a metric, textured wall fixture and a separate point model. The local recorder accepted both exports and served their original bytes to signed-out guests. | [Native scanner and reproducible checks](../docs/ios-scanner.md#verify) |
 
 ## Add a finding
 

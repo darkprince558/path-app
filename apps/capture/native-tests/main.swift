@@ -42,6 +42,10 @@ let out = try mesh.write(
 precondition(
   out.triangles == 3 && out.texturedTriangles == 2 && out.classes == ["wall": 2, "floor": 1])
 precondition(abs(simd_distance(verts[0], verts[1]) - 2) < 0.00001)
+let missingDepth = ScanPhoto(
+  url: image, worldToCamera: photo.worldToCamera, intrinsics: intrinsics, size: photo.size,
+  depth: [], depthSize: .zero)
+precondition(missingDepth.project(SIMD3(0, 0, -2)) == nil)
 precondition(photo.project(SIMD3(0, 0, -3)) == nil)
 precondition(photo.project(SIMD3(0, 0, 2)) == nil)
 precondition(photo.project(SIMD3(0, 0, -2))?.uv == SIMD2<Float>(0.5, 0.5))
