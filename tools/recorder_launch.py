@@ -362,7 +362,9 @@ def stop_worker_group(proc):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--data", type=Path, default=ROOT / "captures-local/phone-recorder"
+        "--data",
+        type=Path,
+        default=Path.home() / "Library/Application Support/Path Recorder",
     )
     parser.add_argument("--pipeline", type=Path, default=ROOT / "hallway3d")
     parser.add_argument("--port", type=int, default=8643)

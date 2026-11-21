@@ -13,7 +13,7 @@ On a fresh checkout, prepare the Mac reconstruction tools and build the website 
 ./hallway3d record
 ```
 
-Open [phone pairing on the Mac](http://127.0.0.1:8644/). Only the Mac can open this page. Leave the process running and keep the Mac awake through capture, processing and viewing. On a restarted Mac, use the same data directory to reopen previous shares. The default is `captures-local/phone-recorder/`. Use `./hallway3d record --help` to change its directory or ports.
+Open [phone pairing on the Mac](http://127.0.0.1:8644/). Only the Mac can open this page. Leave the process running and keep the Mac awake through capture, processing and viewing. On a restarted Mac, use the same data directory to reopen previous shares. The default is `~/Library/Application Support/Path Recorder/`. Keep this directory on a local disk. Cloud-managed folders can evict depth maps while OpenMVS is still using them. Use `./hallway3d record --help` to change its directory or ports.
 
 ## Film and share
 
@@ -42,7 +42,7 @@ The browser acceptance runner exercises an actual browser video recording of a s
 
 ```sh
 RECORDER_ORIGIN=https://YOUR-MAC-IP:8643 \
-RECORDER_KEY_FILE="$PWD/captures-local/phone-recorder/organizer.key" \
+RECORDER_KEY_FILE="$HOME/Library/Application Support/Path Recorder/organizer.key" \
 RECORDER_PYTHON="$PWD/captures-local/video3d-tools/.venv/bin/python" \
 node apps/web/tests/recorder.browser.mjs
 ```
