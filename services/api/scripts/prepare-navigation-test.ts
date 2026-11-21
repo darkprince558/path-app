@@ -93,8 +93,10 @@ try {
     username: `navigation_${suffix}`, displayName: 'SYNTHETIC browser test owner' }).returning();
   const [publicSpace, privateSpace] = await db.insert(spaces).values([
     { ownerId: owner.id, name: 'SYNTHETIC textured navigation test', visibility: 'public' as const,
+      boundary: { coordinateSystem: { units: 'relative', upAxis: 'Y', calibrated: false } },
       description: 'Generated two-triangle checker plane. Software verification only; not a reconstructed room.' },
-    { ownerId: owner.id, name: 'SYNTHETIC private navigation test', visibility: 'private' as const },
+    { ownerId: owner.id, name: 'SYNTHETIC private navigation test', visibility: 'private' as const,
+      boundary: { coordinateSystem: { units: 'relative', upAxis: 'Y', calibrated: false } } },
   ]).returning();
   // Column-major T(3,0,-2) R_y(+90deg) S(2): (x,y,z) -> (3+2z, 2y, -2-2x).
   const alignment = [0, 0, -2, 0, 0, 2, 0, 0, 2, 0, 0, 0, 3, 0, -2, 1];
@@ -103,7 +105,8 @@ try {
     form.set('file', new File([bytes], 'SYNTHETIC-textured-plane.glb'));
     form.set('name', name); form.set('visibility', visibility);
     form.set('transform', JSON.stringify(matrix));
-    form.set('metadata', JSON.stringify({ synthetic: true, purpose: 'software verification, not real capture' }));
+    form.set('metadata', JSON.stringify({ synthetic: true, purpose: 'software verification, not real capture',
+      alignmentVerified: true, coordinateSystem: { units: 'relative', upAxis: 'Y', calibrated: false } }));
     const parsed = parseUpload(await boundedFormData(new Request('http://localhost/api/scans', { method: 'POST', body: form })));
     return createScan(db, storage, owner, spaceId, parsed.input, new Uint8Array(await parsed.file.arrayBuffer()), parsed.file.name);
   };
@@ -113,9 +116,9 @@ try {
   const hiddenScan = await upload(publicSpace.id, 'private', 'SYNTHETIC private scan in public space');
   const privateScan = await upload(privateSpace.id, 'private', 'SYNTHETIC private space scan');
   const nodes = await db.insert(navNodes).values([
-    { spaceId: publicSpace.id, x: 3, y: 0, z: -0.5, metadata: { label: 'Start', scanLocal: [-0.75, 0, 0] } },
-    { spaceId: publicSpace.id, x: 3, y: 0, z: -2, metadata: { label: 'Middle', scanLocal: [0, 0, 0] } },
-    { spaceId: publicSpace.id, x: 3, y: 0, z: -3.5, metadata: { label: 'Destination', scanLocal: [0.75, 0, 0] } },
+    { spaceId: publicSpace.id, x: 3, y: 0, z: -0.5, metadata: { name: 'Start', scanId: scan.id, scanLocal: [-0.75, 0, 0] } },
+    { spaceId: publicSpace.id, x: 3, y: 0, z: -2, metadata: { name: 'Middle', scanId: scan.id, scanLocal: [0, 0, 0] } },
+    { spaceId: publicSpace.id, x: 3, y: 0, z: -3.5, metadata: { name: 'Destination', scanId: scan.id, scanLocal: [0.75, 0, 0] } },
   ]).returning();
   await db.insert(navEdges).values([0, 1].map(i => ({ spaceId: publicSpace.id,
     fromNodeId: nodes[i].id, toNodeId: nodes[i + 1].id, distance: 1.5, bidirectional: false })));
