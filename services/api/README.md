@@ -1,6 +1,7 @@
 # Upload and sharing API
 
 The implemented space, graph, destination, saved-path and event routes are documented in [Core API contract](../../docs/core-api.md).
+Local GLB upload, metadata and authorized download routes are documented in [Scan API contract](../../docs/scan-api.md).
 
 ## Auth0 login shell
 
