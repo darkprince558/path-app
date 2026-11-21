@@ -65,6 +65,33 @@
 .tour-route {
   animation: tour-dash 0.9s linear infinite;
 }
+/* Landing hero: panels drift gently over the scan, a few stars twinkle. */
+.hero-float {
+  animation: hero-float 7s ease-in-out infinite alternate;
+}
+.hero-float-late {
+  animation-delay: -3.5s;
+}
+.hero-twinkle {
+  animation: hero-twinkle 3.2s ease-in-out infinite alternate;
+}
+@keyframes hero-float {
+  from {
+    translate: 0 -6px;
+  }
+  to {
+    translate: 0 6px;
+  }
+}
+@keyframes hero-twinkle {
+  from {
+    opacity: 0.15;
+  }
+  to {
+    opacity: 0.8;
+  }
+}
+
 /* "Who it's for": sign figures walk (or roll) their route. */
 .pg-walker {
   animation: pg-across 2.6s cubic-bezier(0.45, 0.05, 0.4, 1) forwards;

@@ -314,23 +314,32 @@ function Route({
 
 /* ---------------------------------------------------------------- camera */
 
-const TARGET = new Vector3(0, 0.5, -2.3);
+/**
+ * Camera framing by canvas shape. On a wide, full-bleed hero the camera looks a
+ * little above the scan, so the scan sits low in the frame and rises from the
+ * bottom edge. On a square phone frame it stands further back to fit the whole T.
+ */
+function framingFor(aspect: number) {
+  if (aspect >= 1.6) return { target: new Vector3(0, 2.3, -2.4), distance: 9.4, pitch: 0.5 };
+  if (aspect >= 1.1) return { target: new Vector3(0, 0.8, -2.4), distance: 8.6, pitch: 0.58 };
+  return { target: new Vector3(0, 0.4, -2.3), distance: 12, pitch: 0.66 };
+}
 
 function Rig({ reduce, drag }: { reduce: boolean; drag: RefObject<{ yaw: number; pitch: number }> }) {
   const camera = useThree((s) => s.camera);
   const aspect = useThree((s) => s.size.width / s.size.height);
+  const framing = useMemo(() => framingFor(aspect), [aspect]);
   useFrame((state) => {
     const t = state.clock.elapsedTime;
+    const { target, distance } = framing;
     const yaw = 0.62 + drag.current.yaw + (reduce ? 0 : Math.sin(t * 0.16) * 0.2);
-    const pitch = MathUtils.clamp(0.6 + drag.current.pitch, 0.2, 1.2);
-    // Narrow (phone) frames need to stand further back to fit the whole T.
-    const distance = 8.9 * (aspect < 1 ? 1.45 : aspect < 1.25 ? 1.15 : 1);
+    const pitch = MathUtils.clamp(framing.pitch + drag.current.pitch, 0.2, 1.2);
     camera.position.set(
-      TARGET.x + Math.sin(yaw) * Math.cos(pitch) * distance,
-      TARGET.y + Math.sin(pitch) * distance,
-      TARGET.z + Math.cos(yaw) * Math.cos(pitch) * distance,
+      target.x + Math.sin(yaw) * Math.cos(pitch) * distance,
+      target.y + Math.sin(pitch) * distance,
+      target.z + Math.cos(yaw) * Math.cos(pitch) * distance,
     );
-    camera.lookAt(TARGET);
+    camera.lookAt(target);
   });
   return null;
 }
@@ -403,10 +412,9 @@ export default function HeroScene({ destination, replayToken, reduceMotion, acti
         dpr={[1, 2]}
         camera={{ fov: 42, near: 0.1, far: 100 }}
         frameloop={active ? "always" : "never"}
-        gl={{ antialias: true, powerPreference: "high-performance" }}
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         aria-hidden="true"
       >
-        <color attach="background" args={[NIGHT]} />
         <fog attach="fog" args={[NIGHT, 14, 26]} />
         <Rig reduce={reduceMotion} drag={drag} />
         <Cloud timing={timing} reduce={reduceMotion} hovering={hovering} />

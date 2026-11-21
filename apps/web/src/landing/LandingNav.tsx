@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { LogoMark } from "./shared";
 
@@ -8,25 +9,39 @@ const SECTIONS = [
   { href: "#team", label: "Team" },
 ];
 
-/** Top bar on the landing page. Visitors don't need it to open a map: only map owners log in. */
+/**
+ * Top bar. Clear over the hero so the sky runs up behind it, frosted once you scroll.
+ * Visitors don't need it to open a map: only map owners log in.
+ */
 export default function LandingNav() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header data-surface="night" className="sticky top-0 z-40 bg-night/92 text-paper backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-6 lg:pl-20">
-        <Link to="/" className="flex items-center gap-2 font-display text-2xl font-black tracking-wide">
+    <header
+      data-surface="night"
+      className={`sticky top-0 z-40 text-paper transition-colors duration-300 ${scrolled ? "bg-night/80 backdrop-blur-md" : "bg-transparent"}`}
+    >
+      <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto] items-center gap-4 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 sm:px-6 md:grid-cols-[1fr_auto_1fr]">
+        <Link to="/" className="flex w-fit items-center gap-2 font-display text-2xl font-black tracking-wide">
           <LogoMark className="size-7 text-paper" />
           Path
         </Link>
-        <nav aria-label="Sections" className="ml-auto hidden items-center gap-6 md:flex">
+        <nav aria-label="Sections" className="hidden items-center gap-8 md:flex">
           {SECTIONS.map((s) => (
-            <a key={s.href} href={s.href} className="font-bold text-sage transition-colors hover:text-paper">
+            <a key={s.href} href={s.href} className="text-paper/80 transition-colors hover:text-paper">
               {s.label}
             </a>
           ))}
         </nav>
         <Link
           to="/maps"
-          className="ml-auto inline-flex min-h-11 items-center rounded-full px-5 font-bold text-paper ring-2 ring-paper/40 transition-colors hover:bg-paper/10 md:ml-2"
+          className="inline-flex min-h-11 items-center justify-self-end rounded-full bg-paper/8 px-5 font-bold text-paper ring-1 ring-paper/20 transition-colors hover:bg-paper/15"
         >
           Log in
         </Link>
