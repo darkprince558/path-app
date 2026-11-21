@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M7ZC0MZJMSARCTKKZGPK5QQY",
+  "strategy": "manual-commit",
+  "branch": "feature/landing-page",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/web/src/landing/Hero.tsx",
+    "apps/web/src/landing/HeroScene.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 26,
+    "cache_creation_tokens": 18955,
+    "cache_read_tokens": 3168225,
+    "output_tokens": 7101,
+    "api_call_count": 12
+  },
+  "redaction": {
+    "replacements": 61,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 25,
+      "credentialed_uri": 0,
+      "entropy": 30,
+      "key_context": 6,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
