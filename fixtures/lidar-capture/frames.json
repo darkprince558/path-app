@@ -1,0 +1,50 @@
+{
+  "frames" : [
+    {
+      "cameraPose" : [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "frameId" : "frame-0000",
+      "path" : "frames/frame-0000.jpg",
+      "timestampMs" : 250
+    },
+    {
+      "cameraPose" : [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.2,
+        0,
+        0,
+        1
+      ],
+      "frameId" : "frame-0007",
+      "path" : "frames/frame-0007.jpg",
+      "timestampMs" : 1250
+    }
+  ]
+}
