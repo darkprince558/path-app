@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M7Y8AHYZ38JQY2Q3M51KC6HQ",
+  "strategy": "manual-commit",
+  "branch": "feature/organizer-upload",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/web/src/components/AppLayout.tsx",
+    "apps/web/src/components/MapCard.tsx",
+    "apps/web/src/components/VisibilityPicker.tsx",
+    "apps/web/src/lib/maps.ts",
+    "apps/web/src/lib/session.ts",
+    "apps/web/src/routes/Community.tsx",
+    "apps/web/src/routes/MyMaps.tsx",
+    "apps/web/src/vite-env.d.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "redaction": {
+    "replacements": 80,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 20,
+      "credentialed_uri": 0,
+      "entropy": 50,
+      "key_context": 10,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}

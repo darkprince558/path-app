@@ -1,0 +1,82 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M7Y8AHYZ38JQY2Q3M51KC6HQ",
+  "session_id": "eaa86ad3-682d-4cac-9281-4c0a778a8c72",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-21T05:12:37.2316681Z",
+  "branch": "feature/organizer-upload",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "apps/web/src/components/AppLayout.tsx",
+    "apps/web/src/components/MapCard.tsx",
+    "apps/web/src/components/VisibilityPicker.tsx",
+    "apps/web/src/lib/maps.ts",
+    "apps/web/src/lib/session.ts",
+    "apps/web/src/routes/Community.tsx",
+    "apps/web/src/routes/MyMaps.tsx",
+    "apps/web/src/vite-env.d.ts"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "b9d09068e68a",
+  "compact_transcript_start": 0,
+  "session_token_usage": {
+    "input_tokens": 280,
+    "cache_creation_tokens": 226948,
+    "cache_read_tokens": 23531183,
+    "output_tokens": 108592,
+    "api_call_count": 130
+  },
+  "redaction": {
+    "replacements": 80,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 20,
+      "credentialed_uri": 0,
+      "entropy": 50,
+      "key_context": 10,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_01QPQqijyGSvGng7EbkDPGpu",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "anthropic-skills:built-in-browser"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "0aeb06299c78",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 250,
+        "end": 251,
+        "entry_ids": [
+          "53838155-381e-4ca3-b20b-7de98337d0cd"
+        ],
+        "tool_use_id": "toolu_01QPQqijyGSvGng7EbkDPGpu"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01QPQqijyGSvGng7EbkDPGpu"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: anthropic-skills:built-in-browser",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 9
+  }
+}
