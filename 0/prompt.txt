@@ -1,0 +1,5 @@
+has the design gone a little more black or is that just me? cuz it should be dark green. did you make things darker like black?
+
+---
+
+No its okay, if thats how its been its all good! also for some reason, the problem section seems very buggy. like sometimes the timer bar thing for each screen in the animation just stops going, idk its not very reliable, can you test and find out what's going on?
