@@ -42,6 +42,25 @@ captures-local/video3d-tools/.venv/bin/python apps/capture/video3d/testdata/comp
   "$run" "$run/scene.ply" "$run/openmvs.ply" "$run/surface-evidence" --video
 ```
 
+### Compare a textured mesh with its points
+
+For an existing OpenMVS run, keep its directory intact, including the dense scene, point cloud, calibrated images and original report. Run these commands from the repository root.
+
+```sh
+./hallway3d setup-openmvs
+./hallway3d mesh "/path/to/run"
+```
+
+This opens two synchronized views of the same hallway. The left pane shows cleaned RGB points. The right pane shows triangles textured with the original camera images. Select **Solid** to inspect bumps and holes under neutral lighting, or **Textured** to see the photo colors. Select a capture time or drag either pane to move both cameras together. For a new video, `./hallway3d "/path/to/hallway.MOV" --surface mesh` also handles tracking and densification.
+
+The mesher uses the camera observations saved in the OpenMVS scene. It removes unsupported triangles and small detached pieces before it projects the images onto the surface. The standalone `mesh/hallway.glb` embeds the textures and uses the same coordinate frame as `mesh/points.ply`. Their scale is relative. Gaps can remain on smooth surfaces or where the camera saw too little detail.
+
+The new `mesh/report.json` records cleanup counts and output sizes. The original reconstruction and both of its point clouds stay available for comparison. To run another mesh trial, supply a new `--output` directory. To reopen the saved comparison:
+
+```sh
+./hallway3d preview "/path/to/run/mesh/points.ply" --mesh "/path/to/run/mesh/hallway.glb"
+```
+
 ### How the phone is tracked
 
 The default samples up to eight keyframes per second, with at most 160 spread across the clip. It first matches SIFT features and builds an incremental model. If some frames drop out or have weak 3D support, it also tries global mapping, including a candidate enriched with features tracked forward and backward through the decoded video. FFmpeg's decoder indices associate those observations with the correct keyframe even when the frame rate varies. For long clips the tracker increases the stride beyond its 3,600-source-frame budget and keeps all selected keyframes.

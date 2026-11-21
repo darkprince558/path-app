@@ -28,3 +28,11 @@ On the same Mac and camera path, stereo took 18 seconds and exported 600,000 col
 The offline comparison used 495,211 points per method, the same 288 × 512 views and a one-pixel-radius dot. Regions came from plane fits to the common sparse model and may include furniture. Coverage measures how much of the image contains projected points. Physical surface error remains unmeasured.
 
 For the next trial, keep the existing walking pace through the straight section and keep a textured doorway or wall edge in sight from both sides of the turn. Compare that section with this baseline before requesting a slower retake. [Implementation and verification](https://github.com/darkprince558/path-app/pull/19)
+
+## Photo-textured mesh from the same phone recording
+
+Reusing the saved dense scene took 43 seconds on the M4 Pro. Of 496,391 fused samples, the point filter retained 480,718. It dropped 3,623 isolated dots and 12,050 points in small clusters. Of 217,929 native triangles, the pipeline discarded 28,186 with insufficient nearby measurements, 2,553 in small disconnected pieces, and 5,259 without photographic coverage. The 11.65 MB GLB contains 181,931 textured triangles and one embedded 4096 × 4096 atlas.
+
+The cleaned cloud and mesh used the same viewer transform and camera poses. Across 126 calibrated, undistorted views, they filled 43.1% and 49.1% of the image respectively. In below-camera horizontal patches, coverage rose from 67.1% to 72.6% (94 qualifying views). In nearly vertical patches it rose from 83.2% to 85.6% (85 views). This comparison used the complete cleaned cloud and the exported mesh. The earlier stereo trial used different point sampling and image projections.
+
+The floor looks continuous in several places where the point cloud shows individual dots. Substantial gaps persist around the turn, with 8.6% of one full frame covered at 8.4 seconds. Use **Solid** in the local viewer to inspect those boundaries, then **Textured** to compare the same triangles against the photographs. The footage supplies no surveyed dimensions. [Reproduce the mesh comparison](../apps/capture/README.md#compare-a-textured-mesh-with-its-points)

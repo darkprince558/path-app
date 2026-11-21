@@ -72,7 +72,7 @@ def extract_frames(video, directory, fps, limit):
     }
 
 
-def write_cloud(path, xyz, rgb):
+def write_cloud(path, xyz, rgb, *, crop_bounds=True):
     # A single mis-triangulated point can make the viewer zoom out beyond the hall.
     # Keep a generous margin around the middle 98% along each axis.
     finite = np.isfinite(xyz).all(axis=1)
@@ -81,10 +81,13 @@ def write_cloud(path, xyz, rgb):
         xyz, rgb = xyz[finite], rgb[finite]
     if not len(xyz):
         raise ValueError("No finite surface points to export.")
-    low, high = np.percentile(xyz, [1, 99], axis=0)
-    margin = np.maximum(high - low, np.finfo(float).eps) * 0.5
-    keep = np.all((xyz >= low - margin) & (xyz <= high + margin), axis=1)
-    positions, colors = xyz[keep], rgb[keep]
+    positions, colors = xyz, rgb
+    if crop_bounds:
+        low, high = np.percentile(xyz, [1, 99], axis=0)
+        margin = np.maximum(high - low, np.finfo(float).eps) * 0.5
+        keep = np.all((xyz >= low - margin) & (xyz <= high + margin), axis=1)
+        positions, colors = xyz[keep], rgb[keep]
+    in_bounds = len(positions)
     if not len(positions):
         raise ValueError("No finite geometry survived the preview bounds check.")
     if len(positions) > MAX_RENDER_POINTS:
@@ -105,7 +108,7 @@ def write_cloud(path, xyz, rgb):
         vertices.tofile(out)
     pending.rename(path)
     return {"points": len(vertices), "bytes": path.stat().st_size,
-            "candidate_points": source_count, "outliers_removed": int(source_count - keep.sum())}
+            "candidate_points": source_count, "outliers_removed": source_count - in_bounds}
 
 
 def missing_intervals(frames, registered_names, video):
@@ -181,10 +184,10 @@ def main():
     parser.add_argument("--mapping", choices=["auto", "incremental", "global"], default="auto",
                         help="auto tries global mapping with full-rate tracking if the fast pass loses coverage")
     surface = parser.add_mutually_exclusive_group()
-    surface.add_argument("--surface", choices=["stereo", "openmvs", "compare"], default="stereo",
-                         help="compare exports both methods from one camera solution and opens the A/B viewer")
+    surface.add_argument("--surface", choices=["stereo", "openmvs", "compare", "mesh"], default="stereo",
+                         help="compare two point clouds, or use mesh to compare a textured GLB with its points")
     surface.add_argument("--sparse", action="store_true", help="export the triangulated feature tracks only")
-    parser.add_argument("--openmvs-bin", type=Path, help="directory containing InterfaceCOLMAP and DensifyPointCloud")
+    parser.add_argument("--openmvs-bin", type=Path, help="directory containing the OpenMVS executables")
     parser.add_argument("--no-preview", action="store_true", help="finish after exporting the PLY and report")
     args = parser.parse_args()
     video = args.video.expanduser().resolve()
@@ -192,10 +195,13 @@ def main():
         parser.error(f"Video not found: {video}")
     if not math.isfinite(args.fps) or args.fps <= 0 or args.max_frames < 4:
         parser.error("Use a positive --fps and at least 4 for --max-frames.")
-    if args.surface in {"openmvs", "compare"}:
+    if args.surface in {"openmvs", "compare", "mesh"}:
         from openmvs import resolve_tools
         try:
             resolve_tools(args.openmvs_bin)
+            if args.surface == "mesh":
+                from mesh import check_tools
+                check_tools(args.openmvs_bin)
         except RuntimeError as error:
             parser.error(str(error))
     if args.output:
@@ -236,7 +242,8 @@ def main():
             times = ", ".join(f"{a:g}–{b:g}s" for a, b in gaps[:6])
             report["warnings"].append(f"Review the source clip around {times}.")
         print("3/3  Exporting colored surface points", flush=True)
-        export_surfaces("sparse" if args.sparse else args.surface, model, frames, run, transform,
+        method = "sparse" if args.sparse else args.surface
+        export_surfaces("openmvs" if method == "mesh" else method, model, frames, run, transform,
                         args.openmvs_bin, report)
         report["status"] = "ready"
     except (ValueError, OSError, RuntimeError, subprocess.SubprocessError, cv2.error) as error:
@@ -259,6 +266,11 @@ def main():
         print(f"{export['geometry']}: {run / export['file']} ({export['points']:,} points)", flush=True)
     for warning in report["warnings"]:
         print(f"Capture note: {warning}")
+    if args.surface == "mesh":
+        options = ["--no-preview"] if args.no_preview else []
+        if args.openmvs_bin:
+            options.extend(["--openmvs-bin", str(args.openmvs_bin)])
+        return subprocess.call([sys.executable, str(Path(__file__).with_name("mesh.py")), str(run), *options])
     if not args.no_preview:
         compare = ["--compare", str(run / "openmvs.ply")] if args.surface == "compare" else []
         return subprocess.call([sys.executable, str(Path(__file__).with_name("preview.py")),
