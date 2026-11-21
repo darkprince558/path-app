@@ -9,6 +9,7 @@
 node_modules/
 dist/
 .next/
+*.tsbuildinfo
 __pycache__/
 .venv/
 DerivedData/
@@ -16,3 +17,4 @@ xcuserdata/
 
 # Local camera captures, device recordings, and venue exports
 /captures-local/
+/services/api/.local-scans/
