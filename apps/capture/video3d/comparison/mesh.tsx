@@ -5,6 +5,9 @@ import { createStage, loadAssets, type Assets } from "./meshStage";
 import "./style.css";
 import "./mesh.css";
 
+const planeMode = window.location.pathname.replace(/\/$/, "") === "/plane-compare";
+if (planeMode) document.title = "Plane fill comparison · Path";
+
 type Loaded = { assets: Assets; views: CaptureView[] };
 
 function Viewer({ assets, views }: Loaded) {
@@ -12,6 +15,7 @@ function Viewer({ assets, views }: Loaded) {
   const stage = useRef<ReturnType<typeof createStage> | null>(null);
   const [view, setView] = useState(views.length ? 0 : -1);
   const [solid, setSolid] = useState(false);
+  const [highlight, setHighlight] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -29,12 +33,16 @@ function Viewer({ assets, views }: Loaded) {
   }
   function showSolid(enabled: boolean) {
     setSolid(enabled);
-    stage.current?.setSolid(enabled);
+    stage.current?.setAppearance(enabled, highlight);
+  }
+  function showFills(enabled: boolean) {
+    setHighlight(enabled);
+    stage.current?.setAppearance(solid, enabled);
   }
   if (error) return <section role="alert">Could not display the comparison. {error}</section>;
-  return <main className="mesh-viewer">
+  return <main className={planeMode ? "mesh-viewer plane-viewer" : "mesh-viewer"}>
     <header className="mesh-header">
-      <h1>Path <span>/</span> Hallway comparison</h1>
+      <h1>Path <span>/</span> {planeMode ? "Plane fill comparison" : "Hallway comparison"}</h1>
       <div className="controls">
         {views.length > 0 && <label>View <select value={view} onChange={e => showView(Number(e.target.value))}>
           <option value={-1}>Overview</option>
@@ -44,16 +52,20 @@ function Viewer({ assets, views }: Loaded) {
       </div>
     </header>
     <div className="mesh-stage">
-      <canvas ref={canvas} aria-label="Synchronized 3D views of the OpenMVS point cloud and mesh"/>
-      <div className="mesh-pane" aria-label="Point cloud">
-        <h2>Point cloud</h2><span>{assets.scan.count.toLocaleString()} points</span>
+      <canvas ref={canvas} aria-label={planeMode ? "Synchronized views of the original mesh and plane fills" : "Synchronized 3D views of the OpenMVS point cloud and mesh"}/>
+      <div className="mesh-pane">
+        <h2>{planeMode ? "Current mesh" : "Point cloud"}</h2>
+        <span>{assets.baseline ? `${assets.baseline.triangles.toLocaleString()} triangles` : `${assets.scan!.count.toLocaleString()} points`}</span>
       </div>
-      <div className="mesh-pane" aria-label={solid ? "Solid mesh" : "Textured mesh"}>
-        <h2>{solid ? "Solid mesh" : "Textured mesh"}</h2><span>{assets.triangles.toLocaleString()} triangles</span>
+      <div className="mesh-pane">
+        <h2>{planeMode ? "With plane fills" : solid ? "Solid mesh" : "Textured mesh"}</h2>
+        <span>{planeMode ? `${assets.right.fillTriangles.toLocaleString()} fill triangles` : `${assets.right.triangles.toLocaleString()} triangles`}</span>
       </div>
     </div>
     <div className="mesh-footer">
       <span>Drag either view to orbit · scroll to zoom</span>
+      {planeMode && <button className="highlight-fills" aria-pressed={highlight} disabled={!assets.right.fillTriangles}
+        onClick={() => showFills(!highlight)}>Highlight fills</button>}
       <div className="switch" role="group" aria-label="Mesh appearance">
         <button aria-pressed={!solid} onClick={() => showSolid(false)}>Textured</button>
         <button aria-pressed={solid} onClick={() => showSolid(true)}>Solid</button>
@@ -69,10 +81,10 @@ function App() {
     const stop = new AbortController();
     let resources: Assets | undefined;
     async function load() {
-      const result = await fetch("/api/mesh-comparison", { signal: stop.signal });
+      const result = await fetch(planeMode ? "/api/plane-comparison" : "/api/mesh-comparison", { signal: stop.signal });
       if (!result.ok) throw new Error("Comparison information could not be loaded.");
-      const { points, mesh, views } = await result.json();
-      resources = await loadAssets(points, mesh, stop.signal);
+      const { points, baseline, mesh, views } = await result.json();
+      resources = await loadAssets(planeMode ? baseline : points, mesh, planeMode, stop.signal);
       if (stop.signal.aborted) resources.dispose();
       else setLoaded({ assets: resources, views });
     }
@@ -80,7 +92,7 @@ function App() {
     return () => { stop.abort(); resources?.dispose(); };
   }, []);
   if (error) return <section role="alert">{error}</section>;
-  if (!loaded) return <section role="status">Loading point cloud and photo textures…</section>;
+  if (!loaded) return <section role="status">Loading reconstruction and photo textures…</section>;
   return <Viewer {...loaded}/>;
 }
 createRoot(document.getElementById("root")!).render(<App/>);

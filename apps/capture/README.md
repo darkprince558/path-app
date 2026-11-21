@@ -61,6 +61,32 @@ The new `mesh/report.json` records cleanup counts and output sizes. The original
 ./hallway3d preview "/path/to/run/mesh/points.ply" --mesh "/path/to/run/mesh/hallway.glb"
 ```
 
+### Compare plane fills around a turn
+
+Choose the start and end of the turn in video seconds. For the 15.7-second walking trial, run this after building the textured mesh.
+
+```sh
+run="/path/to/run"
+./hallway3d planes "$run" --turn 5 9 --focus-time 7.75
+```
+
+The left pane shows the original textured mesh. The right pane adds small wall and floor patches. Turn on **Highlight fills** to see their exact footprints in orange. Switch to **Solid** to inspect their shape. The panes share one camera, and the time menu includes every calibrated view inside the turn. For this recording, compare **7.75 s** with **8.375 s**.
+
+The fitter finds locally flat neighborhoods in the cleaned point cloud and well-tracked landmarks. It bounds each triangle by nearby samples on the same plane. With `--turn`, it also looks for depth that the original cloud missed. One method matches earlier and later photos from different positions. The other takes individual OpenMVS depth samples that agree across three cameras, including one camera at the turn.
+
+An exact ray test checks each candidate against visible landmarks in all registered cameras. A separate depth check rejects a triangle when two sufficiently separated cameras saw through its interior. Surviving triangles need agreement across at least three photographs before they receive texture. With `--turn`, at least one of those photographs must come from that interval. Every fifth registered photo (starting with the third) is reserved from these new depth and texture stages. The baseline and sparse landmarks use the full recording. Broad unobserved areas can still have no geometry.
+
+The standalone comparison export is `planes/hallway-planes.glb`. The original triangles and texture remain in the file alongside the accepted fills. If no face qualifies, the export is a byte-identical copy of the original. `planes/report.json` records the time window, proposal and rejection counts, and source cameras. For another trial, pass a fresh `--output` directory. The first native depth check builds a local `plane-depth-cache/` under the run, which later trials reuse after checking the input and depth map hashes. The optional turn sweep uses a system C compiler (`cc` on macOS).
+
+Reopen the saved comparison with the same cameras.
+
+```sh
+./hallway3d preview "$run/mesh/hallway.glb" --planes "$run/planes/hallway-planes.glb" \
+  --report "$run/planes/report.json"
+```
+
+The [walking trial](../../knowledge/mac-video-trial.md#plane-fills-at-the-turn) records the measured coverage and the [research notes](../../knowledge/indoor-surface-research.md) describe the experiments and promising alternatives.
+
 ### How the phone is tracked
 
 The default samples up to eight keyframes per second, with at most 160 spread across the clip. It first matches SIFT features and builds an incremental model. If some frames drop out or have weak 3D support, it also tries global mapping, including a candidate enriched with features tracked forward and backward through the decoded video. FFmpeg's decoder indices associate those observations with the correct keyframe even when the frame rate varies. For long clips the tracker increases the stride beyond its 3,600-source-frame budget and keeps all selected keyframes.

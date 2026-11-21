@@ -124,6 +124,16 @@ def missing_intervals(frames, registered_names, video):
     return intervals
 
 
+def capture_view(im, transform, sample_fps, distance):
+    """Convert a stored COLMAP pose to a look target and up vector in the viewer frame."""
+    rotation = transform[:3, :3]
+    axes = rotation @ im.cam_from_world().rotation.matrix().T
+    position = rotation @ im.projection_center() + transform[:3, 3]
+    seconds = (int(Path(im.name).stem.split("-")[-1]) - 1) / sample_fps
+    return {"label": f"{seconds:.1f} s", "position": position.tolist(),
+            "target": (position + axes[:, 2] * distance).tolist(), "up": (-axes[:, 1]).tolist()}
+
+
 def camera_views(model, transform, sample_fps):
     """Three supported capture poses in the same coordinate system as both PLYs."""
     views = sorted((model.image(i) for i in model.reg_image_ids()), key=lambda im: im.name)
@@ -133,16 +143,8 @@ def camera_views(model, transform, sample_fps):
     # Focus a few walking steps ahead so a subsequent orbit stays near this part of the scan.
     centers = np.array([im.projection_center() for im in supported])
     distance = max(np.linalg.norm(np.ptp(centers, axis=0)) * 0.16, 0.01)
-    rotation = transform[:3, :3]
-    result = []
-    for index in np.unique((np.array([.12, .5, .84]) * (len(supported) - 1)).round().astype(int)):
-        im = supported[index]
-        axes = rotation @ im.cam_from_world().rotation.matrix().T
-        position = rotation @ im.projection_center() + transform[:3, 3]
-        seconds = (int(Path(im.name).stem.split("-")[-1]) - 1) / sample_fps
-        result.append({"label": f"{seconds:.1f} s", "position": position.tolist(),
-                       "target": (position + axes[:, 2] * distance).tolist(), "up": (-axes[:, 1]).tolist()})
-    return result
+    indices = np.unique((np.array([.12, .5, .84]) * (len(supported) - 1)).round().astype(int))
+    return [capture_view(supported[i], transform, sample_fps, distance) for i in indices]
 
 
 def export_surfaces(method, model, frames, run, transform, bin_dir, report):

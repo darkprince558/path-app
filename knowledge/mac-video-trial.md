@@ -36,3 +36,18 @@ Reusing the saved dense scene took 43 seconds on the M4 Pro. Of 496,391 fused sa
 The cleaned cloud and mesh used the same viewer transform and camera poses. Across 126 calibrated, undistorted views, they filled 43.1% and 49.1% of the image respectively. In below-camera horizontal patches, coverage rose from 67.1% to 72.6% (94 qualifying views). In nearly vertical patches it rose from 83.2% to 85.6% (85 views). This comparison used the complete cleaned cloud and the exported mesh. The earlier stereo trial used different point sampling and image projections.
 
 The floor looks continuous in several places where the point cloud shows individual dots. Substantial gaps persist around the turn, with 8.6% of one full frame covered at 8.4 seconds. Use **Solid** in the local viewer to inspect those boundaries, then **Textured** to compare the same triangles against the photographs. The footage supplies no surveyed dimensions. [Reproduce the mesh comparison](../apps/capture/README.md#compare-a-textured-mesh-with-its-points)
+
+## Plane fills at the turn
+
+We reused the same video and original mesh. Across 5–9 s, matching earlier and later frames supplied 2,035 depth anchors. Reading the original per-camera depth estimates before fusion supplied another 2,506 locations that agreed in at least three views and lay outside the cleaned cloud. The fitter proposed 13,756 triangles. After landmark ray tests, native depth checks and photo comparison, 806 textured triangles qualified. The 11.91 MB export contains the original 181,931 triangles plus those additions.
+
+| Projected region | Views | Original | With plane fills |
+| --- | ---: | ---: | ---: |
+| Whole frame throughout the turn | 33 | 32.93% | 33.59% |
+| Independently identified floor-like regions | 22 | 73.47% | 74.58% |
+| Independently identified near-vertical regions | 12 | 97.03% | 97.04% |
+| Whole frame at 8.375 s | 1 | 8.58% | 8.69% |
+
+At 7.75 s the mesh covered 2,427 previously empty pixels in a 288 × 512 image. Some vertical fills land on chairs and table edges. At 8.375 s it recovered two small floor patches covering 165 pixels. The large wall gap stayed open. Near-vertical coverage above is measured only in regions where tracked points establish a plane. The figure cannot be extrapolated across the missing wall.
+
+We excluded 25 photos from the new depth estimates, patch appearance checks and texture baking. The seven reserved turn views gained 5,666 pixels with a mean absolute color difference of 10.39/255 from their source photos. The camera calibration and original geometry used all views. An independent ray test checked 93,904 tracked observations. Of the 288 that intersected visible fills, none put the new face more than 10% in front of its landmark. Blank areas without landmarks have no such check. The private run contains the original-camera walkthrough, `plane-evidence/coverage.csv` and both audit reports. [Run the same comparison](../apps/capture/README.md#compare-plane-fills-around-a-turn) · [Research and library trials](indoor-surface-research.md)

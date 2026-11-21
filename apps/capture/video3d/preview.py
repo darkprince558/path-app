@@ -27,6 +27,10 @@ SECOND_ASSET = "/api/comparison/openmvs"
 MESH_PATH = "/mesh-compare"
 MESH_METADATA = "/api/mesh-comparison"
 MESH_ASSET = f"{MESH_METADATA}/surface.glb"
+PLANES_PATH = "/plane-compare"
+PLANES_METADATA = "/api/plane-comparison"
+BASELINE_ASSET = f"{PLANES_METADATA}/baseline.glb"
+PLANES_ASSET = f"{PLANES_METADATA}/completed.glb"
 
 
 def comparison_metadata(report, explicit):
@@ -91,7 +95,7 @@ def build_comparison(web, stage, route=COMPARE_PATH):
         raise ValueError("Comparison needs the guest viewer sources and installed dependencies. "
                          "Run ./hallway3d setup or use --dist from a built guest workspace.")
     shutil.copytree(Path(__file__).with_name("comparison"), stage, dirs_exist_ok=True)
-    if route == MESH_PATH:
+    if route in (MESH_PATH, PLANES_PATH):
         (stage / "mesh.html").replace(stage / "index.html")
     for relpath in ("src/components/ScanViewer.tsx", "src/lib/ply.ts", "tsconfig.json"):
         dest = stage / relpath
@@ -119,27 +123,23 @@ class PreviewHandler(SimpleHTTPRequestHandler):
             self.send_header("Location", self.server.route)
             self.end_headers()
             return None
-        if path == METADATA_PATH:
+        if path == METADATA_PATH and self.server.route != PLANES_PATH:
             data = json.dumps({"shareId": SHARE_ID, "format": "ply", "assetPath": ASSET_PATH}).encode()
             self.success("application/json", len(data))
             return io.BytesIO(data)
-        if path == ASSET_PATH:
-            return self.serve_file(self.server.scan, "application/octet-stream")
-        if self.server.compare or self.server.mesh:
-            route = self.server.route
-            if path == (MESH_METADATA if self.server.mesh else "/api/comparison"):
+        if path in self.server.asset_files:
+            return self.serve_file(*self.server.asset_files[path])
+        route = self.server.route
+        if route != GUEST_PATH:
+            if path == self.server.metadata_path:
                 data = json.dumps(self.server.comparison).encode()
                 self.success("application/json", len(data))
                 return io.BytesIO(data)
-            if self.server.mesh and path == MESH_ASSET:
-                return self.serve_file(self.server.mesh, "model/gltf-binary")
-            if self.server.compare and path == SECOND_ASSET:
-                return self.serve_file(self.server.compare, "application/octet-stream")
             if path in (route, route + "/"):
                 return self.serve_file(self.server.compare_dist / "index.html", "text/html; charset=utf-8")
             if path.startswith(route + "/assets/"):
                 return self.serve_asset(self.server.compare_dist, path[len(route):])
-        if path == GUEST_PATH:
+        if path == GUEST_PATH and route != PLANES_PATH:
             return self.serve_file(self.server.dist / "index.html", "text/html; charset=utf-8")
         if path.startswith("/assets/"):
             return self.serve_asset(self.server.dist, path)
@@ -174,33 +174,37 @@ class PreviewHandler(SimpleHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("scan", type=Path, help="exported .ply file")
+    parser.add_argument("scan", type=Path, help="exported .ply file, or the original .glb for --planes")
     compare_options = parser.add_mutually_exclusive_group()
     compare_options.add_argument("--compare", type=Path, metavar="OPENMVS.ply",
                         help="compare the positional stereo PLY with an OpenMVS PLY in the same coordinates")
     compare_options.add_argument("--mesh", type=Path, metavar="SURFACE.glb",
                                  help="display the positional point cloud beside its textured GLB mesh")
+    compare_options.add_argument("--planes", type=Path, metavar="COMPLETED.glb",
+                                 help="show the original and plane-completed GLBs side by side")
     parser.add_argument("--report", type=Path, help="comparison report with optional camera_views")
     parser.add_argument("--dist", type=Path, help="built Path guest viewer dist directory")
     parser.add_argument("--port", type=int, default=8765, help="localhost TCP port (0 selects a free port)")
     parser.add_argument("--no-open", action="store_true", help="print the URL without opening the browser")
     args = parser.parse_args()
     scan = args.scan.expanduser().resolve()
-    if not scan.is_file() or scan.suffix.lower() != ".ply":
-        parser.error(f"Expected an existing .ply file: {scan}")
+    first_suffix = ".glb" if args.planes else ".ply"
+    if not scan.is_file() or scan.suffix.lower() != first_suffix:
+        parser.error(f"Expected an existing {first_suffix} file: {scan}")
     compare = args.compare.expanduser().resolve() if args.compare else None
     if compare and (not compare.is_file() or compare.suffix.lower() != ".ply"):
         parser.error(f"Expected an existing comparison .ply file: {compare}")
     mesh = args.mesh.expanduser().resolve() if args.mesh else None
-    if mesh:
-        if not mesh.is_file() or mesh.suffix.lower() != ".glb":
-            parser.error(f"Expected an existing textured .glb file: {mesh}")
+    planes = args.planes.expanduser().resolve() if args.planes else None
+    for glb in ([scan, planes] if planes else [mesh] if mesh else []):
+        if not glb.is_file() or glb.suffix.lower() != ".glb":
+            parser.error(f"Expected an existing textured .glb file: {glb}")
         try:
-            check_glb(mesh)
+            check_glb(glb)
         except (OSError, ValueError, TypeError) as error:
             parser.error(f"Could not open the mesh: {error}")
-    if args.report and not (compare or mesh):
-        parser.error("--report requires --compare or --mesh")
+    if args.report and not (compare or mesh or planes):
+        parser.error("--report requires --compare, --mesh or --planes")
     if not 0 <= args.port <= 65535:
         parser.error("--port must be between 0 and 65535")
 
@@ -215,15 +219,29 @@ def main():
 
     with ExitStack() as stack:
         comparison_dist, metadata = None, None
-        route = MESH_PATH if mesh else COMPARE_PATH if compare else GUEST_PATH
-        other = mesh or compare
+        route, metadata_path = GUEST_PATH, None
+        files = {ASSET_PATH: (scan, "application/octet-stream")}
+        if planes:
+            route, metadata_path = PLANES_PATH, PLANES_METADATA
+            files = {BASELINE_ASSET: (scan, "model/gltf-binary"), PLANES_ASSET: (planes, "model/gltf-binary")}
+        elif mesh:
+            route, metadata_path = MESH_PATH, MESH_METADATA
+            files[MESH_ASSET] = (mesh, "model/gltf-binary")
+        elif compare:
+            route, metadata_path = COMPARE_PATH, "/api/comparison"
+            files[SECOND_ASSET] = (compare, "application/octet-stream")
+        other = planes or mesh or compare
         if other:
             report = args.report.expanduser() if args.report else None
-            if report is None and scan.parent == other.parent:
+            if report is None and planes:
+                report = planes.parent / "report.json"
+            elif report is None and scan.parent == other.parent:
                 report = scan.parent / "report.json"
             try:
                 metadata = comparison_metadata(report, args.report is not None)
-                if mesh:
+                if planes:
+                    metadata = {"baseline": BASELINE_ASSET, "mesh": PLANES_ASSET, "views": metadata["views"]}
+                elif mesh:
                     metadata = {"points": ASSET_PATH, "mesh": MESH_ASSET, "views": metadata["views"]}
                 stage = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="path-compare-")))
                 comparison_dist = build_comparison(dist.parent, stage, route)
@@ -233,8 +251,8 @@ def main():
             server = stack.enter_context(ThreadingHTTPServer(("127.0.0.1", args.port), PreviewHandler))
         except OSError as error:
             parser.exit(1, f"Could not start the local preview: {error}. Try --port 0.\n")
-        server.scan, server.dist = scan, dist
-        server.compare, server.mesh, server.route = compare, mesh, route
+        server.dist, server.route, server.metadata_path = dist, route, metadata_path
+        server.asset_files = files
         server.compare_dist, server.comparison = comparison_dist, metadata
         url = f"http://127.0.0.1:{server.server_port}{route}"
         print(f"Previewing {scan.name} at {url}\nPress Ctrl-C to stop.", flush=True)

@@ -39,6 +39,7 @@ Build a colored 3D point cloud from a phone video and open it in Path.
   ./hallway3d VIDEO --surface compare       Compare Stereo and OpenMVS on the same cameras
   ./hallway3d VIDEO --surface mesh          Build a textured GLB and compare it with its points
   ./hallway3d mesh /path/to/run             Mesh an existing OpenMVS run without reprocessing the video
+  ./hallway3d planes /path/to/run           Compare supported plane fills with the current textured mesh
   ./hallway3d VIDEO --no-preview            Export without opening a browser
   ./hallway3d preview /path/to/scene.ply    Reopen an existing export
   ./hallway3d demo                          Reconstruct a synthetic hallway
@@ -54,6 +55,10 @@ fi
 if [[ "$1" == mesh ]]; then
   shift
   exec "$python" "$app/mesh.py" "$@"
+fi
+if [[ "$1" == planes ]]; then
+  shift
+  exec "$python" "$app/planes.py" "$@"
 fi
 if [[ "$1" == demo ]]; then
   shift

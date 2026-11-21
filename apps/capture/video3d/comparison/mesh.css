@@ -20,3 +20,11 @@
   .mesh-pane { padding: .45rem .65rem; }
   .mesh-footer > span { max-width: 13em; }
 }
+
+.highlight-fills { margin-left: auto; }
+.highlight-fills[aria-pressed="true"] { background: #ff8d38; border-color: #ff8d38; color: #191d16; }
+.highlight-fills:disabled { opacity: .55; }
+@media (max-width: 720px) {
+  .plane-viewer .mesh-footer { flex-wrap: wrap; justify-content: flex-end; }
+  .plane-viewer .mesh-footer > span { flex: 1 1 10rem; }
+}
