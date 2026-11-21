@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise scan formats, access changes, and upload failures on a local port."""
+"""Exercise scan formats, access changes, map management, and upload failures on a local port."""
 
 import argparse
 import json
@@ -40,10 +40,20 @@ def check_access(server, share, user, expected_status):
         assert headers["Cache-Control"] == "no-store"
 
 
-def listed(server):
-    status, _, data = request(server, "GET", "/api/scans/public")
-    assert status == 200
+def listed(server, path="/api/scans/public", user=None):
+    status, _, data = request(server, "GET", path, headers=user)
+    assert status == 200, (path, status)
     return json.loads(data)["scans"]
+
+
+def ids(scans):
+    return [scan["shareId"] for scan in scans]
+
+
+def patch(server, share, change, user=OWNER):
+    status, _, body = request(server, "PATCH", "/api/scans/" + share["shareId"], json.dumps(change).encode(),
+                              {"Content-Type": "application/json", **user})
+    return status, (json.loads(body) if body else None)
 
 
 def run(server, ply):
@@ -66,7 +76,7 @@ def run(server, ply):
         assert status == 200 and asset.encode() in body
         status, _, body = request(server, "GET", f"/api/shares/{share_id}", headers=OWNER)
         assert status == 200 and json.loads(body) == {
-            "shareId": share_id, "format": file_format, "assetPath": asset
+            "shareId": share_id, "format": file_format, "assetPath": asset, "name": "Untitled map"
         }
         status, headers, body = request(server, "GET", asset, headers=OWNER)
         assert status == 200 and body == data
@@ -78,7 +88,7 @@ def run(server, ply):
     assert request(server, "POST", endpoint, ply, {"Content-Type": "application/octet-stream"})[0] == 401
     status, _, body = request(server, "POST", endpoint + "&visibility=public", ply, binary)
     public = json.loads(body)
-    assert status == 201 and listed(server) == [public]
+    assert status == 201 and ids(listed(server)) == [public["shareId"]]
     private, unlisted = shares
     check_access(server, public, {}, 200)
     check_access(server, unlisted, {}, 200)
@@ -98,6 +108,56 @@ def run(server, ply):
     assert request(server, "POST", endpoint, b"bad data", binary)[0] == 400
     assert request(server, "POST", endpoint, ply, {"Content-Type": "text/plain", **OWNER})[0] == 415
     assert request(server, "POST", endpoint, b"", {**binary, "Content-Length": str(MAX_UPLOAD_BYTES + 1)})[0] == 413
+    manage(server, ply, binary)
+
+
+def manage(server, ply, binary):
+    """Names, the owner's and viewer's lists, partial changes, renaming and deleting."""
+    status, _, body = request(server, "POST", "/api/scans?format=ply&visibility=private&name=%20Library%20%20rooms%20",
+                              ply, binary)
+    library = json.loads(body)
+    assert status == 201 and library["name"] == "Library rooms", body
+    for bad in ("", "%20%20", "a" * 81, "bell%07name"):
+        assert request(server, "POST", f"/api/scans?format=ply&name={bad}", ply, binary)[0] == 400, bad
+
+    mine = listed(server, "/api/scans/mine", OWNER)
+    assert mine[0]["shareId"] == library["shareId"], "newest first"
+    assert set(mine[0]) == {"shareId", "sharePath", "name", "format", "visibility", "updatedAt", "viewerIds"}
+    assert mine[0]["visibility"] == "private" and mine[0]["viewerIds"] == []
+    assert listed(server, "/api/scans/mine", GUEST) == []
+    assert request(server, "GET", "/api/scans/mine")[0] == 401
+    assert request(server, "GET", "/api/scans/shared")[0] == 401
+
+    # A partial change keeps the other fields; viewerIds still replaces the whole list.
+    assert patch(server, library, {"viewerIds": ["demo-guest"]})[0] == 200
+    status, state = patch(server, library, {"name": "Library study rooms"})
+    assert status == 200 and state == {"shareId": library["shareId"], "name": "Library study rooms",
+                                       "visibility": "private", "viewerIds": ["demo-guest"]}, state
+    shared = listed(server, "/api/scans/shared", GUEST)
+    assert ids(shared) == [library["shareId"]] and shared[0]["owner"] == "demo-owner"
+    assert shared[0]["name"] == "Library study rooms" and "viewerIds" not in shared[0]
+    assert listed(server, "/api/scans/shared", VISITOR) == []
+    assert listed(server, "/api/scans/shared", OWNER) == [] or library["shareId"] not in ids(
+        listed(server, "/api/scans/shared", OWNER))
+    status, _, body = request(server, "GET", "/api/shares/" + library["shareId"], headers=GUEST)
+    assert status == 200 and json.loads(body)["name"] == "Library study rooms"
+    for bad in ({}, {"name": ""}, {"name": "x" * 81}, {"owner": "me"}, {"visibility": "secret"}, {"viewerIds": "all"}):
+        assert patch(server, library, bad)[0] == 400, bad
+    assert patch(server, library, {"name": "Taken over"}, GUEST)[0] == 404
+
+    assert patch(server, library, {"visibility": "public"})[0] == 200
+    public = listed(server)
+    assert public[0]["shareId"] == library["shareId"] and public[0]["name"] == "Library study rooms"
+
+    # Only the owner can delete. Afterwards every route answers 404 and the lists drop it.
+    assert request(server, "DELETE", "/api/scans/" + library["shareId"], headers=GUEST)[0] == 404
+    assert request(server, "DELETE", "/api/scans/" + library["shareId"])[0] == 404
+    status, _, body = request(server, "DELETE", "/api/scans/" + library["shareId"], headers=OWNER)
+    assert status == 204 and body == b""
+    check_access(server, library, OWNER, 404)
+    for path, user in (("/api/scans/public", None), ("/api/scans/mine", OWNER), ("/api/scans/shared", GUEST)):
+        assert library["shareId"] not in ids(listed(server, path, user)), path
+    assert request(server, "DELETE", "/api/scans/" + library["shareId"], headers=OWNER)[0] == 404
 
 
 def main():
@@ -113,7 +173,8 @@ def main():
         finally:
             server.shutdown()
             thread.join()
-    print("Verified scan bytes, all three visibility modes, grants, revocation, and upload failures.")
+    print("Verified scan bytes, all three visibility modes, grants, revocation, upload failures, "
+          "names, owner and shared lists, partial changes, and deletion.")
 
 
 if __name__ == "__main__":
