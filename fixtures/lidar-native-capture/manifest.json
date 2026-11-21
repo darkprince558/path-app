@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "captureId": "6d8c1359-2480-4493-89b8-39be20cc6fc9",
+  "capturedAt": "2026-11-21T18:00:00Z",
+  "device": {
+    "model": "synthetic wall fixture",
+    "osVersion": "synthetic iOS 18.6"
+  },
+  "coordinateSystem": {
+    "units": "metres",
+    "upAxis": "Y",
+    "handedness": "right",
+    "matrixLayout": "column-major",
+    "poseConvention": "camera-to-capture"
+  },
+  "entrancePose": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+  ],
+  "files": [
+    {
+      "path": "frames/frame-0000.jpg",
+      "byteSize": 811,
+      "sha256": "c5b1fec7938257b6509e0e0a9c268ab96b4511b93199f85f63625f5669c39a62"
+    },
+    {
+      "path": "frames/frame-0007.jpg",
+      "byteSize": 1027,
+      "sha256": "86287b3453b6092fa25f8fb7ed5e47668a77ea1e7fbe04e2ff377bf693d47436"
+    },
+    {
+      "path": "frames.json",
+      "byteSize": 1016,
+      "sha256": "c6b71f171b84a17451e2abcff5b0cd416e400163bc6e3e0bbf94dd237fb82923"
+    },
+    {
+      "path": "points.ply",
+      "byteSize": 2043,
+      "sha256": "aec8c81b6babc423baf3d58845be0731e33a2b885dd338b69d2bd4f06874c37a"
+    },
+    {
+      "path": "preview.jpg",
+      "byteSize": 811,
+      "sha256": "c5b1fec7938257b6509e0e0a9c268ab96b4511b93199f85f63625f5669c39a62"
+    },
+    {
+      "path": "source.glb",
+      "byteSize": 16856,
+      "sha256": "0788aa8a6ec6ce408a598852b2a27a031dc059a4e3d165156e1f2a66b7bb824c"
+    }
+  ],
+  "trackingWarnings": [
+    "tracking: limited"
+  ]
+}

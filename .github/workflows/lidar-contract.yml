@@ -1,0 +1,43 @@
+name: LiDAR contract compatibility
+on:
+  pull_request:
+    paths:
+      - 'apps/capture/**'
+      - 'fixtures/lidar-native-capture/**'
+      - 'services/api/**'
+      - 'scripts/check-lidar-contract-export.sh'
+      - '.github/workflows/lidar-contract.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    env:
+      AUTH0_AUDIENCE: https://api.not404.test
+      AUTH0_DOMAIN: example.auth0.com
+      AUTH0_CLIENT_ID: test-client
+      AUTH0_CLIENT_SECRET: test-only
+      AUTH0_SECRET: '0000000000000000000000000000000000000000000000000000000000000000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix apps/capture/processor
+      - run: npm ci --prefix services/api
+      - run: npm test --prefix apps/capture/processor
+      - run: npm run contract:check --prefix services/api
+      - run: node --import tsx --test src/lib/api/lidar-contract-compatibility.test.ts
+        working-directory: services/api
+      - run: npm run typecheck --prefix services/api
+  swift-export:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix apps/capture/processor
+      - run: npm ci --prefix services/api
+      - run: bash scripts/check-lidar-contract-export.sh
+      - run: xcodebuild -quiet -project apps/capture/PathCapture.xcodeproj -scheme PathCapture -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build

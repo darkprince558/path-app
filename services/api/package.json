@@ -14,7 +14,9 @@
     "db:check": "drizzle-kit check",
     "db:seed": "tsx src/db/seed.ts",
     "db:ping": "tsx src/db/ping.ts",
-    "worker:captures": "tsx scripts/capture-worker.ts"
+    "worker:captures": "tsx scripts/capture-worker.ts",
+    "contract:export": "tsx scripts/export-capture-contract.ts",
+    "contract:check": "tsx scripts/export-capture-contract.ts --check"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.33.0",

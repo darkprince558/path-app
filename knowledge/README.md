@@ -14,6 +14,9 @@ Use this folder for knowledge a teammate will still need after your branch merge
 
 [LiDAR ingestion contract and exporter handoff](lidar-ingestion.md) records the
 implemented backend example and native capture checks still required.
+The [contract integration handoff](../docs/lidar-contract-compatibility.md) records
+the device/database UUID distinction, generated CPU validators and separate native fixture.
+
 The [publishing runbook](../docs/lidar-publishing.md) records Task 5's approved
 revision-to-scan link, owner-only frames and verified synthetic viewer handoff.
 

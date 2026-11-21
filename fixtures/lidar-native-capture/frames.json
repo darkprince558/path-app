@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "captureId": "6d8c1359-2480-4493-89b8-39be20cc6fc9",
+  "frames": [
+    {
+      "id": "frame-0000",
+      "imagePath": "frames/frame-0000.jpg",
+      "timestampSeconds": 0.25,
+      "cameraPose": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "width": 64,
+      "height": 64,
+      "intrinsics": {
+        "fx": 48,
+        "fy": 48,
+        "cx": 32,
+        "cy": 32
+      }
+    },
+    {
+      "id": "frame-0007",
+      "imagePath": "frames/frame-0007.jpg",
+      "timestampSeconds": 1.25,
+      "cameraPose": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.2,
+        0,
+        0,
+        1
+      ],
+      "width": 64,
+      "height": 64,
+      "intrinsics": {
+        "fx": 48,
+        "fy": 48,
+        "cx": 32,
+        "cy": 32
+      }
+    }
+  ]
+}
