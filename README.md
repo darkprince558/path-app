@@ -11,9 +11,10 @@ Our first milestone is to upload one real scan, share an unlisted link, and open
 | Building | Start with |
 | --- | --- |
 | Website and 3D viewer | [Arielle’s web workspace](apps/web/README.md) |
-| Uploads, sharing and access | [Sam’s API workspace and local commands](services/api/README.md) |
+| Uploads, sharing and access | [Sam’s API workspace and local commands](services/api/README.md) · [Live deployment plan](docs/deployment.md) |
 | Phone capture and export | [Krishna and Anish’s capture workspace](apps/capture/README.md) |
 | Shared decisions and development rules | [Architecture](docs/architecture.md) · [Human and coding-agent workflow](AGENTS.md) |
+| Working in Claude Code and Codex | [Set up Entire](docs/entire.md) · [Claim a task and launch parallel agents](docs/agent-tasks.md) · [Handoff and review skills](docs/agent-skills.md) |
 
 Run `make check` from the repo root with Python 3.9+ and Make. This checks a synthetic venue and exercises the local upload/share API, including grants and revocation. Start the mock with `make dev-api`. It stores scans for the current process and serves a download page for integration. The guest 3D website, durable backend and device capture are the team's implementation work.
 
