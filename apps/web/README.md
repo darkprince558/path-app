@@ -35,6 +35,24 @@ Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), c
 | `src/components/SharePanel.tsx` | After upload: guest link, copy, QR code, preview, and visibility changes through `PATCH /api/scans/<id>`. Warns when the link is `localhost`, which a phone can't open. |
 | `src/lib/scans.ts` | Owner API client (upload, sharing) with readable messages for 400, 401, 413, 415 and network failures. |
 | `src/routes/GuestView.tsx` | `/s/:shareId` with loading, not-found/denied, download, parse-failure and unsupported-format (GLB) states. |
+| `src/routes/Home.tsx`, `src/landing/` | The landing page at `/`, described below. |
+
+## Landing page
+
+`/` is the public landing page. Sections, top to bottom, with what moves in each:
+
+| Section | File | Motion |
+| --- | --- | --- |
+| Hero | `Hero.tsx`, `HeroScene.tsx` | A 3D scan of the fixture's T corridor assembles from scattered dots, a coral route draws with footprints, and dots near the mouse glow. Replays after 20 s idle. Route to and QR panels float over it. |
+| Why Path | `Problem.tsx` | A looping player: map apps, indoor maps, floor plans, the "accessible" checkmark, then Path. Pauses on hover, keyboard focus, off screen, or with Pause. |
+| How it works | `AppTour.tsx` | Laptop: a sticky CSS phone swaps screens for the step in the middle. Phone: one row per step, alternating sides. |
+| Who it's for | `WhoUses.tsx` | Sign-style people walk to their signs one after another along one route. |
+| Team | `Creators.tsx` | Cards start as a pile and fan out; they turn over to links on hover, tap or keyboard focus. Photos are in `src/assets/team/`, résumés in `public/resumes/`. |
+| Join us | `Join.tsx`, `Footprint.tsx` | Footprints walk across on a loop; with a mouse, footprints follow the cursor. |
+
+Nothing pins or takes over scrolling. With Reduce motion, every section shows its finished state and nothing moves on its own. The hero scan is generated from the fixture's layout (`venue.ts`) because the fixture has only 93 points.
+
+The QR codes open `VITE_DEMO_SHARE_URL` (a hosted guest link, `…/s/<shareId>`). Without it they open Community on the current site, which a phone can't reach when that's `localhost`.
 
 ## Accessibility
 
