@@ -8,6 +8,7 @@ Read the [architecture](docs/architecture.md) and the README for the component y
 
 - Pick one outcome a teammate can verify. Record the human owner, affected components, and what success looks like in the issue or PR.
 - Check current branches, open PRs, and local changes before editing. Work on a short-lived branch based on the current `main`. Give concurrent agents separate branches and worktrees or clones, with one active writer per task.
+- Claim a task in a GitHub issue or Entire Trail. Name the human owner and writable paths. Use the [parallel Claude Code and Codex workflow](docs/agent-tasks.md) for startup commands, task briefs and review.
 - For a change that crosses components, agree with the producer and consumer on a small example first. Keep the shared contract, its example, and callers in sync. This matters especially for scan coordinates, asset identifiers, and publication state.
 
 ## Build and verify
@@ -29,3 +30,9 @@ Use the same task brief for Claude, Codex or another agent. For a review, give t
 - Open a focused PR against `main`. Give the next teammate the branch or commit, the exact check they can rerun, and any change they must make on their side.
 - The human owner reviews the diff and check results before merging. When a shared interface changes, include the affected teammate in review.
 - For an unfinished task, leave the last verified step, the next action, and any blocker in the PR or issue so another agent can resume.
+- For an Entire-tracked task, include the checkpoint ID with the commit and test result. Follow the [Entire team setup](docs/entire.md) to resume the original agent or give a second agent a scoped handoff.
+
+<!-- entire-agent:begin -->
+Read .entire/agent-guide.md for this repository's workflow, source inspection, and verification guidance.
+@.entire/agent-guide.md
+<!-- entire-agent:end -->
