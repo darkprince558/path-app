@@ -41,6 +41,59 @@ For later schema changes, edit `src/db/schema.ts`, run `npm run db:generate`, re
 
 The seed should match the [venue fixture](../../fixtures/README.md): entrance `(0,0,0)`, junction `(0,0,-4)`, workshop `(-3,0,-4)`, booth `(3,0,-4)`. The graph is a manually declared route, not inferred from geometry.
 
+## LiDAR database foundation
+
+Migration `0002_lidar_capture_foundation.sql` adds `captures`, `capture_frames`,
+`processing_jobs`, and `scan_revisions`. It uses the existing Tiger Data PostgreSQL
+connection through `DATABASE_URL`; no new database service or extension is required.
+It does not add upload APIs, workers, publication behavior or access grants.
+
+- Captures store manifest inventory/checksum, device, entrance pose, coordinate declaration,
+  tracking warnings and upload state. `(owner_id, device_capture_id)` identifies retries;
+  the capture must belong to a space owned by that user. Source bytes remain in storage.
+- Frames use `(capture_id, frame_id)` as their stable identity, with image object key,
+  checksum, camera pose and optional intrinsics/dimensions. The manifest retains the
+  complete asset inventory; a separate assets table is deferred.
+- Jobs record a capture-scoped idempotency key, input digest, processor version/configuration,
+  integer progress from 0 to 100, retries and lease metadata. Queueing/execution is deferred.
+- Revisions store candidate GLB and optional graph object keys, digest, transform and
+  draft/approved/rejected/superseded state. The processing job must reference the same
+  capture; an optional existing scan link must belong to the same space. Approval requires
+  both an approving user and timestamp. Approval alone never changes the live scan/graph.
+
+Existing rows require no backfill. The only changes to existing tables are composite
+unique constraints on `spaces(id, owner_id)` and `scans(id, space_id)` for the new foreign
+keys. Linked jobs/revisions restrict deletion to preserve provenance; deleting a capture
+without these dependencies cascades to its frames. Future write handlers must enforce
+owner approval, immutable completed inputs, state transitions, safe object keys, finite
+affine matrices and coordinate conventions. SQL currently checks matrix array length,
+not every element or physical alignment. Revision `metadata.evidenceFrameIds`, when used,
+must be validated against that revision's capture frames; metadata is not a foreign key.
+These internal records must not be returned through public scan metadata.
+
+Generate and validate locally (these commands do not apply migrations):
+
+```sh
+cd services/api
+npm run db:generate -- --name=lidar_capture_foundation
+npm run db:check
+npm run typecheck
+```
+
+The generated migration and snapshot are already included. After reviewing SQL, apply
+pending migrations **manually** using the existing configured Tiger Data connection:
+
+```sh
+cd services/api
+npm run db:migrate
+```
+
+Do not run the synthetic seed or integration tests against the remote database.
+For local verification, migrate a disposable PostgreSQL database and run `npm test`
+with `TEST_DATABASE_URL` pointing to it, as described in the core API contract. The
+LiDAR schema test exercises retry uniqueness, ownership/space isolation, frame data,
+job constraints, approval completeness and preservation of an existing scan.
+
 ## Python integration mock
 
 Sam owns the durable backend. The team can integrate against the local reference API now with Python 3.9+ and Make. From the repo root, run `make dev-api` in one terminal, then upload the fixture from another.
