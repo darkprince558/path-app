@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { destinations, navNodes, spaces } from '../../../db/schema';
 import { canReadSpace, readSpace } from '../../../lib/api/access';
 import { api, badRequest, body, signedIn } from '../../../lib/api/http';
-import { destinationInput } from '../../../lib/api/validation';
+import { destinationInput, uuid } from '../../../lib/api/validation';
 import { requireOwner } from '../../../lib/auth/authorization';
 
 export function GET(request: Request) {
@@ -10,7 +10,7 @@ export function GET(request: Request) {
     const url = new URL(request.url);
     const spaceId = url.searchParams.get('spaceId');
     if (spaceId) {
-      const space = await readSpace(db, user, spaceId);
+      const space = await readSpace(db, user, uuid.parse(spaceId));
       return Response.json({ destinations: await db.select().from(destinations).where(eq(destinations.spaceId, space.id)) });
     }
     const all = await db.select().from(destinations).innerJoin(spaces, eq(spaces.id, destinations.spaceId));
