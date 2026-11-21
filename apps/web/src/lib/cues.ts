@@ -7,6 +7,8 @@
  *   PATCH /api/cues/<cueId>  { instruction?, status? } -> { cue }    owner: edit, approve or reject
  *   GET   /api/shares/<shareId>/cues -> { cues: Cue[] }             guests: approved only
  *
+ * Both lists come in route order (`sequence`), and the website sorts by it again.
+ *
  * The share's metadata names its revision (`revisionId`). Maps uploaded as a file have none,
  * so they have no cues. Photos come from GET /api/shares/<shareId>/frames/<frameId>, which
  * only the owner may open.
@@ -21,6 +23,8 @@ export type CueConfidence = "high" | "medium" | "low";
 export interface Cue {
   id: string;
   routeSegmentId: string;
+  /** The turn's position along the route. Lists are shown in this order. */
+  sequence: number | null;
   landmark: string | null;
   instruction: string;
   confidence: CueConfidence | null;
@@ -51,6 +55,7 @@ function readCue(value: unknown): Cue | null {
   return {
     id: v.id,
     routeSegmentId: typeof v.routeSegmentId === "string" ? v.routeSegmentId : "",
+    sequence: typeof v.sequence === "number" && Number.isFinite(v.sequence) ? v.sequence : null,
     landmark: typeof v.landmark === "string" && v.landmark.trim() ? v.landmark : null,
     instruction: v.instruction,
     confidence: CONFIDENCES.includes(v.confidence as CueConfidence) ? (v.confidence as CueConfidence) : null,
@@ -59,9 +64,17 @@ function readCue(value: unknown): Cue | null {
   };
 }
 
+/** Route order, as Krishna's route turns number them. Cues without a position keep the server's order, last. */
+function inRouteOrder(cues: Cue[]): Cue[] {
+  return cues
+    .map((cue, index) => ({ cue, index }))
+    .sort((a, b) => (a.cue.sequence ?? Infinity) - (b.cue.sequence ?? Infinity) || a.index - b.index)
+    .map(({ cue }) => cue);
+}
+
 async function readCues(response: Response): Promise<Cue[]> {
   const body = (await response.json()) as { cues?: unknown };
-  return Array.isArray(body.cues) ? body.cues.map(readCue).filter((cue): cue is Cue => cue !== null) : [];
+  return inRouteOrder(Array.isArray(body.cues) ? body.cues.map(readCue).filter((cue): cue is Cue => cue !== null) : []);
 }
 
 /** Trims and collapses spaces. Returns null when the instruction isn't allowed. */

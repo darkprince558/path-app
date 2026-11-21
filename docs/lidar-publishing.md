@@ -168,3 +168,23 @@ frames. Both screenshots were visually inspected. API production build was run f
 an isolated source copy with webpack to preserve an active development server.
 Database test files run serially because worker fixtures share a global lock;
 explicit competing-worker tests still run. No remote migration was applied.
+
+## Landmark cues
+
+Gemini's landmark directions ("Turn left at the purple mural.") belong to one approved scan revision.
+Migration `0005_landmark_cues.sql` adds the `landmark_cues` table. It only creates a new table and two
+enums, and it is not applied automatically: review it, then apply it the same way as 0002–0004.
+
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /api/scan-revisions/:revisionId/cues` | The revision's owner (owner of both the capture and the space, as for approval) gets every cue in route order: `{cues: [{id, routeSegmentId, sequence, landmark, instruction, confidence, status, sourceFrameIds}]}`. Others get 404, and signed-out callers get 401. |
+| `PATCH /api/cues/:id` | The owner sends `{instruction?, status?}`. `instruction` is 1–200 characters with whitespace collapsed. `status` is `draft`, `approved` or `rejected`. Returns `{cue}`. Approving needs text. Editing an `abstained` cue's text makes it a draft. Approved and rejected cues record who decided and when. |
+| `GET /api/shares/:shareId/cues` | Anyone who may open the share gets its approved cues in route order. Guests get `sourceFrameIds: []`, because frames stay owner-only. Manual uploads return `[]`. |
+
+`status` is `draft`, `approved`, `rejected` or `abstained` (Gemini found no clear landmark). `sequence` is
+the turn's position along the route, so guests read cues in route order. The Gemini step stores its results
+with `saveCueDrafts(db, revisionId, drafts)` in `src/lib/api/cues.ts`: one `{routeSegmentId, sequence,
+landmark?, instruction, confidence?, abstained?, sourceFrameIds, model?, promptVersion?}` per turn. A rerun
+replaces drafts and abstentions but never a turn the owner already approved or rejected. Gemini's original
+text stays in `draft_instruction`. `GET /api/scans/mine` returns each scan's `revisionId` so the website's
+review screen can find its cues.

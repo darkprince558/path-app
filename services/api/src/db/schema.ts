@@ -11,6 +11,8 @@ export const eventRole = pgEnum('event_role', ['member', 'organizer']);
 export const captureStatus = pgEnum('capture_status', ['uploading', 'uploaded', 'failed', 'cancelled']);
 export const processingJobStatus = pgEnum('processing_job_status', ['queued', 'running', 'succeeded', 'failed', 'cancelled']);
 export const scanRevisionStatus = pgEnum('scan_revision_status', ['draft', 'approved', 'rejected', 'superseded']);
+export const landmarkCueStatus = pgEnum('landmark_cue_status', ['draft', 'approved', 'rejected', 'abstained']);
+export const landmarkCueConfidence = pgEnum('landmark_cue_confidence', ['high', 'medium', 'low']);
 
 const id = () => uuid('id').defaultRandom().primaryKey();
 const createdAt = () => timestamp('created_at', { withTimezone: true }).defaultNow().notNull();
@@ -252,4 +254,33 @@ export const scanRevisions = pgTable('scan_revisions', {
   check('scan_revisions_transform_check', sql`jsonb_typeof(${t.transform}) = 'array' AND jsonb_array_length(${t.transform}) = 16`),
   check('scan_revisions_approval_pair_check', sql`(${t.approvedBy} IS NULL) = (${t.approvedAt} IS NULL)`),
   check('scan_revisions_approval_state_check', sql`(${t.status} IN ('approved', 'superseded') AND ${t.approvedBy} IS NOT NULL) OR (${t.status} IN ('draft', 'rejected') AND ${t.approvedBy} IS NULL)`),
+]);
+
+// Gemini landmark cues for one immutable scan revision ("Turn left at the purple mural.").
+// `sequence` is the turn's position along the route, so guests read them in route order.
+// Owner decisions are kept apart from Gemini's draft text; a new revision never reuses them.
+export const landmarkCues = pgTable('landmark_cues', {
+  id: id(),
+  revisionId: uuid('revision_id').notNull().references(() => scanRevisions.id, { onDelete: 'cascade' }),
+  routeSegmentId: text('route_segment_id').notNull(),
+  sequence: integer('sequence').notNull(),
+  landmark: text('landmark'),
+  instruction: text('instruction').notNull(),
+  draftInstruction: text('draft_instruction'),
+  confidence: landmarkCueConfidence('confidence'),
+  status: landmarkCueStatus('status').default('draft').notNull(),
+  sourceFrameIds: jsonb('source_frame_ids').$type<string[]>().default([]).notNull(),
+  model: text('model'), promptVersion: text('prompt_version'),
+  decidedBy: uuid('decided_by').references(() => users.id),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  createdAt: createdAt(), updatedAt: updatedAt(),
+}, (t) => [
+  unique('landmark_cues_revision_segment_unique').on(t.revisionId, t.routeSegmentId),
+  index('landmark_cues_revision_sequence_idx').on(t.revisionId, t.sequence),
+  check('landmark_cues_sequence_check', sql`${t.sequence} >= 0`),
+  check('landmark_cues_segment_check', sql`length(trim(${t.routeSegmentId})) BETWEEN 1 AND 200`),
+  check('landmark_cues_instruction_check', sql`length(${t.instruction}) <= 200 AND (${t.status} IN ('abstained', 'rejected') OR length(trim(${t.instruction})) >= 1)`),
+  check('landmark_cues_frames_check', sql`jsonb_typeof(${t.sourceFrameIds}) = 'array'`),
+  check('landmark_cues_decision_pair_check', sql`(${t.decidedBy} IS NULL) = (${t.decidedAt} IS NULL)`),
+  check('landmark_cues_decision_state_check', sql`(${t.status} IN ('approved', 'rejected')) = (${t.decidedBy} IS NOT NULL)`),
 ]);

@@ -36,6 +36,13 @@
       "when": 1795291070513,
       "tag": "0004_approved_revision_scans",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795304254201,
+      "tag": "0005_landmark_cues",
+      "breakpoints": true
     }
   ]
 }

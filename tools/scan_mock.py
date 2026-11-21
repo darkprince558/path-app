@@ -30,10 +30,10 @@ MAX_INSTRUCTION_LENGTH = 200
 def demo_cues():
     """Two Gemini-style drafts for the venue fixture's junction (see fixtures/README.md)."""
     return [
-        {"id": secrets.token_hex(16), "routeSegmentId": "entrance-junction", "landmark": "amber workshop doorway",
+        {"id": secrets.token_hex(16), "routeSegmentId": "entrance-junction", "sequence": 0, "landmark": "amber workshop doorway",
          "instruction": "Turn left at the amber workshop doorway.", "confidence": "high", "status": "draft",
          "sourceFrameIds": ["frame-0000"]},
-        {"id": secrets.token_hex(16), "routeSegmentId": "junction-booth", "landmark": "purple booth doorway",
+        {"id": secrets.token_hex(16), "routeSegmentId": "junction-booth", "sequence": 1, "landmark": "purple booth doorway",
          "instruction": "Turn right toward the purple booth doorway.", "confidence": "medium", "status": "draft",
          "sourceFrameIds": ["frame-0007"]},
     ]

@@ -175,7 +175,9 @@ def cues(server, ply):
     status, _, body = request(server, "GET", review, headers=OWNER)
     drafts = json.loads(body)["cues"]
     assert status == 200 and len(drafts) == 2 and {c["status"] for c in drafts} == {"draft"}
-    assert set(drafts[0]) == {"id", "routeSegmentId", "landmark", "instruction", "confidence", "status", "sourceFrameIds"}
+    assert set(drafts[0]) == {"id", "routeSegmentId", "sequence", "landmark", "instruction", "confidence", "status",
+                              "sourceFrameIds"}
+    assert [c["sequence"] for c in drafts] == [0, 1]
     guest_view = f"/api/shares/{share}/cues"
     assert json.loads(request(server, "GET", guest_view)[2])["cues"] == []
 
