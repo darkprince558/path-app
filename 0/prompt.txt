@@ -1,0 +1,37 @@
+Task (from the session that started this one):
+Background (from the session that started this one):
+Path App is a Hack Western 13 project. The deadline is Sun Nov 22, 2026, 9:00 a.m. Toronto time, and judges see the site on laptops at the booth. People scan a place (a building, campus, trail or event venue) with a LiDAR iPhone, upload it, and share a 3D map by link or QR as Public, Unlisted or Private. Visitors open it signed out. It is community maps for any place, not just events: the uploader is called the "map owner", never "organizer". The only exceptions are the real Hack Western organizers and the "Organizers' Choice" prize. Team: Sam (API, issue #3), Krishna and Anish (phone capture, #4), Anish (second-phone trial, #5). Arielle owns all frontend UI/UX.
+
+Design direction is in `apps/web/DESIGN.md`. Colors: cream paper `#F3EBD0`, forest `#2F4A3A`, coral `#F48057` used only as a fill (never as text), rust `#A8421F` for coral-looking text, night `#121C16` behind 3D. Fonts: Overpass for display, Atkinson Hyperlegible Next for body. The landing hero is a live point-cloud scan that assembles from scattered dots, a coral route that draws itself, and footprints, plus a QR code. The playbook artifact is https://claude.ai/artifact/Abt1dfRD8khy9gxW5pDNJV (open it with the Artifact read action). The synthetic scan fixture is `fixtures/venue/scene.ply`. The 3D viewer is `src/components/ScanViewer.tsx`, built on @react-three/fiber and drei.
+
+Stack: Vite 8, React 19, TypeScript 7, Tailwind v4, React Router 8, pnpm. `apps/web/pnpm-workspace.yaml` sets `minimumReleaseAge` to 14 days. The local mock API runs with `py -3 -B tools/scan_mock.py --port 8001`, and Vite proxies `/api` to it. A dev server may already be running on port 5173 from the main checkout, so use another port if needed. On Windows, the Vite watcher sometimes misses edits; `touch` the file to fix it. Run `scripts/tasks.py` with `PYTHONUTF8=1`. gh lives in `C:\Program Files\GitHub CLI`. Arielle's open PRs merge in order: #15 → #16 → #18 → #21.
+
+Arielle prefers plain language with jargon in brackets, and wants to be told how to see the result. Always ask before pushing, posting on GitHub, or creating issues.
+
+Task:
+I'm Arielle (GitHub AryBaum), frontend owner of Path App. Let's **discuss first, then build** the landing page in `apps/web/`. Start by reading `apps/web/DESIGN.md` (landing sections, motifs and motion), `apps/web/README.md` (current pages and the Accessibility section), and `src/routes/Home.tsx`, the placeholder at `/` that the landing page replaces. Then give me, in plain language with the technical term in brackets, a short proposal: section order, what the hero does, what's real versus faked for the demo, and which libraries. Wait for my OK before installing or building.
+
+Once I agree:
+- Base your work on branch `feature/manage-maps`, which holds all my unmerged work. Make a new branch from it, for example `feature/landing-page`.
+- Build the landing page at `/`. Signed-in links go to `/maps` (Your maps), `/community`, and New map (`/maps/new`).
+- Respect `useReducedMotion()` from `src/lib/preferences.tsx` and the text-size setting (everything is in rem; the `xl-text:` Tailwind variant exists).
+- Keep focus rings using the `data-surface` / `--focus-ring` rules in `src/index.css`.
+- Verify in the browser pane at 1280x800 and 375x812, with Reduce motion on and off.
+- Run the axe snippet from the README on `/` (0 violations), and run `pnpm build`.
+- Commit, then ask me before creating the GitHub issue, pushing, or opening a PR. The PR should be stacked on `feature/manage-maps`, the same way #18 and #21 are stacked.
+
+Done means: a landing page I've approved that works on laptop and phone, passes axe, and is committed on its own branch.
+
+Shared notes folder for this group of sessions (outside the repo; read siblings' notes there, leave hand-over notes or large findings there instead of pasting them into messages): C:\Users\tetea\AppData\Local\Claude-Data\claude_pzs8sxrjxfjjc\side-session-notes\local_e64eeb4f-0855-4d4e-8687-6bcdbb7085c4
+
+---
+
+whats the need for a second button new map? dont you need to log in anyway to go there? Also I was thinking we should try and incorporate more cool animations right? like maybe those cards for each of us are compiled into one at first but when you scroll further it kinda reveals and splits evenly with two cards going to the left and two going to the right? and like i feel like we have to advertise that this is a landing page for everyone right? like abled, disabled, event organizers, maybe how it can be used by different people. We should brainstorm more. Like for event organizers like hack western they can label rooms as "workshop room", "sponsor room" etc, so they may be using an already existing map but they can label how they want to, and like sponsor booth etc. And disabled people can view the site before hand and see if this place is accessible for them and easily find their path without going around searching for the elavator or ramp etc. and norml people like students might find this helpful when trying to find their classrooms, exam rooms etc. And the problem needs to be clear, what is out there but why it isnt enough, why this helps. For the how it can be used by different people maybe we have like graphic characters of those different people and maybe they move or animate or smth when you hover them. Other cool animations going around that i just dont know how or if we should incorporate are like the phone model things like where you can put your photo of the screen but like orient and animate the phone model, some have like this object that scrolls or like falls down the page as you scroll, some have like your cursor hover changes the background as you move or like leaves a trail that fades etc. Also like should it be QR codes or they make a login?
+
+---
+
+nonono like i was explaining this in the last chat but the read me is a little wrong. its not just organizers and events, this is landing page for software and then you log in and you can make your own maps or view community maps and make way points etc, which is why it has so many users. you can look at how we actually started building it
+
+---
+
+Yes we can start building, just really try to look for creative ways to display things, no basic cards, we want impressive stuff, use whatever resources you can find. any github repos that help, any online sources that say how to do cool things.
