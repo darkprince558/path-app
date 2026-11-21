@@ -92,7 +92,7 @@ export default function Hero() {
     <section
       aria-labelledby="hero-heading"
       data-surface="night"
-      className="relative isolate -mt-[4.25rem] flex flex-col overflow-hidden rounded-b-[2.5rem] bg-night pt-[4.25rem] pb-10 text-paper md:min-h-dvh md:rounded-b-[4rem] md:pb-0"
+      className="relative isolate -mt-[4.25rem] flex flex-col overflow-hidden rounded-b-[2.5rem] bg-night pt-[4.25rem] pb-10 text-paper md:h-dvh md:min-h-[36rem] md:rounded-b-[4rem] md:pb-0"
     >
       {/* Soft light: forest from the top left, a coral warmth where the route lives. */}
       <div
@@ -101,17 +101,17 @@ export default function Hero() {
       />
       <Stars />
 
-      <div className="relative z-10 mx-auto grid max-w-4xl justify-items-center gap-5 px-4 pt-12 text-center sm:pt-16">
-        <h1 id="hero-heading" className="font-display text-[clamp(2.5rem,5vw,4.25rem)] leading-[0.98] font-black tracking-tight text-balance">
+      <div className="relative z-10 mx-auto grid max-w-4xl justify-items-center gap-4 px-4 pt-10 text-center sm:pt-12">
+        <h1 id="hero-heading" className="font-display text-[clamp(2.25rem,3.6vw,3.5rem)] leading-[1] font-black tracking-tight text-balance">
           See the turn before you reach it.
         </h1>
-        <p className="max-w-xl text-lg leading-relaxed text-sage">
+        <p className="max-w-lg text-base leading-relaxed text-sage sm:text-lg">
           3D maps of real places, made by the people who know them. Open one from a link, with no app and no account.
         </p>
-        <div className="flex flex-col items-center gap-x-6 gap-y-2 sm:flex-row">
+        <div className="flex flex-col items-center gap-x-5 gap-y-1 sm:flex-row">
           <Link
             to="/maps/new"
-            className="inline-flex min-h-13 items-center justify-center rounded-full bg-coral px-7 text-lg font-bold text-ink shadow-[0_10px_40px_-10px_rgb(244_128_87/0.6)] transition-transform hover:-translate-y-0.5"
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-coral px-6 font-bold text-ink shadow-[0_10px_40px_-10px_rgb(244_128_87/0.6)] transition-transform hover:-translate-y-0.5"
           >
             Start mapping
           </Link>
@@ -122,12 +122,12 @@ export default function Hero() {
       </div>
 
       {/* The scan: full width below the text, fading into the sky at the top and the bottom. */}
-      <div className="relative -mt-4 md:-mt-10 md:min-h-[26rem] md:flex-1">
+      <div className="relative -mt-4 md:-mt-12 md:min-h-[24rem] md:flex-1">
         <div
           ref={viewer}
           role="img"
           aria-label="A 3D scan of a T-shaped corridor. A coral route runs from the entrance to the junction, then to the chosen room, with footprints along it and a pin at the door."
-          className="relative h-[22rem] w-full [mask-image:linear-gradient(to_bottom,transparent,black_28%,black_78%,transparent)] sm:h-[28rem] md:absolute md:inset-0 md:h-auto"
+          className="relative h-[22rem] w-full [mask-image:linear-gradient(to_bottom,transparent,black_24%,black_82%,transparent)] sm:h-[28rem] md:absolute md:inset-0 md:h-auto"
         >
           <Suspense fallback={null}>
             <HeroScene destination={destination} replayToken={replayToken} reduceMotion={reduce} active={active} onReadout={onReadout} />
@@ -135,7 +135,7 @@ export default function Hero() {
         </div>
 
         {/* Floating panel, left: choose where the route goes. */}
-        <div className={`hero-float relative z-10 mx-4 -mt-10 grid gap-3 sm:mx-auto sm:w-fit md:absolute md:bottom-[34%] md:left-[max(1.5rem,calc(50%-40rem))] md:mx-0 md:mt-0 ${GLASS}`}>
+        <div className={`hero-float relative z-10 mx-4 -mt-10 grid gap-3 sm:mx-auto sm:w-fit md:absolute md:bottom-[max(6rem,24%)] md:left-[max(1.5rem,calc(50%-40rem))] md:mx-0 md:mt-0 ${GLASS}`}>
           <div className="flex items-center justify-between gap-6">
             <p id="route-to" className="text-sm text-sage">
               Route to
@@ -169,7 +169,7 @@ export default function Hero() {
 
         {/* Floating panel, right: open the sample map on a phone. Hidden on phones, which are already there. */}
         <figure
-          className={`hero-float hero-float-late absolute right-[max(1.5rem,calc(50%-40rem))] bottom-[20%] z-10 hidden items-center gap-4 md:flex ${GLASS}`}
+          className={`hero-float hero-float-late absolute right-[max(1.5rem,calc(50%-40rem))] bottom-[max(5rem,12%)] z-10 hidden items-center gap-4 md:flex ${GLASS}`}
         >
           <div className="rounded-lg bg-paper p-1.5">
             <QRCodeSVG value={demoUrl()} size={76} bgColor="#F3EBD0" fgColor="#15221B" level="M" title="QR code for a sample map" />
