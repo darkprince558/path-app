@@ -36,6 +36,22 @@ function VideoPreview({ stream, clip }: { stream: MediaStream | null; clip?: Blo
     aria-label={clip ? "Recorded hallway video" : "Live camera preview"} />;
 }
 
+function TrackingResult({ summary }: { summary?: CaptureStatus["motionSummary"] }) {
+  if (!summary || !Number.isInteger(summary.registeredFrames) || !summary.sampledFrames) return null;
+  const gaps = summary.missingIntervalsSeconds || [];
+  const partial = gaps.length > 0 || summary.registeredFrames! < summary.sampledFrames;
+  const times = gaps.slice(0, 4).map(([a, b]) => a.toFixed(1) + "–" + b.toFixed(1) + " s");
+  return <div className="rec-sensors">
+    <h2>{partial ? "Partial camera path" : "Camera tracking"}</h2>
+    <p>{summary.registeredFrames} of {summary.sampledFrames} sampled views registered.</p>
+    {partial && <p>Review the missing stretches{times.length ? " at " + times.join(", ") : ""}
+      {gaps.length > times.length ? " and " + (gaps.length - times.length) + " more" : ""}. Record another take if the turn is missing.</p>}
+    {!partial && summary.supportedFraction !== undefined && summary.supportedFraction < 1 &&
+      <p>Some registered views have weak visual support. Check the turn in 3D.</p>}
+    {summary.samplingReason && <p>{summary.samplingReason}</p>}
+  </div>;
+}
+
 export default function Record() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [key, setKey] = useState("");
@@ -59,6 +75,10 @@ export default function Record() {
     // Retain the in-memory key when StrictMode replays an effect and storage is disabled.
     credential.current = organizerKey() || credential.current;
     setKey(credential.current);
+    if (!credential.current) {
+      setPhase("idle");
+      return () => session.abort();
+    }
     const id = savedJob();
     void readTake().catch(() => undefined).then((draft) => {
       if (session.signal.aborted) return;
@@ -136,7 +156,7 @@ export default function Record() {
   async function processTake() {
     const signal = lifetime.current?.signal;
     if (busy.current || !take || !key || !signal || signal.aborted) return;
-    busy.current = true; setProblem(""); setPhase("uploading"); setTransfer("Connecting to Mac…");
+    busy.current = true; saveJob(take.id); setProblem(""); setPhase("uploading"); setTransfer("Connecting to Mac…");
     try {
       let previous: CaptureStatus | undefined;
       try { previous = await captureRequest(key, take.id, "", "GET", signal); }
@@ -207,7 +227,7 @@ export default function Record() {
   if (phase === "starting") { heading = "Opening camera"; instruction = "Allow camera and motion access when your phone asks."; }
   if (live) { heading = "Recording"; instruction = "Keep this page visible. Stop a few steps beyond the turn."; }
   if (phase === "saving" || phase === "review") { heading = "Review your take"; instruction = "Check that the turn is visible before sending the recording to your Mac."; }
-  if (phase === "uploading") { heading = "Sending your scan"; instruction = transfer; }
+  if (phase === "uploading") { heading = "Sending your scan"; instruction = "Keep this page open while the files transfer."; }
   if (processing) {
     heading = result?.status === "ready" ? "Your scan is ready" : result?.status === "failed" ? "Scan needs attention" : "Building your scan";
     instruction = result?.status === "ready" ? "Anyone with the unlisted link can open the 3D scan on another phone."
@@ -246,6 +266,7 @@ export default function Record() {
             <button className="rec-secondary" onClick={newTake}>Discard take</button></>}
           {phase === "uploading" && <p className="rec-progress" role="status">{transfer}</p>}
           {processing && result?.status === "ready" && (guest ? <>
+            <TrackingResult summary={result.motionSummary}/>
             <a className="rec-primary" href={guest}>Open 3D scan</a>
             <label className="rec-link-label" htmlFor="rec-share">Guest link</label>
             <input id="rec-share" ref={shareInput} className="rec-link" value={guest} readOnly/>

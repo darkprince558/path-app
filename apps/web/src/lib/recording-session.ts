@@ -55,6 +55,13 @@ export interface CaptureStatus {
   stage?: string;
   error?: string;
   sharePath?: string;
+  motionSummary?: {
+    registeredFrames?: number;
+    sampledFrames?: number;
+    supportedFraction?: number;
+    samplingReason?: string;
+    missingIntervalsSeconds?: [number, number][];
+  };
 }
 export class CaptureRequestError extends Error {
   constructor(readonly status: number, message: string) { super(message); }

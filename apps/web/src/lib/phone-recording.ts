@@ -110,9 +110,19 @@ export async function startRecording(
       if (acceleration || accelerationIncludingGravity) accel++;
     };
     const onHidden = () => { if (document.hidden) stop("Recording stopped when the page went into the background."); };
+    let muteTimeout = 0;
+    let hasActiveVideo = false;
     const onCameraEnded = () => stop("The camera stopped. Review the captured portion before processing.");
     const onAborted = () => stop("Recording interrupted.");
     const track = stream.getVideoTracks()[0];
+    const onUnmute = () => window.clearTimeout(muteTimeout);
+    const onMute = () => {
+      // WebKit can mute a newly opened camera before its first usable frame.
+      // Take the first unmuted video chunk as evidence that media was flowing.
+      if (!hasActiveVideo) return;
+      onUnmute();
+      muteTimeout = window.setTimeout(() => { if (track?.muted) onCameraEnded(); }, 1500);
+    };
     recorder.ondataavailable = ({ data }) => {
       size += data.size;
       if (size > MAX_VIDEO_BYTES) {
@@ -120,6 +130,7 @@ export async function startRecording(
         stop();
       } else if (data.size) {
         parts.push(data);
+        if (track && !track.muted) hasActiveVideo = true;
       }
     };
     // Use the instant we hand the first camera stream to MediaRecorder as
@@ -128,7 +139,8 @@ export async function startRecording(
     recorder.start(1000);
     if (permission === "granted") window.addEventListener("devicemotion", onMotion);
     track?.addEventListener("ended", onCameraEnded);
-    track?.addEventListener("mute", onCameraEnded);
+    track?.addEventListener("mute", onMute);
+    track?.addEventListener("unmute", onUnmute);
     document.addEventListener("visibilitychange", onHidden);
     signal.addEventListener("abort", onAborted, { once: true });
     const tick = () => meter({ elapsed: performance.now() - start, gyro, accel, permission });
@@ -144,7 +156,9 @@ export async function startRecording(
         window.clearTimeout(limit);
         window.removeEventListener("devicemotion", onMotion);
         track?.removeEventListener("ended", onCameraEnded);
-        track?.removeEventListener("mute", onCameraEnded);
+        onUnmute();
+        track?.removeEventListener("mute", onMute);
+        track?.removeEventListener("unmute", onUnmute);
         document.removeEventListener("visibilitychange", onHidden);
         signal.removeEventListener("abort", onAborted);
         release();
