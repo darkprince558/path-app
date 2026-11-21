@@ -7,7 +7,7 @@ Use this folder for knowledge a teammate will still need after your branch merge
 | Decision | Why we made it | Source |
 | --- | --- | --- |
 | Ship one scan that opens from an unlisted link on a second phone first. | It exercises the capture export, upload, permissions and guest viewer together. | [Architecture](../docs/architecture.md) |
-| Public scans appear in discovery. Unlisted scans open by link. Private scans require an owner or invited account. | Organizers choose an audience for both the scene and its underlying files. | [Sharing rules](../docs/architecture.md#sharing) |
+| Public scans appear in discovery. Unlisted scans open by link. Private scans require an owner or invited account. | Map owners choose an audience for both the scene and its underlying files. | [Sharing rules](../docs/architecture.md#sharing) |
 | GitHub holds the source and team checkpoints. The live site and scan storage need a runtime of their own. | A guest needs an HTTPS URL they can open without access to the team repository. Vultr is a deployment proposal. | [Deployment plan](../docs/deployment.md) |
 
 ## Add a finding

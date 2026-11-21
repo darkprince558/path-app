@@ -1,12 +1,12 @@
 # Live deployment plan
 
-The first release succeeds when an organizer uploads a real scan and a guest on a second phone opens the unlisted link and orbits the scene. GitHub hosts the private source, PRs and CI. The proposed runtime is Vultr. Today the repo contains a local sharing mock and a synthetic scene. A hosted URL, durable API, sign-in, mobile viewer and real-device results are pending.
+The first release succeeds when a map owner uploads a real scan and a guest on a second phone opens the unlisted link and orbits the scene. GitHub hosts the private source, PRs and CI. The proposed runtime is Vultr. Today the repo contains a local sharing mock and a synthetic scene. A hosted URL, durable API, sign-in, mobile viewer and real-device results are pending.
 
 ## Proposed runtime
 
 Use one Vultr Cloud Compute VM for Caddy, the built website, the API and PostgreSQL. Store database files on a persistent volume and back them up separately before releases. Keep scan bytes in a private Vultr Object Storage bucket. Configure one team-controlled hostname. Caddy terminates HTTPS, serves the site for `/s/<shareId>`, and forwards `/api/*` to the API. Bind the API and database to the internal network. Open public TCP ports 80/443 and restrict administrative SSH to the team. [Vultr VM setup](https://docs.vultr.com/products/compute/instances/cloud-compute/provisioning) · [Object Storage](https://docs.vultr.com/platform/security-best-practices/vultr-object-storage) · [Caddy HTTPS](https://caddyserver.com/docs/quick-starts/https)
 
-Use Auth0 for organizer and invited-viewer sign-in. Register the HTTPS callback and logout URLs. The backend uses the verified identity from a secure session to grant access. Public scans appear in discovery, unlisted scans open from their opaque link, and private scan reads require the owner or an invited account. Apply that policy to metadata, previews and asset bytes on every request. Disable shared caching for access-controlled reads. The development mock’s `X-Dev-User` header is test-only. [Auth0 sessions](https://auth0.com/blog/application-session-management-best-practices/) · [Path App sharing contract](../services/api/README.md)
+Use Auth0 for map owner and invited-viewer sign-in. Register the HTTPS callback and logout URLs. The backend uses the verified identity from a secure session to grant access. Public scans appear in discovery, unlisted scans open from their opaque link, and private scan reads require the owner or an invited account. Apply that policy to metadata, previews and asset bytes on every request. Disable shared caching for access-controlled reads. The development mock’s `X-Dev-User` header is test-only. [Auth0 sessions](https://auth0.com/blog/application-session-management-best-practices/) · [Path App sharing contract](../services/api/README.md)
 
 ## Release order
 

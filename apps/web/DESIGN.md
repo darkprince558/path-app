@@ -46,7 +46,7 @@ Hero (live scan + QR + Log in / Sign up) → The problem (sticky scroll: 2D floo
 
 ## App screens, by priority
 
-- **P0:** guest view at `/s/:shareId` (full-bleed 3D on night, destinations in a bottom sheet, Gemini cue card with source frame and "approved by organizer", route by Dijkstra over the manifest graph) · upload with visibility toggle, copy link and QR · Gemini cue review (accept / edit / reject) · landing hero.
+- **P0:** guest view at `/s/:shareId` (full-bleed 3D on night, destinations in a bottom sheet, Gemini cue card with source frame and "approved by the map owner", route by Dijkstra over the manifest graph) · upload with visibility toggle, copy link and QR · Gemini cue review (accept / edit / reject) · landing hero.
 - **P1:** rest of the landing page · Explore (public scans + filter chips: Campus, Events, Hospitals, Trails, Step-free) · settings (step-free routing, text size, reduce motion) · one "elevator out" alert that reroutes.
 - **Cut or fake:** custom login screens (use the provider's hosted login), comments and feed, events calendar, live indoor positioning.
 
