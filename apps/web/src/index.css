@@ -238,6 +238,31 @@
   }
 }
 
+/* Creators: cards that turn over. Hover with a mouse, tap on a phone, or keyboard focus inside. */
+.flip-card {
+  perspective: 1100px;
+}
+.flip-inner {
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (hover: hover) {
+  .flip-card:hover .flip-inner {
+    transform: rotateY(180deg);
+  }
+}
+.flip-card:focus-within .flip-inner,
+.flip-card[data-flipped="true"] .flip-inner {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-back {
+  transform: rotateY(180deg);
+}
+
 /* "Who it's for": sign figures walk (or roll) their route. */
 .pg-walker {
   animation: pg-across 2.6s cubic-bezier(0.45, 0.05, 0.4, 1) forwards;

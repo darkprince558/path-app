@@ -1,57 +1,47 @@
-import { ArrowUpRight, RotateCcw } from "lucide-react";
-import { useRef, useState } from "react";
+import { ArrowUpRight } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import arielle from "../assets/team/arielle.jpg";
+import sam from "../assets/team/sam.jpg";
 import { useReducedMotion } from "../lib/preferences";
-import { gsap, useGSAP } from "./motion";
-import { Container, Eyebrow } from "./shared";
+import { Container } from "./shared";
 
 /*
- * Creators: the four cards start stacked in one pile in the middle. As you scroll,
- * two slide out to the left and two to the right into an even row (a 2 × 2 grid on
- * tablets). Each card flips to its links on hover with a mouse, with the Flip button
- * on a phone, and when a link on the back gets keyboard focus.
+ * Creators. The four cards start as one pile in the middle and fan out into a row
+ * when the section scrolls into view (no scroll pinning). Each card turns over to
+ * its links on hover with a mouse, on tap on a phone, and when keyboard focus
+ * reaches it. Photos are cropped to the same framing (3:4, face about a quarter of
+ * the way down) so everyone looks the same size.
  */
+
+interface Link {
+  label: "GitHub" | "LinkedIn" | "Résumé" | "Portfolio";
+  /** Leave out until there's a real link; the button then shows "coming soon". */
+  href?: string;
+}
 
 interface Person {
   name: string;
-  initials: string;
   role: string;
-  built: string;
-  /** Only real links are shown. Add LinkedIn, résumé or portfolio here when you have them. */
-  links: { label: string; href: string; detail: string }[];
+  photo?: string;
+  initials: string;
+  links: Link[];
 }
 
-const TEAM: Person[] = [
-  {
-    name: "Arielle",
-    initials: "AB",
-    role: "Frontend, 3D viewer and UX",
-    built: "This page, the 3D map viewer, sharing screens and accessibility settings.",
-    links: [{ label: "GitHub", href: "https://github.com/AryBaum", detail: "AryBaum" }],
-  },
-  {
-    name: "Sam",
-    initials: "S",
-    role: "Backend and sharing",
-    built: "The API: uploads, storage, and Public, Unlisted and Private access.",
-    links: [],
-  },
-  {
-    name: "Krishna",
-    initials: "K",
-    role: "Phone capture",
-    built: "LiDAR capture on iPhone and turning the scan into a point cloud.",
-    links: [],
-  },
-  {
-    name: "Anish",
-    initials: "A",
-    role: "Phone capture and testing",
-    built: "Capture and upload, and the trial that opens a map on a second phone.",
-    links: [],
-  },
+const links = (github?: string, linkedin?: string, resume?: string, portfolio?: string): Link[] => [
+  { label: "GitHub", href: github },
+  { label: "LinkedIn", href: linkedin },
+  { label: "Résumé", href: resume },
+  { label: "Portfolio", href: portfolio },
 ];
 
-/** Contour lines, like a topographic map, different for each person. */
+const TEAM: Person[] = [
+  { name: "Arielle", role: "Frontend, 3D viewer and UX", photo: arielle, initials: "AB", links: links("https://github.com/AryBaum") },
+  { name: "Sam", role: "Backend and sharing", photo: sam, initials: "S", links: links() },
+  { name: "Krishna", role: "Phone capture", initials: "K", links: links() },
+  { name: "Anish", role: "Phone capture and testing", initials: "A", links: links() },
+];
+
+/** Contour lines, like a topographic map, for people without a photo yet. */
 function Contours({ seed }: { seed: number }) {
   const lines = Array.from({ length: 9 }, (_, i) => {
     const r = 18 + i * 13;
@@ -73,162 +63,185 @@ function Contours({ seed }: { seed: number }) {
 
 function Card({ person, index }: { person: Person; index: number }) {
   const [flipped, setFlipped] = useState(false);
-  const backId = `creator-${index}-back`;
   return (
-    <li data-part="card" className="relative [perspective:1100px]" style={{ zIndex: TEAM.length - index }}>
-      <div
-        className={`group/card relative aspect-[3/4] w-full transition-transform duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] [transform-style:preserve-3d] has-[[data-face=back]_:focus-visible]:[transform:rotateY(180deg)] xl-text:aspect-auto xl-text:min-h-[26rem] ${
-          flipped ? "[transform:rotateY(180deg)]" : "[@media(hover:hover)]:hover:[transform:rotateY(180deg)]"
-        }`}
-      >
-        {/* Front */}
-        <div className="absolute inset-0 grid grid-rows-[1fr_auto] overflow-hidden rounded-3xl bg-forest text-paper shadow-[0_24px_50px_-28px_rgb(0_0_0/0.9)] ring-1 ring-sage/25 [backface-visibility:hidden]">
-          <Contours seed={index + 1} />
-          <div className="relative grid place-items-center">
-            <span className="font-display text-7xl font-black tracking-tight" aria-hidden="true">
-              {person.initials}
-            </span>
-          </div>
-          <div className="relative flex items-end justify-between gap-3 bg-night/55 px-5 py-4">
-            <div>
-              <h3 className="font-display text-2xl leading-none font-black">{person.name}</h3>
-              <p className="mt-1 text-sage">{person.role}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setFlipped(true)}
-              aria-controls={backId}
-              aria-label={`Flip ${person.name}'s card`}
-              className="grid size-11 shrink-0 place-items-center rounded-full bg-paper/10 ring-1 ring-paper/30 [@media(hover:hover)]:hidden"
-            >
-              <RotateCcw className="size-5" aria-hidden />
-            </button>
-          </div>
-        </div>
-
-        {/* Back */}
-        <div
-          id={backId}
-          data-face="back"
-          className="absolute inset-0 grid content-start gap-4 overflow-auto rounded-3xl bg-[#1B2A21] p-5 text-paper ring-1 ring-sage/25 [backface-visibility:hidden] [transform:rotateY(180deg)]"
+    <div className="flip-card relative aspect-[3/4] w-full" data-flipped={flipped}>
+      <div className="flip-inner relative size-full">
+        {/* Front: the photo. The whole front is the button that turns the card on a phone. */}
+        <button
+          type="button"
+          onClick={() => setFlipped(true)}
+          className="flip-face absolute inset-0 overflow-hidden rounded-3xl bg-forest text-left text-paper shadow-[0_24px_50px_-28px_rgb(0_0_0/0.9)] ring-1 ring-sage/25"
         >
-          <div className="flex items-start justify-between gap-3">
-            <p className="font-display text-2xl leading-none font-black">{person.name}</p>
-            {flipped ? (
-              <button
-                type="button"
-                onClick={() => setFlipped(false)}
-                aria-label={`Flip ${person.name}'s card back`}
-                className="grid size-11 shrink-0 place-items-center rounded-full bg-paper/10 ring-1 ring-paper/30"
-              >
-                <RotateCcw className="size-5" aria-hidden />
-              </button>
-            ) : null}
-          </div>
-          <p className="leading-snug text-paper/90">{person.built}</p>
-          {person.links.length ? (
-            <ul className="grid gap-2">
-              {person.links.map((link) => (
-                <li key={link.href}>
+          {person.photo ? (
+            <img src={person.photo} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" decoding="async" />
+          ) : (
+            <>
+              <Contours seed={index + 1} />
+              <span className="absolute inset-0 grid place-items-center pb-16 font-display text-7xl font-black tracking-tight" aria-hidden="true">
+                {person.initials}
+              </span>
+            </>
+          )}
+          <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-night via-night/80 to-transparent px-5 pt-16 pb-5">
+            <span className="block font-display text-2xl leading-none font-black">{person.name}</span>
+            <span className="mt-1.5 block text-sage">{person.role}</span>
+            <span className="sr-only"> Show links</span>
+          </span>
+        </button>
+
+        {/* Back: the links. Clicking anywhere that isn't a link turns it back. */}
+        <div
+          className="flip-face flip-back absolute inset-0 grid content-center gap-3 rounded-3xl bg-[#1B2A21] p-5 text-paper ring-1 ring-sage/25"
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest("a")) return;
+            setFlipped(false);
+            (document.activeElement as HTMLElement | null)?.blur();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setFlipped(false);
+              (document.activeElement as HTMLElement | null)?.blur();
+            }
+          }}
+        >
+          <p className="font-display text-2xl leading-none font-black">{person.name}</p>
+          <ul className="grid gap-2">
+            {person.links.map((link) => (
+              <li key={link.label}>
+                {link.href ? (
                   <a
                     href={link.href}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex min-h-11 items-center justify-between gap-2 rounded-xl bg-night px-4 font-bold transition-colors hover:bg-coral hover:text-ink"
+                    className="flex min-h-11 items-center justify-between gap-2 rounded-xl bg-night px-4 font-bold ring-1 ring-sage/20 transition-colors hover:bg-coral hover:text-ink"
                   >
                     {link.label}
-                    <span className="flex items-center gap-1 font-mono text-sm font-normal text-sage">
-                      {link.detail}
-                      <ArrowUpRight className="size-4" aria-hidden />
-                    </span>
+                    <ArrowUpRight className="size-4" aria-hidden />
                   </a>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="font-mono text-sm text-sage">Links coming soon.</p>
-          )}
+                ) : (
+                  <span className="flex min-h-11 items-center justify-between gap-2 rounded-xl px-4 font-bold text-sage ring-1 ring-sage/25 ring-inset">
+                    {link.label}
+                    <span className="text-sm font-normal">coming soon</span>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
-    </li>
+    </div>
   );
+}
+
+/** Tilt of each card while they're still one pile. */
+const PILE_TILT = [-8, 5, -3, 7];
+
+/**
+ * The cards start as one pile in the middle of the row and fan out when the row
+ * scrolls into view. Offsets come from each card's laid-out position (offsetLeft
+ * and offsetTop ignore transforms), so the pile works for any column count.
+ */
+function useDeck(enabled: boolean) {
+  const list = useRef<HTMLUListElement>(null);
+  const [offsets, setOffsets] = useState<{ x: number; y: number }[]>([]);
+  const [spread, setSpread] = useState(!enabled);
+
+  useLayoutEffect(() => {
+    const element = list.current;
+    if (!element || !enabled) return;
+    const measure = () => {
+      const cards = [...element.children] as HTMLElement[];
+      setOffsets(
+        cards.map((card) => ({
+          x: element.clientWidth / 2 - (card.offsetLeft + card.offsetWidth / 2),
+          y: element.clientHeight / 2 - (card.offsetTop + card.offsetHeight / 2),
+        })),
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) {
+      setSpread(true);
+      return;
+    }
+    setSpread(false);
+    const element = list.current;
+    if (!element) return;
+    let timer = 0;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          timer = window.setTimeout(() => setSpread(true), 250);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.45 },
+    );
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [enabled]);
+
+  const styleFor = (i: number): CSSProperties => {
+    const offset = offsets[i];
+    if (!enabled || spread || !offset) {
+      return { transitionDelay: enabled ? `${i * 90}ms` : undefined, zIndex: TEAM.length - i };
+    }
+    return {
+      transform: `translate(${offset.x}px, ${offset.y}px) rotate(${PILE_TILT[i % PILE_TILT.length]}deg) scale(0.94)`,
+      zIndex: TEAM.length - i,
+    };
+  };
+
+  return { list, styleFor };
+}
+
+function useMinWidth(px: number) {
+  const query = `(min-width: ${px}px)`;
+  const [matches, setMatches] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const onChange = () => setMatches(media.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [query]);
+  return matches;
 }
 
 export default function Creators() {
   const reduce = useReducedMotion();
-  const root = useRef<HTMLElement>(null);
-
-  useGSAP(
-    () => {
-      if (reduce || !root.current) return;
-      const q = gsap.utils.selector(root);
-      const list = q("[data-part=deck]")[0] as HTMLElement | undefined;
-      const cards = q("[data-part=card]") as HTMLElement[];
-      if (!list || cards.length < 2) return;
-      const navOffset = () => document.querySelector("header")?.getBoundingClientRect().height ?? 0;
-      const mm = gsap.matchMedia();
-
-      // From 640 px up the cards fit side by side, so they start as one pile.
-      mm.add("(min-width: 640px)", () => {
-        const tilt = [-7, 4, -3, 6];
-        // Offset from each card's final spot to the middle of the row.
-        const toCenter = (card: HTMLElement, axis: "x" | "y") => {
-          const listBox = list.getBoundingClientRect();
-          const box = card.getBoundingClientRect();
-          return axis === "x"
-            ? listBox.left + listBox.width / 2 - (box.left + box.width / 2)
-            : listBox.top + listBox.height / 2 - (box.top + box.height / 2);
-        };
-        gsap.fromTo(
-          cards,
-          {
-            x: (_i: number, card: HTMLElement) => toCenter(card, "x"),
-            y: (_i: number, card: HTMLElement) => toCenter(card, "y"),
-            rotate: (i: number) => tilt[i % tilt.length] ?? 0,
-            scale: 0.92,
-          },
-          {
-            x: 0,
-            y: 0,
-            rotate: 0,
-            scale: 1,
-            ease: "power2.inOut",
-            stagger: 0.05,
-            immediateRender: true,
-            scrollTrigger: {
-              trigger: root.current,
-              start: () => `top ${navOffset()}`,
-              end: "+=110%",
-              pin: true,
-              scrub: 0.6,
-              invalidateOnRefresh: true,
-            },
-          },
-        );
-      });
-    },
-    { scope: root, dependencies: [reduce], revertOnUpdate: true },
-  );
+  // The pile needs cards side by side; on a phone (one column) they simply appear.
+  const roomy = useMinWidth(640);
+  const { list, styleFor } = useDeck(!reduce && roomy);
 
   return (
-    <section
-      ref={root}
-      id="team"
-      aria-labelledby="team-heading"
-      data-surface="night"
-      className="relative overflow-hidden bg-night py-16 text-paper sm:flex sm:min-h-[calc(100dvh-4.5rem)] sm:items-center md:py-12"
-    >
-      <Container>
-        <div className="grid max-w-3xl gap-3">
-          <Eyebrow tone="dark">Creators</Eyebrow>
-          <h2 id="team-heading" className="font-display text-4xl leading-none font-black text-balance md:text-5xl">
+    <section id="team" aria-labelledby="team-heading" data-surface="night" className="relative bg-night py-28 text-paper md:py-40">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_40%_at_85%_0%,rgb(47_74_58/0.8),transparent_70%),radial-gradient(40%_30%_at_10%_100%,rgb(47_74_58/0.5),transparent_70%)]"
+      />
+      <Container className="relative">
+        <div className="mx-auto grid max-w-2xl gap-3 text-center">
+          <h2 id="team-heading" className="font-display text-[clamp(2rem,3.6vw,3rem)] leading-none font-black text-balance">
             Four people, one weekend, a lot of hallways.
           </h2>
-          <p className="text-lg text-sage">Built at Hack Western 13. Hover a card, or tap Flip, to see what each of us made.</p>
+          <p className="text-lg text-sage">Built at Hack Western 13. Hover or tap a card for links.</p>
         </div>
-        <ul data-part="deck" className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 xl-text:lg:grid-cols-2">
+        <ul
+          ref={list}
+          className="relative mx-auto mt-16 grid max-w-xs gap-6 sm:max-w-2xl sm:grid-cols-2 lg:max-w-none lg:grid-cols-4 xl-text:lg:max-w-2xl xl-text:lg:grid-cols-2"
+        >
           {TEAM.map((person, i) => (
-            <Card key={person.name} person={person} index={i} />
+            <li key={person.name} className="relative transition-transform duration-[900ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]" style={styleFor(i)}>
+              <Card person={person} index={i} />
+            </li>
           ))}
         </ul>
       </Container>
