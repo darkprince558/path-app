@@ -1,0 +1,87 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M7Y6R144JMTS8YQEXQAC83J5",
+  "session_id": "eaa86ad3-682d-4cac-9281-4c0a778a8c72",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-21T04:45:03.7115297Z",
+  "branch": "feature/organizer-upload",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "apps/web/src/components/SharePanel.tsx",
+    "apps/web/src/components/VisibilityPicker.tsx",
+    "apps/web/src/lib/scans.ts",
+    "apps/web/src/routes/Upload.tsx",
+    "apps/web/src/vite-env.d.ts"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "0d021332c0f8",
+  "checkpoint_transcript_start": 515,
+  "transcript_lines_at_start": 515,
+  "compact_transcript_start": 60,
+  "token_usage": {
+    "input_tokens": 96,
+    "cache_creation_tokens": 57166,
+    "cache_read_tokens": 8301693,
+    "output_tokens": 34732,
+    "api_call_count": 44
+  },
+  "session_token_usage": {
+    "input_tokens": 192,
+    "cache_creation_tokens": 168639,
+    "cache_read_tokens": 13794032,
+    "output_tokens": 73420,
+    "api_call_count": 90
+  },
+  "redaction": {
+    "replacements": 63,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 20,
+      "credentialed_uri": 0,
+      "entropy": 38,
+      "key_context": 5,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_01QPQqijyGSvGng7EbkDPGpu",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "anthropic-skills:built-in-browser"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "0aeb06299c78",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 250,
+        "end": 251,
+        "entry_ids": [
+          "53838155-381e-4ca3-b20b-7de98337d0cd"
+        ],
+        "tool_use_id": "toolu_01QPQqijyGSvGng7EbkDPGpu"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01QPQqijyGSvGng7EbkDPGpu"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: anthropic-skills:built-in-browser",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 4
+  }
+}

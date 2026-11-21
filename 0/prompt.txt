@@ -1,0 +1,23 @@
+Wait wait im a little confused can you slow down and just give me in simple language what you did and you can put the jargon word in brackets and tell me how can i see it etc.
+
+---
+
+<task-notification>
+<task-id>bmrb43uc4</task-id>
+<tool-use-id>toolu_01RYHmKsFMuoRjTa5uua6Y1R</tool-use-id>
+<output-file>C:\Users\tetea\AppData\Local\Temp\claude\34c21ded909658b0\eaa86ad3-682d-4cac-9281-4c0a778a8c72\tasks\bmrb43uc4.output</output-file>
+<status>failed</status>
+<summary>Background command "Start the website dev server" failed with exit code 1</summary>
+</task-notification>
+
+---
+
+If i push it will it say that u pushed it for me? if it does then i should do the push myself
+
+---
+
+okok let's push. What do we start on now?
+
+---
+
+Yes, start upload page
