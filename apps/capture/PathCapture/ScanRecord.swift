@@ -21,6 +21,10 @@ struct ScanRecord: Codable, Identifiable {
   var entrance: EntranceTag?
   /// The hottest thermal state iOS reported during this section.
   var thermal: ThermalLevel?
+  // Account-scoped receipts are independent of the local Mac recorder link.
+  var hostedLinks: [String: URL]?
+  var pendingHostedUploads: Set<String>?
+  var hostedMapName: String { "iPhone scan " + id.uuidString.lowercased() }
   var guestURL: URL?
   var videoJob: UUID?
   var videoGuestURL: URL?
