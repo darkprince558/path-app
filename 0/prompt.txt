@@ -1,0 +1,15 @@
+Yeah merge the PRs into main, then apply the migration for me.
+
+---
+
+You may ssh into the server. My key is at ~/.ssh/  its either the vultr one or the id_ed...
+
+---
+
+go ahead and run the one-off deploy
+
+---
+
+We are going to implement a groups feature. There might be backend database infra for this already, but there is no frontend feature. The idea: People can create events that you can attach models to. Those models have the same features as all others. The difference is people can be invited by link to the event, that user can join, and they can access all the models of event spaces for directions, under a special selection on the side navbar alongside community, my maps. Perhaps a "Events" dropdown that allows you to select events once joined, and create as the first option in the dropdown. The goal is to make it easy to share models with a large group of people 
+
+If possible (stretch goal, brainstorm this, it can see your location on the model (i dont think this is possible with our current workflow)
