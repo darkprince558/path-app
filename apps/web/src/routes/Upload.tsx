@@ -77,12 +77,12 @@ export default function Upload() {
       const result = await uploadScan({
         file: file.file,
         format: file.format,
-        visibility: chosenVisibility,
+        visibility,
         name: cleanedName ?? undefined,
         signal: controller.signal,
         onProgress: (progress) => setPhase({ step: "uploading", progress }),
       });
-      setPhase({ step: "done", result, visibility: chosenVisibility });
+      setPhase({ step: "done", result, visibility });
     } catch (error) {
       if (controller.signal.aborted) {
         setPhase({ step: "choose" });
@@ -106,9 +106,6 @@ export default function Upload() {
   }
 
   const uploading = phase.step === "uploading";
-  // GLB maps start private: the owner labels places on Manage map before sharing.
-  const placesNeeded = file?.format === "glb";
-  const chosenVisibility: Visibility = placesNeeded ? "private" : visibility;
 
   return (
     <div className="mx-auto max-w-lg">
@@ -124,12 +121,11 @@ export default function Upload() {
             to={`/maps/${phase.result.shareId}#places`}
             className="mb-3 flex min-h-14 items-center justify-center rounded-full bg-coral px-6 text-lg font-bold text-ink"
           >Next: label places</Link>}
-          {file?.format === "glb" && <p className="mb-6 text-muted">Pin rooms, doors and other key spots so visitors know where things are. You can share the map once it has at least one place. <Link to={phase.result.sharePath} className="font-bold text-rust underline underline-offset-4">Plan a route</Link></p>}
+          {file?.format === "glb" && <p className="mb-6 text-muted">Pin rooms, doors and other key spots so visitors know where things are. <Link to={phase.result.sharePath} className="font-bold text-rust underline underline-offset-4">Plan a route</Link></p>}
           <SharePanel
             mapId={mapEditId(phase.result)}
             sharePath={phase.result.sharePath}
             initialVisibility={phase.visibility}
-            lockedReason={file?.format === "glb" ? "Label at least one place on Manage map before sharing." : null}
             footer={
               <div className="flex flex-wrap gap-x-6 gap-y-3">
                 <Link
@@ -227,8 +223,7 @@ export default function Upload() {
             <legend className="mb-3 font-display text-xl font-extrabold">
               <span aria-hidden="true" className="text-rust">3</span> Who can open it
             </legend>
-            <VisibilityPicker name="upload-visibility" value={chosenVisibility} onChange={setVisibility} disabled={uploading}
-              lockedReason={placesNeeded ? "New maps start private. After uploading, label a few places (rooms, entrance), then share." : null} />
+            <VisibilityPicker name="upload-visibility" value={visibility} onChange={setVisibility} disabled={uploading} />
           </fieldset>
 
           <div className="grid gap-3">

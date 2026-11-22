@@ -36,7 +36,7 @@ type Load =
 export default function PlaceEditor({ mapId, shareId, onCountChange }: {
   mapId: string;
   shareId: string;
-  onCountChange: (count: number | null) => void;
+  onCountChange?: (count: number | null) => void;
 }) {
   const [load, setLoad] = useState<Load>({ phase: "loading" });
   const [places, setPlaces] = useState<Place[] | null>(null);
@@ -72,7 +72,7 @@ export default function PlaceEditor({ mapId, shareId, onCountChange }: {
     return () => controller.abort();
   }, [shareId]);
 
-  useEffect(() => { onCountChange(places ? places.length : null); }, [places, onCountChange]);
+  useEffect(() => { onCountChange?.(places ? places.length : null); }, [places, onCountChange]);
 
   const viewerPlaces = useMemo<ViewerPlace[]>(() => {
     const shown: ViewerPlace[] = (places ?? []).map((place) => ({
@@ -203,7 +203,7 @@ export default function PlaceEditor({ mapId, shareId, onCountChange }: {
 
       {places && places.length === 0 && !pending ? (
         <p className="rounded-2xl bg-amber-100 p-4 font-bold text-night ring-1 ring-amber-400">
-          No places yet. Add at least one (for example the entrance) to share this map.
+          No places yet. Add a few (for example the entrance) so visitors know where things are.
         </p>
       ) : null}
 
