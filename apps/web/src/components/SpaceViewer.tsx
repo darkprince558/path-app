@@ -1,8 +1,9 @@
 import { Line, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Box3, DoubleSide, BufferGeometry, Float32BufferAttribute, MathUtils, MOUSE, Sphere, TOUCH, Vector3 } from "three";
+import { Box3, DoubleSide, BufferGeometry, Float32BufferAttribute, MathUtils, MOUSE, Sphere, TOUCH, Vector3, type Object3D } from "three";
 import { parseGlb, type GlbModel } from "../lib/glb";
+import { prepareScanSurfaces, type ScanSurfaces } from "../lib/scan-surfaces";
 import type { AutomaticState } from "./ScanNavigation";
 const ScanNavigation = lazy(() => import("./ScanNavigation"));
 import type { NavigationMesh } from "../lib/navmesh";
@@ -101,6 +102,26 @@ function Overlays({ nodes, edges, route, showGraph, radius }: {
   </>;
 }
 
+/**
+ * Scan readability (lib/scan-surfaces.ts): hides ARKit ceiling faces and sharpens photo
+ * textures at a slant. Geometry is untouched, so route finding is unaffected.
+ */
+function ScanLook({ objects, ceilingHidden, onCeiling }: {
+  objects: Object3D[]; ceilingHidden: boolean; onCeiling: (hasCeiling: boolean) => void;
+}) {
+  const gl = useThree((state) => state.gl);
+  const invalidate = useThree((state) => state.invalidate);
+  const [surfaces, setSurfaces] = useState<ScanSurfaces | null>(null);
+  useEffect(() => {
+    const prepared = prepareScanSurfaces(objects, gl.capabilities.getMaxAnisotropy());
+    setSurfaces(prepared);
+    onCeiling(prepared.hasCeiling);
+    return () => { prepared.dispose(); setSurfaces(null); };
+  }, [objects, gl, onCeiling]);
+  useEffect(() => { surfaces?.setCeilingHidden(ceilingHidden); invalidate(); }, [surfaces, ceilingHidden, invalidate]);
+  return null;
+}
+
 class ViewerBoundary extends Component<{ children: ReactNode; onError?: (message: string) => void }, { error: string | null }> {
   state = { error: null as string | null };
   static getDerivedStateFromError(error: Error) { return { error: error.message }; }
@@ -156,6 +177,8 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
     return sphere;
   }, [loaded]);
   const objects = useMemo(() => loaded.map(entry => entry.model.object), [loaded]);
+  const [hasCeiling, setHasCeiling] = useState(false);
+  const [ceilingHidden, setCeilingHidden] = useState(true);
   function pick(event: ThreeEvent<MouseEvent>, entry: LoadedModel) {
     if (enabled) { event.stopPropagation(); autoState?.pick(event.point); return; }
     if (!onPick) return;
@@ -182,9 +205,11 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
         touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
         mouseButtons={{ LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }} />
       <Framing bounds={bounds} resetToken={resetToken} />
+      <ScanLook objects={objects} ceilingHidden={ceilingHidden} onCeiling={setHasCeiling} />
     </Canvas>
   </ViewerBoundary>
-    {automaticNavigation && <div className="absolute left-3 top-24 z-10 max-h-[45%] w-[min(22rem,calc(100%-1.5rem))] overflow-auto rounded-xl bg-night/95 p-3 text-paper ring-1 ring-sage/50">
+    {(hasCeiling || automaticNavigation) && <div className="absolute left-3 top-24 z-10 flex w-[min(22rem,calc(100%-1.5rem))] flex-col items-start gap-2 xl-text:top-32">
+      {automaticNavigation && <div className="max-h-[45vh] w-full overflow-auto rounded-xl bg-night/95 p-3 text-paper ring-1 ring-sage/50">
       <label className="flex gap-2"><input type="checkbox" checked={enabled} disabled={!!navigationUnavailable}
         onChange={e => { setAutomatic(e.target.checked); setAutoState(null); }} />Automatic route</label>
       {navigationUnavailable && <p className="text-sm">{navigationUnavailable}</p>}
@@ -192,6 +217,11 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
         <ScanNavigation key={models.map(m => m.id).join(",")} objects={objects} avoidStairs={avoidStairs} onChange={setAutoState} />
         <label className="mt-2 flex gap-2"><input type="checkbox" checked={debug} onChange={e => setDebug(e.target.checked)} />Show NavMesh debug</label>
       </Suspense>}
+    </div>}
+      {hasCeiling && <button type="button" aria-pressed={!ceilingHidden} onClick={() => setCeilingHidden(hidden => !hidden)}
+        className="min-h-11 rounded-full bg-night/80 px-4 text-sm font-bold text-paper ring-1 ring-sage/50">
+        {ceilingHidden ? "Show ceiling" : "Hide ceiling"}
+      </button>}
     </div>}
   </div>;
 }
