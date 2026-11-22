@@ -8,7 +8,7 @@ import { requireOwner } from '../auth/authorization';
 import type { ScanStorage } from '../storage';
 import { canReadSpace, readSpace } from './access';
 import { ApiError, badRequest, conflict, notFound } from './http';
-import { metadata, name, uuid, visibility } from './validation';
+import { metadata, name, uuid } from './validation';
 import { metricSpace, preservesMetricFrame } from '../processing/calibration';
 import { isApprovedScan } from './approved-scans';
 import { transform } from '../capture/contract';
@@ -20,8 +20,9 @@ type Scan = typeof scans.$inferSelect;
 export const MAX_GLB_BYTES = 32 * 1024 * 1024;
 const MAX_MULTIPART_BYTES = MAX_GLB_BYTES + 1024 * 1024;
 export const identityTransform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+export const scanVisibility = z.enum(['private', 'unlisted', 'public']);
 export const scanInput = z.object({
-  name, visibility: visibility.optional(), transform,
+  name, visibility: scanVisibility.optional(), transform,
   metadata: metadata.optional(),
 }).strict();
 export const scanPatch = scanInput.partial();
@@ -118,7 +119,7 @@ export async function canReadScan(db: Db, user: AppUser | null, scan: Scan) {
   if (!space || !(await canReadSpace(db, user, space))) return false;
   if (scan.ownerId === user?.id) return true;
   if (scan.status !== 'ready') return false;
-  if (scan.visibility === 'public') return true;
+  if (scan.visibility === 'public' || scan.visibility === 'unlisted') return true;
   if (!user) return false;
   const [grant] = await db.select({ userId: scanViewers.userId }).from(scanViewers)
     .where(and(eq(scanViewers.scanId, scan.id), eq(scanViewers.userId, user.id))).limit(1);
@@ -179,7 +180,8 @@ export async function updateScan(db: Db, user: AppUser, id: string, input: z.inf
   requireOwner(user, scan.ownerId);
   if (input.visibility === 'public') {
     const [space] = await db.select().from(spaces).where(eq(spaces.id, scan.spaceId)).limit(1);
-    if (space?.visibility !== 'public') throw badRequest('A public scan requires a public space');
+    if (space?.visibility !== 'public' && !(space?.visibility === 'unlisted' && space.boundary?.browserUploadScanId === scan.id))
+      throw badRequest('A public scan requires a public space');
   }
   const next = { ...input };
   if (input.metadata) {

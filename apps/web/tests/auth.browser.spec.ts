@@ -104,3 +104,31 @@ test("changing accounts in another tab reloads owner data on focus", async ({ pa
   await expect(page.getByText(`${active.displayName} map`, { exact: true })).toBeVisible();
   await expect(page.getByText(`${user.displayName} map`, { exact: true })).toHaveCount(0);
 });
+
+test("GLB upload preserves the scan edit ID for immediate sharing changes", async ({ page }) => {
+  await session(page);
+  const shareId = "fixture-share-id";
+  const scanId = "fixture-scan-id";
+  await page.route("**/api/scans?**", async route => {
+    const request = route.request();
+    expect(request.method()).toBe("POST");
+    expect(new URL(request.url()).searchParams.get("visibility")).toBe("unlisted");
+    expect(request.headers()["content-type"]).toBe("application/octet-stream");
+    await route.fulfill({ status: 201, json: { id: scanId, shareId, sharePath: `/s/${shareId}`, name: "Hallway" } });
+  });
+  let patched = false;
+  await page.route(`**/api/scans/${scanId}`, async route => {
+    expect(route.request().method()).toBe("PATCH");
+    expect(route.request().postDataJSON()).toEqual({ visibility: "private" });
+    patched = true;
+    await route.fulfill({ json: { scan: { id: scanId, shareId, name: "Hallway", visibility: "private" } } });
+  });
+  await page.goto("/maps/new");
+  await page.locator('input[type="file"]').setInputFiles({ name: "Hallway.glb", mimeType: "model/gltf-binary", buffer: Buffer.from("glTFsynthetic") });
+  await page.getByRole("button", { name: "Upload and get link", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Your link is ready" })).toBeVisible();
+  await page.getByRole("radio", { name: /Private/ }).check();
+  await page.getByRole("button", { name: /Save/ }).click();
+  await expect.poll(() => patched).toBe(true);
+  await expect(page.getByText("Saved. This map is now Private.", { exact: false })).toBeVisible();
+});
