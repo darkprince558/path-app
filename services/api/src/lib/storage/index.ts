@@ -12,7 +12,11 @@ export interface ScanStorage {
   presignDownload?(key: string, expiresInSeconds: number): Promise<string>;
 }
 
-const keyPattern = /^scans\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.glb$/i;
+// A scan's model (.glb) and its map-card picture (.jpg, see lib/api/thumbnails.ts).
+const keyPattern = /^scans\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(glb|jpg)$/i;
+
+/** Where a scan's map-card picture is kept, next to its model. */
+export const thumbnailObjectKey = (scanId: string) => `scans/${scanId}.jpg`;
 
 export class LocalScanStorage implements ScanStorage {
   constructor(private readonly root: string) {}

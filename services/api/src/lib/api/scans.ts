@@ -5,7 +5,7 @@ import type { connectDatabase } from '../../db/client';
 import { scans, scanViewers, spaces, scanRevisions } from '../../db/schema';
 import type { AppUser } from '../auth/user-sync';
 import { requireOwner } from '../auth/authorization';
-import type { ScanStorage } from '../storage';
+import { thumbnailObjectKey, type ScanStorage } from '../storage';
 import { canReadSpace, readSpace } from './access';
 import { ApiError, badRequest, conflict, notFound } from './http';
 import { metadata, name, uuid } from './validation';
@@ -209,6 +209,7 @@ export async function deleteScan(db: Db, storage: ScanStorage, user: AppUser, id
   await db.delete(scans).where(eq(scans.id, scan.id));
   // An object-store failure leaves an orphan, never a database row pointing to missing bytes.
   await storage.delete(scan.objectKey);
+  await storage.delete(thumbnailObjectKey(scan.id));
 }
 
 export async function downloadScan(db: Db, storage: ScanStorage, user: AppUser | null, id: string) {

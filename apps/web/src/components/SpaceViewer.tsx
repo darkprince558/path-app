@@ -1,8 +1,9 @@
 import { Html, Line, OrbitControls } from "@react-three/drei";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, useThree, type RootState, type ThreeEvent } from "@react-three/fiber";
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Box3, DoubleSide, BufferGeometry, Float32BufferAttribute, MathUtils, MOUSE, Sphere, TOUCH, Vector3, type Object3D } from "three";
+import { Box3, DoubleSide, BufferGeometry, Float32BufferAttribute, MathUtils, Mesh, MOUSE, PerspectiveCamera, Sphere, TOUCH, Vector2, Vector3, type Object3D } from "three";
+import { encodeThumbnail, THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from "../lib/thumbnails";
 import { parseGlb, type GlbModel } from "../lib/glb";
 import { prepareScanSurfaces, type ScanSurfaces } from "../lib/scan-surfaces";
 import type { AutomaticState } from "./ScanNavigation";
@@ -57,6 +58,8 @@ export interface SpaceViewerProps {
   onPlaceSelect?: (placeId: string) => void;
   onError?: (message: string) => void;
   onReady?: () => void;
+  /** When set, renders one small dollhouse picture of the whole map (a JPEG) and hands it over. */
+  onSnapshot?: (picture: Blob) => void;
 }
 interface LoadedModel { id: string; model: GlbModel }
 interface OrbitLike { target: Vector3; minDistance: number; maxDistance: number; update(): void }
@@ -83,6 +86,82 @@ function Framing({ bounds, resetToken }: { bounds: Sphere; resetToken: number })
     } else camera.lookAt(bounds.center);
   }, [bounds, camera, controls, resetToken, size.width, size.height]);
   return null;
+}
+
+/**
+ * Renders the map once from its own 5:3 dollhouse camera (the user's view is untouched),
+ * into the corner of the drawing buffer, and copies that region into a JPEG. The next
+ * frame redraws the normal view.
+ */
+/** Up to ~20k world-space points from every mesh, for framing the picture. */
+function samplePoints(objects: Object3D[]): Vector3[] {
+  const points: Vector3[] = [];
+  let total = 0;
+  for (const root of objects) root.traverse((object) => {
+    if (object instanceof Mesh) total += object.geometry.getAttribute("position")?.count ?? 0;
+  });
+  const step = Math.max(1, Math.floor(total / 20000));
+  for (const root of objects) {
+    root.updateMatrixWorld(true);
+    root.traverse((object) => {
+      const positions = object instanceof Mesh ? object.geometry.getAttribute("position") : undefined;
+      if (!positions) return;
+      for (let i = 0; i < positions.count; i += step) points.push(new Vector3().fromBufferAttribute(positions, i).applyMatrix4(object.matrixWorld));
+    });
+  }
+  return points;
+}
+
+/** The value below which `share` of the values fall. */
+function quantile(values: number[], share: number) {
+  const sorted = [...values].sort((x, y) => x - y);
+  return sorted[Math.min(sorted.length - 1, Math.floor(share * sorted.length))] ?? 0;
+}
+
+function renderSnapshot(three: RootState, objects: Object3D[]): Promise<Blob | null> {
+  const { gl, scene, invalidate } = three;
+  const aspect = THUMBNAIL_WIDTH / THUMBNAIL_HEIGHT;
+  const camera = new PerspectiveCamera(40, aspect);
+  const points = samplePoints(objects);
+  if (!points.length) return Promise.resolve(null);
+  // Centre on the bulk of the scan, ignoring the outer 1% (stray depth points).
+  const axis = (pick: (p: Vector3) => number) => { const v = points.map(pick); return [quantile(v, 0.01), quantile(v, 0.99)] as const; };
+  const [x0, x1] = axis((p) => p.x), [y0, y1] = axis((p) => p.y), [z0, z1] = axis((p) => p.z);
+  const center = new Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  const radius = Math.max(new Vector3(x1 - x0, y1 - y0, z1 - z0).length() / 2, 0.001);
+  // A steep, floor-plan-like look, from the side that lays the scan's long way across the
+  // wide card; then move in until 98% of the points fit with a small margin.
+  const direction = (z1 - z0 > (x1 - x0) * 1.2 ? new Vector3(0.44, 0.9, 0) : new Vector3(0, 0.9, 0.44)).normalize();
+  const place = (distance: number) => {
+    camera.position.copy(center).addScaledVector(direction, distance);
+    camera.near = Math.max(distance - radius * 3, radius / 1000, 0.00001);
+    camera.far = distance + radius * 3;
+    camera.lookAt(center);
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
+  };
+  let distance = radius * 3;
+  for (let pass = 0; pass < 4; pass++) {
+    place(distance);
+    const reach = quantile(points.map((point) => {
+      const ndc = point.clone().project(camera);
+      return Math.max(Math.abs(ndc.x), Math.abs(ndc.y));
+    }), 0.98);
+    distance *= Math.max(reach, 0.05) / 0.92;
+  }
+  place(distance);
+
+  const buffer = gl.getDrawingBufferSize(new Vector2());
+  let width = buffer.x, height = Math.round(width / aspect);
+  if (height > buffer.y) { height = buffer.y; width = Math.round(height * aspect); }
+  const ratio = gl.getPixelRatio(), css = gl.getSize(new Vector2());
+  gl.setViewport(0, 0, width / ratio, height / ratio);
+  gl.render(scene, camera);
+  // WebGL's viewport starts bottom-left; the canvas image starts top-left.
+  const encoded = encodeThumbnail(gl.domElement, 0, buffer.y - height, width, height);
+  gl.setViewport(0, 0, css.x, css.y);
+  invalidate();
+  return encoded;
 }
 
 const point = (node: Position): [number, number, number] => [node.x, node.y, node.z];
@@ -185,7 +264,7 @@ class ViewerBoundary extends Component<{ children: ReactNode; onError?: (message
 
 /** GLBs and overlays share one space frame. The parent owns authenticated downloads. */
 export default function SpaceViewer({ models, nodes, edges, route = [], showGraph = false,
-  resetToken = 0, onPick, onError, onReady, automaticNavigation = false, initialAutomaticNavigation = false, navigationApproximate = false, navigationUnavailable, avoidStairs = false, onAutomaticChange,
+  resetToken = 0, onPick, onError, onReady, onSnapshot, automaticNavigation = false, initialAutomaticNavigation = false, navigationApproximate = false, navigationUnavailable, avoidStairs = false, onAutomaticChange,
   places = [], highlightPlaceId, onPlaceSelect }: SpaceViewerProps) {
   const [automatic, setAutomatic] = useState(initialAutomaticNavigation);
   const [debug, setDebug] = useState(false);
@@ -233,6 +312,21 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
   }, [loaded]);
   const objects = useMemo(() => loaded.map(entry => entry.model.object), [loaded]);
   const [hasCeiling, setHasCeiling] = useState(false);
+  const [three, setThree] = useState<RootState | null>(null);
+  const snapshotCallback = useRef(onSnapshot);
+  snapshotCallback.current = onSnapshot;
+  const wantsSnapshot = !!onSnapshot;
+  useEffect(() => {
+    if (!wantsSnapshot || !three || !loaded.length) return;
+    let cancelled = false;
+    // Let the first frames compile shaders and hide ceilings before the picture.
+    const timer = setTimeout(() => {
+      void renderSnapshot(three, loaded.map((entry) => entry.model.object)).then((picture) => {
+        if (picture && !cancelled) snapshotCallback.current?.(picture);
+      });
+    }, 600);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [wantsSnapshot, three, loaded]);
   const [ceilingHidden, setCeilingHidden] = useState(true);
   function pick(event: ThreeEvent<MouseEvent>, entry: LoadedModel) {
     if (enabled) { event.stopPropagation(); autoState?.pick(event.point); return; }
@@ -246,6 +340,7 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
   if (loading) return <p role="status" className="p-6 text-paper">Building the 3D view…</p>;
   return <div className="relative h-full w-full"><ViewerBoundary onError={onError}>
     <Canvas flat dpr={[1, 2]} camera={{ fov: 55 }} gl={{ antialias: true, powerPreference: "high-performance" }}
+      onCreated={setThree}
       fallback={<p role="alert">This browser could not start WebGL. Try another browser or device.</p>}
       aria-label="Room model and navigation route. Drag to orbit; scroll or pinch to zoom.">
       <color attach="background" args={["#121C16"]} />

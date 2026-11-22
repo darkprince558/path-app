@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { shareUrl } from "../lib/scans";
+import { thumbnailPath } from "../lib/thumbnails";
 import type { MapOrigin, MapSummary } from "../lib/maps";
 
 /** Small deterministic random generator so each map gets a stable preview. */
@@ -53,6 +54,25 @@ function MapThumb({ seed }: { seed: string }) {
       ))}
       <polyline points={route} fill="none" stroke="#F48057" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="6 5" />
     </svg>
+  );
+}
+
+/**
+ * The map's saved picture (a dollhouse view rendered when the owner first opened it).
+ * Until there is one, or if it can't load, the stylized preview stands in.
+ */
+function MapPreview({ shareId }: { shareId: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <MapThumb seed={shareId} />;
+  return (
+    <img
+      src={thumbnailPath(shareId)}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className="block aspect-[5/3] w-full bg-night object-cover"
+    />
   );
 }
 
@@ -193,7 +213,7 @@ export default function MapCard({
       >
         {/* Only the preview is clipped to the rounded corners, so the ⋯ menu can extend past the card. */}
         <div className="overflow-hidden rounded-t-2xl">
-          <MapThumb seed={map.id} />
+          <MapPreview shareId={map.id} />
         </div>
         <div className="grid gap-1.5 p-3">
           <h2 className="leading-snug font-bold">{map.name}</h2>

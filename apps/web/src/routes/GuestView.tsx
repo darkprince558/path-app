@@ -11,6 +11,8 @@ import { readMapOrigin } from "../lib/maps";
 import { useReducedMotion, useTripAvoidStairs } from "../lib/preferences";
 import type { PointScan } from "../lib/ply";
 import { formatBytes } from "../lib/scans";
+import { useAuth } from "../lib/auth";
+import { saveThumbnail, thumbnailTarget } from "../lib/thumbnails";
 import { fetchAsset, fetchShare, ShareError, type ShareMetadata } from "../lib/shares";
 
 // three.js, drei and the PLY parser live in a separate chunk. Both imports start
@@ -134,6 +136,25 @@ export default function GuestView() {
     };
   }, [shareId, attempt]);
 
+  // Map-card picture: when the owner opens a 3D map that has none yet, the viewer renders one.
+  const userId = useAuth().user?.id;
+  const glbReady = state.phase === "ready-glb";
+  const [pictureFor, setPictureFor] = useState<string | null>(null);
+  useEffect(() => {
+    setPictureFor(null);
+    if (!userId || !glbReady) return;
+    const controller = new AbortController();
+    void thumbnailTarget(shareId, controller.signal).then((scanId) => {
+      if (!controller.signal.aborted) setPictureFor(scanId);
+    });
+    return () => controller.abort();
+  }, [userId, glbReady, shareId]);
+  const onSnapshot = useCallback((picture: Blob) => {
+    if (!pictureFor) return;
+    setPictureFor(null);
+    void saveThumbnail(pictureFor, picture);
+  }, [pictureFor]);
+
   const retry = () => setAttempt((n) => n + 1);
 
   return (
@@ -200,6 +221,7 @@ export default function GuestView() {
                 edges={[]}
                 resetToken={resetToken}
                 onError={(message) => setState({ phase: "parse-failed", meta: state.meta, message })}
+                onSnapshot={pictureFor ? onSnapshot : undefined}
               />
             </Suspense>
           </div>

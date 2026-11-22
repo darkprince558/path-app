@@ -123,8 +123,10 @@ def valid_header(data, file_format):
 
 
 class ScanServer(ThreadingHTTPServer):
-    def __init__(self, port, directory, with_demo_cues=False):
+    def __init__(self, port, directory, with_demo_cues=False, signed_in_as=None):
         self.directory = Path(directory)
+        # Requests without X-Dev-User count as this account (the website signs in with Auth0 instead).
+        self.signed_in_as = signed_in_as
         self.scans = {}
         # Landmark cues per share (the mock uses the share ID as its revision ID). Only with --demo-cues.
         self.with_demo_cues = with_demo_cues
@@ -155,7 +157,7 @@ class ScanHandler(BaseHTTPRequestHandler):
         self.reply(status, "application/json", json.dumps(payload).encode())
 
     def user(self):
-        identifier = self.headers.get("X-Dev-User", "")
+        identifier = self.headers.get("X-Dev-User", "") or (self.server.signed_in_as or "")
         return identifier if re.fullmatch(DEV_ID, identifier) else None
 
     def read_body(self, limit):
@@ -366,10 +368,35 @@ class ScanHandler(BaseHTTPRequestHandler):
         self.server.scans.pop(share_id, None)
         self.server.places.pop(share_id, None)
         scan.path.unlink(missing_ok=True)
+        self.thumbnail_file(share_id).unlink(missing_ok=True)
+        self.reply(204, "application/json", b"")
+
+    def thumbnail_file(self, share_id):
+        return self.server.directory / f"{share_id}.thumbnail.jpg"
+
+    def do_PUT(self):
+        """PUT /api/scans/<id>/thumbnail: the owner saves the map-card picture (JPEG, up to 512 KiB)."""
+        match = re.fullmatch(rf"/api/scans/({SHARE_ID})/thumbnail", urlsplit(self.path).path)
+        scan = self.server.scans.get(match.group(1)) if match else None
+        if scan is None or self.user() != scan.owner:
+            return self.reject(404, "Unknown scan")
+        if self.headers.get_content_type() != "image/jpeg":
+            return self.reject(415, "Expected image/jpeg")
+        data = self.read_body(512 * 1024)
+        if data is None:
+            return
+        if len(data) < 4 or data[:2] != bytes([0xFF, 0xD8]) or data[-2:] != bytes([0xFF, 0xD9]):
+            return self.json_reply(400, {"error": "Thumbnail must be a JPEG image"})
+        self.thumbnail_file(match.group(1)).write_bytes(data)
         self.reply(204, "application/json", b"")
 
     def do_GET(self):
         target = urlsplit(self.path).path
+        if target == "/api/users/me":
+            user = self.user()
+            if user is None:
+                return self.json_reply(401, {"error": "Not signed in"})
+            return self.json_reply(200, {"user": {"id": user, "displayName": user}})
         if target == "/api/scans/public":
             scans = [{"shareId": key, "sharePath": f"/s/{key}", "name": scan.name, "updatedAt": scan.updated_at}
                      for key, scan in self.server.newest_first(lambda s: s.visibility == "public")]
@@ -406,6 +433,13 @@ class ScanHandler(BaseHTTPRequestHandler):
                 return self.json_reply(404, {"error": "Unknown share"})
             places = sorted(self.server.places.get(places_match.group(1), []), key=lambda p: (p["name"], p["id"]))
             return self.json_reply(200, {"places": places})
+        thumb_match = re.fullmatch(rf"/api/shares/({SHARE_ID})/thumbnail", target)
+        if thumb_match:
+            scan = self.server.scans.get(thumb_match.group(1))
+            picture = self.thumbnail_file(thumb_match.group(1))
+            if scan is None or not scan.visible_to(self.user()) or not picture.exists():
+                return self.json_reply(404, {"error": "No thumbnail"})
+            return self.reply(200, "image/jpeg", picture.read_bytes())
         match = re.fullmatch(rf"/api/shares/({SHARE_ID})(/asset)?|/s/({SHARE_ID})", target)
         if not match:
             return self.json_reply(404, {"error": "Unknown share"})
@@ -436,8 +470,10 @@ def main():
     parser.add_argument("--port", type=int, default=8001)
     parser.add_argument("--demo-cues", action="store_true",
                         help="give every upload two draft landmark cues, for the review screens")
+    parser.add_argument("--signed-in-as", metavar="NAME",
+                        help="treat requests without X-Dev-User as this account, so the website's signed-in pages work")
     args = parser.parse_args()
-    with TemporaryDirectory() as directory, ScanServer(args.port, directory, args.demo_cues) as server:
+    with TemporaryDirectory() as directory, ScanServer(args.port, directory, args.demo_cues, args.signed_in_as) as server:
         print(f"Scan mock listening on http://127.0.0.1:{server.server_port}", flush=True)
         try:
             server.serve_forever()

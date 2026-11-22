@@ -66,6 +66,15 @@ For the first integration, upload the sample PLY as **Unlisted**, open the retur
 
 The local API provides fixture bytes and exercises sharing rules. Replace its test page with the website’s guest route during integration. [Local API commands](../../services/api/README.md) · [Capture format and viewer notes](../../docs/scan-formats.md)
 
+## Map-card pictures
+
+Map cards show a picture of the scan. The first time the owner opens a 3D map that has none,
+`GuestView` asks `lib/thumbnails.ts` whether one is needed (a 404 from
+`/api/shares/<shareId>/thumbnail`, and the map is in `/api/scans/mine`), and `SpaceViewer`
+renders one 480 × 288 JPEG from its own steep, floor-plan-like camera fitted to the scan's
+points. The user's view isn't touched. Cards without a picture keep the stylized dot preview.
+Locally: run the mock with `--signed-in-as <name>` so the website counts as signed in.
+
 ## Filling holes before upload
 
 `tools/scan_fill_holes.py` patches small holes in a phone scan GLB and removes floating

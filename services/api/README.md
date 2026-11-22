@@ -152,6 +152,8 @@ The response includes `shareId` and `sharePath`. Open `http://127.0.0.1:8001` fo
 | `GET /api/scans/shared` | Maps other accounts added the signed-in account to: `{scans: [{shareId, sharePath, name, format, visibility, owner, updatedAt}]}`, without anyone's viewer list. 401 when signed out. |
 | `GET /api/shares/<shareId>` | Returns `{shareId, format, assetPath, name}` to a permitted viewer. |
 | `GET /api/shares/<shareId>/asset` | Returns the uploaded file after the same access check. |
+| `GET /api/shares/<shareId>/thumbnail` | The map-card picture (JPEG) after the same access check; 404 until the owner has opened the map once. |
+| `PUT /api/scans/<scanId>/thumbnail` | Owner only. Saves the map-card picture: an `image/jpeg` body up to 512 KiB, stored next to the GLB as `scans/<scanId>.jpg` and deleted with the scan. |
 | `PATCH /api/scans/<shareId>` | Owner sends JSON with any of `name`, `visibility` and `viewerIds`. Fields left out keep their value. `viewerIds`, when sent, is the complete replacement list. Returns `{shareId, name, visibility, viewerIds}`. |
 | `DELETE /api/scans/<shareId>` | Owner only. Returns 204, removes the stored file, and every route for that share then answers 404. Anyone else gets 404. |
 
