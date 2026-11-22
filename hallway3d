@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")" && pwd)"
+app="$root/apps/capture/video3d"
+cache="$root/captures-local/video3d-tools"
+python="$cache/.venv/bin/python"
+
+install_mesh_python() {
+  "$python" -m pip install --disable-pip-version-check --only-binary=:all: -r "$app/requirements-mesh.txt"
+}
+
+case "${1:-}" in
+  setup)
+    bash "$app/setup.sh"
+    if [[ -x "$cache/openmvs/env/bin/TextureMesh" ]]; then install_mesh_python; fi
+    exit 0
+    ;;
+  setup-openmvs)
+    bash "$app/setup_openmvs.sh"
+    if [[ -x "$python" ]]; then
+      install_mesh_python
+    else
+      echo "Run ./hallway3d setup to prepare the Python environment and viewer."
+    fi
+    exit 0
+    ;;
+  preview)
+    shift
+    exec python3 "$app/preview.py" "$@"
+    ;;
+  ""|-h|--help)
+    cat <<'HELP'
+Build a colored 3D point cloud from a phone video and open it in Path.
+
+  ./hallway3d setup                         Prepare this Mac once
+  ./hallway3d setup-openmvs                 Install the optional OpenMVS backend
+  ./hallway3d "/path/to/hallway.MOV"        Reconstruct and open the viewer
+  ./hallway3d VIDEO --surface compare       Compare Stereo and OpenMVS on the same cameras
+  ./hallway3d VIDEO --surface mesh          Build a textured GLB and compare it with its points
+  ./hallway3d mesh /path/to/run             Mesh an existing OpenMVS run without reprocessing the video
+  ./hallway3d planes /path/to/run           Compare supported plane fills with the current textured mesh
+  ./hallway3d VIDEO --no-preview            Export without opening a browser
+  ./hallway3d preview /path/to/scene.ply    Reopen an existing export
+  ./hallway3d demo                          Reconstruct a synthetic hallway
+HELP
+    exit 0
+    ;;
+esac
+
+if [[ ! -x "$python" ]]; then
+  echo "Run ./hallway3d setup first to prepare the reconstruction tools." >&2
+  exit 1
+fi
+if [[ "$1" == mesh ]]; then
+  shift
+  exec "$python" "$app/mesh.py" "$@"
+fi
+if [[ "$1" == planes ]]; then
+  shift
+  exec "$python" "$app/planes.py" "$@"
+fi
+if [[ "$1" == demo ]]; then
+  shift
+  sample="$root/captures-local/video3d-smoke/hallway.mp4"
+  if [[ ! -f "$sample" ]]; then
+    "$python" "$app/testdata/make_hallway.py" "$sample"
+  fi
+  set -- "$sample" "$@"
+fi
+exec "$python" "$app/reconstruct.py" "$@"
