@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Group } from "three";
+import { Group, BufferGeometry, Float32BufferAttribute, Mesh } from "three";
 import { buildNavMesh, DEFAULT_AGENT, trianglesFromObject } from "../src/lib/navmesh.ts";
 import { createRoom, disposeRoom } from "../src/lib/navmesh-room.ts";
 
@@ -175,4 +175,54 @@ test("viewer eligibility keeps metric calibration independent from alignment", a
   }
   const automatic = { alignmentVerified: true, alignmentSource: "single-capture", coordinateSystem: space.boundary.coordinateSystem };
   assert.equal(automaticNavigationIssue(automatic), undefined);
+});
+
+
+test("single GLB previews use glTF defaults without changing multi-scan calibration rules", async () => {
+  const { singleScanNavigation, automaticNavigationIssue } = await import("../src/lib/automatic-navigation.ts");
+  const { approvedMetadata } = await import("./helpers/room-glb.ts");
+  for (const metadata of [undefined, {}, { coordinateSystem: { units: "metres", upAxis: "Y", calibrated: false } }]) {
+    assert.deepEqual(singleScanNavigation(metadata), { unavailable: undefined, approximate: true });
+    assert.match(automaticNavigationIssue(metadata), /requires/);
+  }
+  assert.deepEqual(singleScanNavigation(approvedMetadata), { unavailable: undefined, approximate: false });
+  for (const frame of [{ units: "relative" }, { upAxis: "Z" }])
+    assert.match(singleScanNavigation({ coordinateSystem: frame }).unavailable, /Verify/);
+});
+
+test("dense scan extraction skips zero-area faces and retains blocking geometry", async () => {
+  const room = createRoom();
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(new Float32Array(200_001 * 9), 3));
+  const junk = new Mesh(geometry); room.add(junk);
+  try {
+    const triangles = trianglesFromObject(room);
+    const nav = await buildNavMesh(triangles);
+    try {
+      const route = nav.route(start, end);
+      assert.equal(route.ok, true);
+      assert.ok(route.distance > 10, "wall and doorway retained");
+    } finally { nav.dispose(); }
+  } finally { disposeRoom(room); }
+});
+
+test("route directions describe left/right turns, straight travel and arrival", async () => {
+  const { routeDirections } = await import("../src/lib/route-directions.ts");
+  assert.deepEqual(routeDirections([{x:0,y:0,z:0},{x:0,y:0,z:-2},{x:3,y:0,z:-2},{x:3,y:0,z:-4}]),
+    ["Start and go 2.0 m.", "Turn right and go 3.0 m.", "Turn left and go 2.0 m.", "Arrive at your destination."]);
+  assert.deepEqual(routeDirections([start, start]), ["Arrive at your destination."]);
+});
+
+test("navigation accepts a dense scan above the former 200k triangle ceiling", async () => {
+  const room = createRoom();
+  try {
+    const input = trianglesFromObject(room), source = [...input.indices];
+    while (input.indices.length <= 600_000) for (const index of source) input.indices.push(index);
+    const nav = await buildNavMesh(input);
+    try {
+      const route = nav.route(start, end);
+      assert.equal(route.ok, true);
+      assert.ok(route.distance > 10, "dense geometry must still route through the doorway");
+    } finally { nav.dispose(); }
+  } finally { disposeRoom(room); }
 });

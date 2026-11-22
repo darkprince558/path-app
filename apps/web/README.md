@@ -8,10 +8,13 @@ The existing Next.js backend owns Auth0. React uses `AuthProvider` / `useAuth` a
 
 ## Automatic routes from approved scans
 
-The existing space and shared-GLB viewers now have **Automatic route** and
-**Show NavMesh debug** controls. Verify calibrated metre alignment, enable automatic
-routing, then double-click two floor points. Manual graph and saved routes remain
-available when the mode is off. See the [full workflow and synthetic tests](../../docs/scan-automatic-routing.md).
+After a GLB upload, choose **Plan a route**. Shared GLB viewers build a walkable
+floor automatically: double-click or double-tap a start and destination to draw a
+route, then expand **Step-by-step directions** for relative turns and distances.
+Single uploads use glTF's metre/+Y convention and label unverified scale; explicitly
+relative models still need calibration. Multi-scan spaces retain verified alignment
+requirements and opt-in automatic routing. Manual graph and saved routes remain
+available when the mode is off. See the [full workflow and tests](../../docs/scan-automatic-routing.md).
 
 Calibration follows validated native capture provenance. To repair an old approved
 scan, use **Owner tools → Upload and align scans → Restore validated LiDAR calibration**.

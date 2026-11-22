@@ -116,6 +116,11 @@ export default function Upload() {
 
       {phase.step === "done" ? (
         <div className="mt-8">
+          {file?.format === "glb" && <Link
+            to={phase.result.sharePath}
+            className="mb-6 flex min-h-14 items-center justify-center rounded-full bg-coral px-6 text-lg font-bold text-ink"
+          >Plan a route</Link>}
+          {file?.format === "glb" && <p className="mb-6 text-muted">Open your map, then choose a start and destination on the floor. Your route is generated automatically.</p>}
           <SharePanel
             mapId={mapEditId(phase.result)}
             sharePath={phase.result.sharePath}

@@ -71,3 +71,13 @@ What the next teammate should do:
 ```
 
 After pulling a note, run `entire brain refresh` in the repo, then try `entire brain query "scan visibility" --source doc --limit 3`. Keep raw scans, credentials and full transcripts in their approved storage. A reference to the evidence is enough here.
+
+
+### Single uploaded GLB routing (2026-11-22)
+
+Sam: browser imports have no approved capture calibration, so the old shared viewer
+always disabled routing. Single-GLB previews now use the glTF metre/+Y convention
+and label unverified scale; multi-scan alignment checks stay strict. Depth-fused
+hallways also contain zero-area faces and exceed the old 200k triangle budget.
+Skip only zero-area faces and allow bounded 2M triangle/vertex inputs. All four local
+`paths/` GLBs generated connected routes; see [reproduction and limits](../docs/scan-automatic-routing.md#real-scan-verification-2026-11-22).
