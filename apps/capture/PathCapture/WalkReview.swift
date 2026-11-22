@@ -14,7 +14,7 @@ struct WalkReview: View {
     NavigationStack {
       List {
         Section {
-          WalkMapView(map: replayMap ?? map, live: false)
+          WalkMapView(map: replayMap ?? map, style: .review)
           LabeledContent("Tracked distance", value: "\(Int((replayMap ?? map).distance.rounded())) m")
           if let reason = records.last?.walkEndReason { Text(reason).foregroundStyle(.orange) }
           if !message.isEmpty { Text(message).font(.footnote) }
