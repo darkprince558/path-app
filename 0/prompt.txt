@@ -1,0 +1,96 @@
+# !404 — Integrate Automatic Pathfinding into the Existing Scan Viewer
+
+Inspect the current merged repository, existing Three.js viewer, scan APIs, and Task 6 Recast NavMesh implementation.
+
+We already have:
+- Working LiDAR capture, processing, approval and GLB viewing.
+- Manual graph-based A* navigation.
+- A standalone Recast NavMesh prototype at /navmesh-demo.
+
+Problem: Opening an uploaded scan currently only displays the model. Users cannot automatically generate a route through it.
+
+Implement:
+1. Load an approved scan's GLB geometry into the existing viewer.
+2. Generate a Recast NavMesh from its walkable geometry.
+3. Apply the scan's approved transforms correctly.
+4. Support floors at arbitrary heights.
+5. Allow selecting a start and destination directly on the 3D floor.
+6. Calculate and display the shortest navigable route.
+7. Show helpful errors for scans with no walkable floor.
+8. Preserve manual navigation, saved paths and permissions.
+9. Add a NavMesh debug toggle.
+10. Test with a synthetic room containing walls and a doorway.
+
+Do not modify the LiDAR capture contract, CPU processor, Gemini or database unnecessarily.
+
+Run frontend tests, typecheck and build. Document how to test the full workflow.
+
+---
+
+## Fix automatic routing calibration — !404
+
+**Branch:** `feature/scan-automatic-routing`
+
+### Problem
+
+The viewer disables Automatic route because approved scans have incorrect calibration metadata.
+
+Current scan:
+```json
+{
+  "coordinateSystem": {
+    "units": "relative",
+    "upAxis": "Y",
+    "calibrated": false
+  },
+  "alignmentVerified": true
+}
+```
+
+The parent space is already calibrated in metres.
+
+Users should not have to manually configure calibration for every iPhone LiDAR scan.
+
+### Task
+
+1. Trace calibration metadata through the capture contract, CPU processor, worker, revision approval, scan API and frontend.
+2. Ensure validated, metric-scale ARKit captures automatically retain `units: "metres"` and `calibrated: true` when appropriate.
+3. For a **single scan**, don't require manual multi-scan alignment verification if its coordinate frame and scale are already validated.
+4. Keep strict verification for imported models with unknown scale and for multi-scan alignment.
+5. Provide a supported owner action to correct calibration metadata on existing scans, instead of requiring direct SQL updates.
+6. Preserve existing Auth0 authorization, scan visibility and sharing rules.
+7. Add tests covering automatic calibration, unverified scans and viewer eligibility.
+
+### Important
+
+- Do not blindly mark all scans calibrated.
+- Do not treat `alignmentVerified: true` as proof of metric scale.
+- The existing `mock-lidar` scan is synthetic and should remain uncalibrated unless explicitly verified.
+- Do not modify production database records.
+- Preserve current routing functionality.
+
+### Acceptance criteria
+
+A validated, metre-scale iPhone LiDAR scan can be approved, opened and routed through **without manually checking calibration boxes**.
+
+Run the relevant tests, typecheck, build and `make check`. Report the changes and explain how to test them locally.
+
+---
+
+Commit and push the completed LiDAR calibration fix, then update **GitHub PR #36**.
+
+1. Inspect the current branch, worktree and PR #36's head/base branches.
+2. Commit all relevant calibration changes with a descriptive commit message.
+3. Integrate these changes into PR #36's head branch, preserving its existing scan-list endpoints and other changes.
+4. Run the relevant tests, typecheck and build.
+5. Push the updated PR branch to GitHub.
+6. Update PR #36's description to include:
+   - Automatic calibration for validated native LiDAR captures.
+   - Automatic single-scan alignment verification.
+   - Owner calibration repair endpoint.
+   - Separate metric-scale and alignment controls.
+   - Relevant tests and remaining real-device limitations.
+
+**Important:** Do not force-push, overwrite unrelated work, or merge the PR. If PR #36 cannot safely accept these changes, report the blocker instead.
+
+When finished, provide the PR URL, commit hash, test results and confirmation that the remote PR contains the changes.
