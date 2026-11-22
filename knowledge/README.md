@@ -10,6 +10,15 @@ Use this folder for knowledge a teammate will still need after your branch merge
 | Public scans appear in discovery. Unlisted scans open by link. Private scans require an owner or invited account. | Map owners choose an audience for both the scene and its underlying files. | [Sharing rules](../docs/architecture.md#sharing) |
 | GitHub holds the source and team checkpoints. The live site and scan storage need a runtime of their own. | A guest needs an HTTPS URL they can open without access to the team repository. Vultr is a deployment proposal. | [Deployment plan](../docs/deployment.md) |
 
+## Retrying iPhone capture uploads
+
+After the API and CPU worker receive the [camera pose tolerance](../docs/capture-api.md#manifest-version-1),
+retry the original version 1 bundle. Both accept float rounding in the final camera matrix
+entry and preserve the recorded poses. On macOS, the Swift exporter and a local PostgreSQL
+worker completed 32 sections with 313 photo poses from a saved iPhone walk. All 441
+uploaded files matched their checksums. The [contract regression test](../services/api/src/lib/api/lidar-contract-compatibility.test.ts)
+exercises the tolerated range and rejection cases with synthetic data.
+
 ## Calibration handoff
 
 The [calibration trace and repair](../docs/scan-calibration.md) records why capture

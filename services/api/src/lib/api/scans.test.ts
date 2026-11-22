@@ -54,7 +54,7 @@ test('GLB is self-contained and alignment cannot collapse geometry or add perspe
   calibrated[0] = calibrated[5] = calibrated[10] = 0.00001;
   calibrated[12] = 2;
   assert.deepEqual(transform.parse(calibrated), calibrated);
-  for (const [index, value] of [[0, 0], [3, 1], [7, 1], [11, 1], [15, 0], [12, Infinity]]) {
+  for (const [index, value] of [[0, 0], [3, 1], [7, 1], [11, 1], [15, 0], [15, 0.9999998], [12, Infinity]]) {
     const invalid = [...identityTransform]; invalid[index] = value;
     assert.equal(transform.safeParse(invalid).success, false);
   }

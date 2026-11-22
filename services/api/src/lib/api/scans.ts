@@ -11,22 +11,15 @@ import { ApiError, badRequest, conflict, notFound } from './http';
 import { metadata, name, uuid, visibility } from './validation';
 import { metricSpace, preservesMetricFrame } from '../processing/calibration';
 import { isApprovedScan } from './approved-scans';
+import { transform } from '../capture/contract';
+
+export { transform };
 
 type Db = ReturnType<typeof connectDatabase>['db'];
 type Scan = typeof scans.$inferSelect;
 export const MAX_GLB_BYTES = 32 * 1024 * 1024;
 const MAX_MULTIPART_BYTES = MAX_GLB_BYTES + 1024 * 1024;
 export const identityTransform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-export const transform = z.array(z.number().finite()).length(16).refine(matrix => {
-  if (matrix.length !== 16 || matrix[3] !== 0 || matrix[7] !== 0 || matrix[11] !== 0 || matrix[15] !== 1) return false;
-  // Normalize before testing the determinant so valid small-unit reconstructions remain usable.
-  const scale = Math.max(...[0, 1, 2, 4, 5, 6, 8, 9, 10].map(i => Math.abs(matrix[i])));
-  if (!scale) return false;
-  const m = matrix.map(value => value / scale);
-  const determinant = m[0] * (m[5] * m[10] - m[9] * m[6])
-    - m[4] * (m[1] * m[10] - m[9] * m[2]) + m[8] * (m[1] * m[6] - m[5] * m[2]);
-  return Number.isFinite(determinant) && Math.abs(determinant) > Number.EPSILON;
-}, 'Transform must be a nonsingular affine column-major matrix');
 export const scanInput = z.object({
   name, visibility: visibility.optional(), transform,
   metadata: metadata.optional(),

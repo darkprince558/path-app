@@ -8,8 +8,8 @@ Integration branch `integration/lidar-contract-compatibility`, based on
 
 ## One contract
 
-The existing `services/api/src/lib/capture/contract.ts` and the `transform`
-validator in `services/api/src/lib/api/scans.ts` are authoritative and unchanged.
+`services/api/src/lib/capture/contract.ts` defines the authoritative Zod schemas
+for capture poses and the strict transform used for scan alignment.
 `npm run contract:export --prefix services/api` generates the processor's
 `contract.mjs` directly from these Zod declarations, retaining all refinements.
 The processor has its own Zod dependency, so `npm ci --prefix apps/capture/processor`
