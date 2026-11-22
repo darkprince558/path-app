@@ -280,3 +280,26 @@ test("the overview pans with a plain drag", async ({ page }) => {
   await page.waitForTimeout(600);
   expect((await canvasShot(page)).equals(before)).toBe(false);
 });
+
+test("each of W, A, S and D moves you while walking inside", async ({ page }) => {
+  const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+  const bounds = await mockScan(page);
+  await page.goto("/s/room");
+  const canvas = page.locator("canvas");
+  await expect(viewer(page)).toHaveAttribute("aria-label", /Drag to move/);
+  await page.waitForTimeout(300);
+  await page.getByRole("button", { name: "Walk inside" }).click();
+  const floor = screenPoint((await canvas.boundingBox())!, bounds, spacePoint({ x: 4, y: 0, z: -2 }));
+  await page.mouse.click(floor.x, floor.y);
+  await expect(viewer(page)).toHaveAttribute("aria-label", /Walking inside the model/);
+  await page.waitForTimeout(400);
+  for (const [key, back] of [["w", "s"], ["s", "w"], ["a", "d"], ["d", "a"]] as const) {
+    const before = await canvasShot(page);
+    await page.keyboard.down(key); await page.waitForTimeout(250); await page.keyboard.up(key);
+    await page.waitForTimeout(150);
+    expect((await canvasShot(page)).equals(before), `${key.toUpperCase()} should move you`).toBe(false);
+    await page.keyboard.down(back); await page.waitForTimeout(250); await page.keyboard.up(back); // back to where it started
+    await page.waitForTimeout(150);
+  }
+  expect(errors).toEqual([]);
+});
