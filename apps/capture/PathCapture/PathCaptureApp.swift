@@ -11,41 +11,50 @@ private struct CaptureScreen: View {
   @Environment(\.scenePhase) var phase
   @State private var pairing = false
   @State private var paired = MacAddress.load()
+  private var libraryEntries: [ScanRecord] {
+    var walks = Set<UUID>()
+    return scanner.library.filter { record in
+      guard let id = record.walkID else { return true }
+      return walks.insert(id).inserted
+    }
+  }
   var body: some View {
     NavigationStack {
       Group {
         if scanner.phase == .recording {
           ZStack(alignment: .bottom) {
             CameraPreview(session: scanner.session, mesh: scanner.supportsMesh).ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
+              WalkMapView(map: scanner.liveMap)
               HStack {
-                Label(scanner.tracking, systemImage: "viewfinder")
+                Label(scanner.tracking == "Normal" ? "Tracking" : scanner.tracking, systemImage: "viewfinder")
+                  .foregroundStyle(scanner.tracking == "Normal" ? Color.primary : Color.orange)
                 Spacer()
-                Text(Duration.seconds(scanner.duration).formatted(.time(pattern: .minuteSecond)))
-                  .monospacedDigit()
-              }
+                Text("\(Int(scanner.liveMap.distance)) m · " + Duration.seconds(scanner.duration).formatted(.time(pattern: .minuteSecond)))
+              }.font(.subheadline.bold().monospacedDigit())
               Text(scanner.instruction).font(.subheadline)
-              Text(
-                "\(scanner.pointCount.formatted()) points · \(scanner.faceCount.formatted()) faces · \(scanner.motionCount) motion readings"
-              ).font(.caption.monospacedDigit())
-              Button("Finish scan") { scanner.stop() }.buttonStyle(.borderedProminent).controlSize(
-                .large
-              ).frame(maxWidth: .infinity)
-            }.padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
-              .padding()
+              HStack {
+                VStack(alignment: .leading) {
+                  Text("Recording section \(scanner.sectionNumber)").font(.subheadline.bold())
+                  Text("\(scanner.savedSections) saved on phone").font(.caption)
+                }
+                Spacer()
+                Button("Finish walk") { scanner.stop() }.buttonStyle(.borderedProminent)
+              }
+            }.padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18)).padding()
           }
         } else {
           List {
             Section {
               VStack(alignment: .leading, spacing: 12) {
                 Image(systemName: "viewfinder").font(.largeTitle).foregroundStyle(.green)
-                Text("Scan a space").font(.title.bold())
+                Text("Map a hallway").font(.title.bold())
                 Text(scanner.instruction).foregroundStyle(.secondary)
                 if scanner.supported {
                   Label(
                     scanner.mode, systemImage: scanner.supportsMesh ? "cube.transparent" : "camera"
                   ).font(.subheadline)
-                  Button("Start scan") { Task { await scanner.start() } }.buttonStyle(
+                  Button("Start walk") { Task { await scanner.start() } }.buttonStyle(
                     .borderedProminent
                   ).controlSize(.large).disabled(
                     scanner.phase == .saving || scanner.phase == .requestingCamera)
@@ -60,13 +69,13 @@ private struct CaptureScreen: View {
                 Text("Finished scans appear here, including when you’re offline.").foregroundStyle(
                   .secondary)
               }
-              ForEach(scanner.library) { r in
+              ForEach(libraryEntries) { r in
                 Button {
                   scanner.selected = r
                 } label: {
                   VStack(alignment: .leading) {
                     Text(r.created.formatted(date: .abbreviated, time: .shortened))
-                    Text("\(r.mode) · \(Int(r.duration)) seconds").font(.caption).foregroundStyle(
+                    Text(r.walkID == nil ? "\(r.mode) · \(Int(r.duration)) seconds" : "Hallway walk · \(scanner.library.filter { $0.walkID == r.walkID }.count) sections").font(.caption).foregroundStyle(
                       .secondary)
                   }
                 }
@@ -83,11 +92,84 @@ private struct CaptureScreen: View {
         }
       }.navigationTitle(scanner.phase == .recording ? "Scanning" : "Path Capture")
         .navigationBarTitleDisplayMode(.inline)
-    }.onChange(of: phase) { _, p in if p == .background { scanner.stop(interrupted: true) } }.sheet(
+    }.onChange(of: phase) { _, p in if p == .background { scanner.stop(reason: "Path Capture went into the background.") } }.sheet(
       item: $scanner.selected, onDismiss: { scanner.reload() }
-    ) { record in ScanDetail(record: record, mac: $paired) }.sheet(isPresented: $pairing) {
+    ) { record in
+      if let id = record.walkID {
+        WalkReview(records: scanner.library.filter { $0.walkID == id }.sorted { ($0.sectionNumber ?? 0) < ($1.sectionNumber ?? 0) }, paired: $paired)
+      } else { ScanDetail(record: record, mac: $paired) }
+    }.sheet(isPresented: $pairing) {
       PairMac(mac: $paired)
     }
+  }
+}
+private struct WalkReview: View {
+  let records: [ScanRecord]
+  @Binding var paired: MacAddress?
+  @Environment(\.dismiss) var dismiss
+  @State private var map = WalkMap()
+  @State private var section: ScanRecord?
+  @State private var archive: URL?
+  @State private var working = false
+  @State private var message = ""
+  var body: some View {
+    NavigationStack {
+      List {
+        Section {
+          WalkMapView(map: map, live: false)
+          LabeledContent("Tracked distance", value: "\(Int(map.distance.rounded())) m")
+          if let reason = records.last?.walkEndReason { Text(reason).foregroundStyle(.orange) }
+          if !message.isEmpty { Text(message).font(.footnote) }
+        }
+        if let first = records.first, records.contains(where: { $0.pointCount > 0 }) {
+          Section("Whole walk in 3D") {
+            ScanPreview(url: first.folder, walk: records).frame(height: 220).listRowInsets(EdgeInsets())
+          }
+        }
+        Section("3D sections") {
+          ForEach(records) { r in
+            Button {
+              do {
+                section = try JSONDecoder().decode(ScanRecord.self, from: Data(contentsOf: r.folder.appendingPathComponent("scan.json")))
+              } catch { message = "Could not open this section: " + error.localizedDescription }
+            } label: {
+              HStack {
+                Text("Section \(r.sectionNumber ?? 1)")
+                Spacer()
+                Text(r.partial ? "Partial" : "\(Int(r.duration.rounded())) s").foregroundStyle(.secondary)
+                Image(systemName: "chevron.right")
+              }
+            }
+          }
+        }
+        Section {
+          if let archive {
+            ShareLink("Share whole walk", item: archive)
+          } else {
+            Button("Prepare whole walk for Mac") {
+              working = true
+              Task {
+                defer { working = false }
+                do { archive = try await Task.detached { try WalkArchive.prepare(records) }.value }
+                catch { message = error.localizedDescription }
+              }
+            }.disabled(working)
+          }
+          if working { ProgressView("Preparing archive") }
+        }
+      }.navigationTitle("Walk review").toolbar { Button("Done") { dismiss() } }
+    }.task {
+      let (combined, missing) = await Task.detached {
+        var combined = WalkMap()
+        var missing = 0
+        for r in records {
+          do { combined.include(try WalkMap.read(from: r.folder)) } catch { missing += 1 }
+        }
+        return (combined, missing)
+      }.value
+      map = combined
+      if missing > 0 { message = "Map data is unavailable for \(missing) section(s)." }
+    }.sheet(item: $section) { ScanDetail(record: $0, mac: $paired) }
   }
 }
 private struct CameraPreview: UIViewRepresentable {
@@ -129,6 +211,9 @@ private struct ScanDetail: View {
           LabeledContent("Mode", value: record.mode)
           LabeledContent("Camera poses", value: record.poseCount.formatted())
           LabeledContent("Motion readings", value: record.gyroCount.formatted())
+          if record.depthPriority == true {
+            Text("Saved points and camera data while an earlier surface was processing. On LiDAR devices the Mac can fuse available depth frames.")
+          }
           if record.partial { Text("Interrupted capture · saved through the last frame") }
           if record.triangles > 0 {
             LabeledContent("Surface triangles", value: record.triangles.formatted())
