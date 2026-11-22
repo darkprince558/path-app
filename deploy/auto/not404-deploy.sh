@@ -7,7 +7,9 @@
 #   /srv/not404/releases/api-<sha>, points api-current at it, restarts not404-api and
 #   not404-worker, and checks the API answers. If it doesn't, it switches back.
 #   A commit that changes services/api/drizzle (database migrations) is NOT deployed:
-#   migrations are applied by hand (docs/lidar-publishing.md), so the API waits.
+#   migrations are applied by hand (docs/lidar-publishing.md), so the API waits. After
+#   applying them, record the commit in $STATE/api.migrated; any later main with the
+#   same migrations then deploys.
 #
 # Builds run as the unprivileged not404-api user; root only swaps folders and restarts.
 # Logs: journalctl -u not404-deploy.   Live version: https://not404.vodka/VERSION.txt
@@ -77,9 +79,13 @@ deploy_api() {
   if [ -n "$current" ] && as_builder git -C "$REPO" diff --quiet "$current" "$NEW" -- services/api apps/capture/processor; then
     echo "$NEW" > "$STATE/api.sha"; log "api: no API changes in $SHORT"; return 0
   fi
-  if [ -n "$current" ] && ! as_builder git -C "$REPO" diff --quiet "$current" "$NEW" -- services/api/drizzle; then
+  # Migrations match those of the live API, or of a commit whose migrations were applied by hand.
+  local migrated
+  migrated=$(as_builder git -C "$REPO" rev-parse --verify --quiet "$(cat "$STATE/api.migrated" 2>/dev/null || echo none)^{commit}" || echo "")
+  if [ -n "$current" ] && ! as_builder git -C "$REPO" diff --quiet "$current" "$NEW" -- services/api/drizzle \
+     && ! { [ -n "$migrated" ] && as_builder git -C "$REPO" diff --quiet "$migrated" "$NEW" -- services/api/drizzle; }; then
     echo "$NEW" > "$STATE/api.pending"
-    log "api: $SHORT adds database migrations; NOT deployed. Apply them by hand, then run: rm $STATE/api.pending; echo <applied-sha> > $STATE/api.sha"
+    log "api: $SHORT adds database migrations; NOT deployed. Apply them by hand, then run: echo $NEW > $STATE/api.migrated; rm $STATE/api.pending"
     return 0
   fi
   release="$ROOT/releases/api-$SHORT"

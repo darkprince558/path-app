@@ -6,7 +6,7 @@ Every 2 minutes the server checks `main` on GitHub. When there's a new commit, i
 | --- | --- | --- |
 | Website (`apps/web`) | Builds with pnpm in `/srv/not404/web-builds/<sha>`, then swaps it into `/srv/not404/web`. The previous build stays in `web.prev`. | The live site is unchanged. That commit isn't retried. |
 | API (`services/api` + `apps/capture/processor`) | Only when those folders changed. Builds `/srv/not404/releases/api-<sha>`, points `api-current` at it, restarts `not404-api` and `not404-worker`, then checks that `/api/scans/public` answers 200 and `/api/users/me` answers 401. | Switches `api-current` back to the previous release and restarts. That commit isn't retried. |
-| Database migrations | A commit that changes `services/api/drizzle` is **not** deployed to the API, because migrations are applied by hand (`docs/lidar-publishing.md`). The website still deploys. | Apply the migration, then `rm /var/lib/not404-deploy/api.pending`, and the next run deploys the API. |
+| Database migrations | A commit that changes `services/api/drizzle` is **not** deployed to the API, because migrations are applied by hand (`docs/lidar-publishing.md`). The website still deploys. | Apply the migration, then `echo <sha> > /var/lib/not404-deploy/api.migrated && rm /var/lib/not404-deploy/api.pending` (the log line names the SHA). The next run deploys the API, and so does any later commit with the same migrations. |
 
 Builds run as the unprivileged `not404-api` user. Root only swaps folders and restarts the two services. Server secrets stay in `/etc/not404/api.env`, which is read only for the API build.
 
