@@ -42,6 +42,15 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
   private var retiredFaces = 0
   private var take: TakeRecorder?
   private var lastSampleTime = -Double.infinity
+  /// Floor changes the barometer has noticed during this walk.
+  @Published private(set) var floorChanges = [FloorChange]()
+  private var altitude: AltitudeRecorder?
+  private var entrance: EntranceTagger?
+  private var sectionThermal = ThermalLevel.nominal
+  private var lastHeatWarning = -Double.infinity
+  private var lastFrameTime = 0.0
+  /// A short message that outranks the usual guidance until its time is up, such as a floor change.
+  private var notice: (text: String, until: Double)?
   override init() {
     super.init()
     session.delegateQueue = .main
@@ -64,6 +73,24 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
     }
     selected = nil
     walkID = UUID()
+    floorChanges = []
+    notice = nil
+    lastHeatWarning = -.infinity
+    sectionThermal = ThermalLevel(ProcessInfo.processInfo.thermalState)
+    let barometer = AltitudeRecorder()
+    barometer.onFloorChange = { [weak self] change in
+      guard let self, self.phase == .recording else { return }
+      self.floorChanges.append(change)
+      self.notice = ("Floor change noticed: " + change.summary.lowercased() + ".", self.lastFrameTime + 6)
+    }
+    barometer.start()
+    altitude = barometer
+    entrance = nil
+    if UserDefaults.standard.bool(forKey: EntranceTagger.settingKey) {
+      let tagger = EntranceTagger()
+      tagger.begin()
+      entrance = tagger
+    }
     sideGuidance = SideGuidance()
     rescanSide = nil
     walkStart = nil
@@ -141,6 +168,7 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
       guide = "Waiting for camera tracking."
     }
     if walkStart == nil { walkStart = frame.timestamp }
+    lastFrameTime = frame.timestamp
     take.frame(frame, tracking: quality.rawValue, usePhotos: supportsMesh)
     // A short tracking loss between display updates still breaks the route line.
     if quality != .normal {
@@ -153,6 +181,8 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
     let camera = frame.camera.transform
     sectionMap.locate(SIMD2(camera.columns.3.x, camera.columns.3.z),
       forward: SIMD2(-camera.columns.2.x, -camera.columns.2.z), at: frame.timestamp, normal: quality == .normal)
+    // The barometer compares against this to tell stairs from an elevator ride.
+    altitude?.track(height: quality == .normal ? Double(camera.columns.3.y) : nil)
     let before = sectionMap.tiles.count
     depthHits = 0
     var sideFrame = SideObservation()
@@ -180,6 +210,13 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
     } else if quality == .normal, frame.timestamp - lastNewTile > 3, !sectionMap.tiles.isEmpty {
       instruction = "This area is already on the map. Sweep toward a dark edge to add coverage."
     }
+    if quality == .normal, supportsMesh, take.smearing {
+      instruction = "Moving too fast for sharp photos. Slow down, and turn gently at corners."
+    }
+    if let active = notice {
+      // Guidance for recovering tracking always comes first; the notice waits out its time.
+      if frame.timestamp >= active.until { notice = nil } else if quality == .normal { instruction = active.text }
+    }
     if frame.timestamp - lastMapPublish >= 0.4 {
       activeLayer = WalkLayer(sectionMap)
       liveMap = sectionMap
@@ -187,6 +224,12 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
     }
     if frame.timestamp - lastStorageCheck > 5 {
       lastStorageCheck = frame.timestamp
+      let heat = ThermalLevel(ProcessInfo.processInfo.thermalState)
+      sectionThermal = max(sectionThermal, heat)
+      if let warning = heat.warning, frame.timestamp - lastHeatWarning > 30 {
+        lastHeatWarning = frame.timestamp
+        notice = (warning, frame.timestamp + 6)
+      }
       if let free = try? take.directory.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]).volumeAvailableCapacityForImportantUsage,
         free < 200 * 1024 * 1024 {
         stop(reason: "The phone is low on storage.")
@@ -250,6 +293,8 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
     } else {
       final = saveSection(last, reason: reason, after: prior)
     }
+    altitude?.stop()
+    entrance?.stop()
     let id = walkID
     instruction = reason ?? "Saving the last section of your walk."
     let background = UIApplication.shared.beginBackgroundTask(withName: "Save hallway walk", expirationHandler: nil)
@@ -283,6 +328,12 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
     let cloud = self.cloud
     let map = sectionMap
     let walkID = self.walkID, number = sectionNumber, mode = self.mode
+    // Sensor readings for this section, copied now because the next section starts at once.
+    let barometer = AltitudeRecorder.available
+      ? altitude.flatMap { recorder in take.origin.map { recorder.file(from: $0, to: $0 + take.seconds) } } : nil
+    let entranceTag = number == 1 ? entrance?.tag : nil
+    let thermal = sectionThermal
+    sectionThermal = ThermalLevel(ProcessInfo.processInfo.thermalState)
     mesh.removeAll()
     self.cloud = PointCloud()
     take.stopMotion()
@@ -298,6 +349,14 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
         record.sectionNumber = number
         record.walkEndReason = reason
         record.depthPriority = prioritizeDepth
+        record.thermal = thermal
+        if let entranceTag, !entranceTag.isEmpty { record.entrance = entranceTag }
+        if let barometer, !barometer.samples.isEmpty {
+          record.floorChanges = barometer.floorChanges
+          // A sensor log must never cost the walker their scan, so a failed write is let go.
+          try? JSONEncoder().encode(barometer).write(
+            to: take.directory.appendingPathComponent("altitude.json"), options: .atomic)
+        }
         record.deviceOSVersion = ProcessInfo.processInfo.operatingSystemVersionString
         var system = utsname()
         if uname(&system) == 0 {

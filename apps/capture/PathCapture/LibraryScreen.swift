@@ -5,6 +5,7 @@ struct LibraryScreen: View {
   @Environment(\.scenePhase) var phase
   @State private var pairing = false
   @State private var paired = MacAddress.load()
+  @AppStorage(EntranceTagger.settingKey) private var tagEntrance = false
   private var libraryEntries: [ScanRecord] {
     var walks = Set<UUID>()
     return scanner.library.filter { record in
@@ -45,6 +46,14 @@ struct LibraryScreen: View {
                 }
                 if scanner.phase == .saving { ProgressView("Saving scan") }
               }.padding(.vertical, 6)
+            }
+            if scanner.supported {
+              Section {
+                Toggle("Tag where this walk starts", isOn: $tagEntrance)
+                  .accessibilityIdentifier("tag-entrance-toggle")
+              } footer: {
+                Text("Saves one GPS position and compass reading with the walk, so visitors can be pointed to the entrance. Start outdoors: indoors the position can be off by tens of metres. It is never used to place the indoor map. It is saved in the walk's files, so it goes with them when you share a walk.")
+              }
             }
             Section("Saved scans") {
               if scanner.library.isEmpty {

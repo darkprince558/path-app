@@ -19,6 +19,34 @@ struct WalkReview: View {
           if let reason = records.last?.walkEndReason { Text(reason).foregroundStyle(.orange) }
           if !message.isEmpty { Text(message).font(.footnote) }
         }
+        if !records.isEmpty {
+          Section("Sensors") {
+            let changes = records.flatMap { record in
+              (record.floorChanges ?? []).map { (section: record.sectionNumber ?? 1, change: $0) }
+            }
+            if records.allSatisfy({ $0.floorChanges == nil }) {
+              Text("No barometer readings were saved with this walk. If this phone has a barometer, check Motion & Fitness access in Settings.").foregroundStyle(.secondary)
+            } else if changes.isEmpty {
+              Text("No floor changes noticed.").foregroundStyle(.secondary)
+            } else {
+              ForEach(Array(changes.enumerated()), id: \.offset) { _, entry in
+                LabeledContent(entry.change.summary, value: "Section \(entry.section)")
+              }
+            }
+            if let place = records.compactMap(\.entrance).first {
+              if let fix = place.location {
+                LabeledContent("Start position", value: String(format: "%.5f, %.5f (within %.0f m)", fix.latitude, fix.longitude, fix.horizontalAccuracy))
+              }
+              if let heading = place.heading {
+                LabeledContent("Facing at start", value: String(format: "about %.0f° from north (within %.0f°)", heading.trueHeading, heading.accuracy))
+              }
+            }
+            if let hottest = records.compactMap(\.thermal).max(), let warning = hottest.warning {
+              Text("The phone ran hot during this walk (\(hottest.rawValue)). Heat can cost frames and tracking. " + warning)
+                .font(.footnote).foregroundStyle(.orange)
+            }
+          }
+        }
         if let first = records.first, records.contains(where: { $0.pointCount > 0 }) {
           Section("Whole walk in 3D") {
             ScanPreview(url: first.folder, walk: records).frame(height: 220).listRowInsets(EdgeInsets())

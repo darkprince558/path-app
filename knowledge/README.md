@@ -23,6 +23,9 @@ child-owned lifetime lock, process cancellation and targeted local workflow.
 The [publishing runbook](../docs/lidar-publishing.md) records Task 5's approved
 revision-to-scan link, owner-only frames and verified synthetic viewer handoff.
 
+[Which phone sensors the scanner uses](scanner-sensors.md) records why the barometer, GPS, compass and gyro
+each have one narrow job, and the device checks still needed.
+
 Create a short Markdown file here such as `capture-export.md` for a finding worth reusing. Use the real device, command or example that produced it. Link to the implementation PR or issue and add a link to the note here. If the result changes the first supported format or another team decision, update the linked architecture or plan as part of the same PR.
 
 ```markdown

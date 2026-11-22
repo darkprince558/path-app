@@ -6,7 +6,7 @@ cd "$root"
 : "${1:?Pass the UDID of a booted iOS simulator from xcrun simctl list devices booted}"
 check_dir=$(mktemp -d "${TMPDIR:-/tmp}/path-capture-test.XXXXXX")
 src=apps/capture/PathCapture
-xcrun swiftc -O "$src/WalkMap.swift" "$src/MapCamera.swift" "$src/SideGuidance.swift" "$src/ScanSource.swift" "$src/ReplaySource.swift" "$src/PointCloud.swift" "$src/ScanGeometry.swift" "$src/ScanRecord.swift" "$src/CaptureBundle.swift" "$src/MacConnection.swift" apps/capture/native-tests/main.swift -o "$check_dir/export"
+xcrun swiftc -O "$src/WalkMap.swift" "$src/MapCamera.swift" "$src/SideGuidance.swift" "$src/ScanSource.swift" "$src/ReplaySource.swift" "$src/PointCloud.swift" "$src/ScanGeometry.swift" "$src/WalkSensors.swift" "$src/ScanRecord.swift" "$src/CaptureBundle.swift" "$src/MacConnection.swift" apps/capture/native-tests/SensorChecks.swift apps/capture/native-tests/main.swift -o "$check_dir/export"
 "$check_dir/export" "$check_dir/fixture"
 python3 - "$check_dir/fixture" <<'PY'
 from pathlib import Path

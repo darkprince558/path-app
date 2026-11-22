@@ -15,6 +15,12 @@ struct ScanRecord: Codable, Identifiable {
   var sectionNumber: Int?
   var walkEndReason: String?
   var depthPriority: Bool?
+  /// Floor changes the barometer noticed during this section; nil when there is no barometer.
+  var floorChanges: [FloorChange]?
+  /// GPS and compass at the start of the walk, saved with its first section when the user asked for it.
+  var entrance: EntranceTag?
+  /// The hottest thermal state iOS reported during this section.
+  var thermal: ThermalLevel?
   var guestURL: URL?
   var videoJob: UUID?
   var videoGuestURL: URL?

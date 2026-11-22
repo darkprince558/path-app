@@ -20,6 +20,18 @@ The overhead map projects measured surface hits into 25 cm tiles. Mint means a d
 
 **Walk review** includes the full map, a lightweight 3D point overview, and individual textured sections. Under processing pressure a section can retain its points, photos and depth for Mac reconstruction while an earlier textured surface finishes. The original single-scan review and per-section LiDAR upload remain available for compatible saved takes.
 
+### Other sensors
+
+ARKit keeps doing the position tracking. Three other sensors each have one narrow job.
+
+- **Barometer: floor changes.** During a walk the app logs relative air-pressure height and notices when you settle on a different floor (a change of more than about 2 m that then holds for about five seconds). It says so on screen and lists it in **Walk review** under **Sensors**, as "by stairs or ramp" when ARKit saw the climb too, "by elevator" when ARKit's own height stayed put, or with no label when tracking was unreliable. The first walk may ask for Motion & Fitness access; without it no readings are saved. Each section also gets `altitude.json`. It can tell that you changed floors and roughly how far. It cannot tell which floor you are on: pressure differs by metres between phones and drifts with the weather.
+- **Motion and exposure: sharper photos.** When a photo for texturing is due, the recorder now waits up to about half a second for a steady frame instead of taking the first one, using the phone's turn rate, sideways speed and the camera's exposure time to estimate smear. If no steady frame comes it takes a softer one after about a second, so in dim light photos can be spaced a little further apart than before. `keyframes.json` records the estimate as `blurPixels`. While you move too fast for sharp photos the screen says so.
+- **GPS and compass: where the walk starts (off by default).** Switch on **Tag where this walk starts** before starting. The app asks for location access, listens for about 12 seconds, and saves the most certain position and one compass reading with the first section, shown in **Walk review**. Start outdoors: indoors the position can be off by tens of metres, and the compass by 15° or more anywhere. The tag labels the entrance. It never positions or rotates the indoor map. It is stored in `scan.json`, so it travels with a shared walk archive.
+
+The phone's thermal state is checked every five seconds. When iOS reports it as serious, a warning shows for a few seconds every half minute, and the review notes that the walk ran hot.
+
+The thresholds (2 m floor change, 3 pixels of smear) are starting values, chosen from published figures and not yet tuned on a device. [Sources and reasoning](../../knowledge/scanner-sensors.md)
+
 ### Fuse the walk on a Mac
 
 In **Walk review**, tap **Prepare whole walk for Mac**, then **Share whole walk** and AirDrop the ZIP. Unzip it on the Mac. Use the directory that contains `walk.json`. An older complete scan archive containing `scan.json` also works. The complete archive contains private camera images and footage.

@@ -298,3 +298,5 @@ precondition(sidedReplay.rescanSide == nil)
 sidedReplay.advance(to: 76)
 precondition(sidedReplay.tracking == .limited && sidedReplay.rescanSide == nil)
 print("Side guidance passed direction, stationary recovery, open-side, floor-only and continuous-section checks.")
+
+try runSensorChecks()

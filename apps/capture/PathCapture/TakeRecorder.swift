@@ -30,6 +30,8 @@ struct CalibratedFrame: Encodable {
   let jpeg: String
   let depthMetersFloat32LE, confidenceUInt8: String?
   let depthWidth, depthHeight: Int?
+  /// Estimated motion smear in pixels of the saved photo, so the Mac can skip soft frames.
+  var blurPixels: Double? = nil
 }
 final class TakeRecorder {
   let id = UUID()
@@ -53,6 +55,14 @@ final class TakeRecorder {
   private var pixels: AVAssetWriterInputPixelBufferAdaptor?
   private var attemptedWriter = false
   private var encodedFrames = 0
+  private var gate = KeyframeGate()
+  private var previousPose: (t: Double, transform: simd_float4x4)?
+  private var gyroTurnRate = 0.0
+  /// Recent motion smear, in pixels of a saved photo, smoothed over a few frames.
+  private(set) var smear = 0.0
+  /// The walker is moving or turning too fast for sharp photos at the current exposure.
+  /// It switches on well above the limit and off near it, so the message does not flicker.
+  private(set) var smearing = false
   init() throws {
     directory = ScanRecord.library.appendingPathComponent(id.uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -72,6 +82,7 @@ final class TakeRecorder {
         )
         self.lock.lock()
         if self.readings.count < 6500 { self.readings.append(raw) }
+        self.gyroTurnRate = (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
         self.lock.unlock()
       }
     }
@@ -148,13 +159,22 @@ final class TakeRecorder {
           imageWidth: Int(cam.imageResolution.width), imageHeight: Int(cam.imageResolution.height),
           tracking: tracking))
     }
-    guard usePhotos, tracking == "normal", t - lastPhoto >= photoInterval else { return }
+    let blur = motionSmear(f, at: t)
+    smear += (blur - smear) * 0.2
+    if smear > gate.limit * 2 { smearing = true } else if smear < gate.limit * 1.2 { smearing = false }
+    guard usePhotos, tracking == "normal", t - lastPhoto >= photoInterval else {
+      gate.reset()
+      return
+    }
     let tf = f.camera.transform
     if let old = lastPhotoPose, simd_distance(old.columns.3, tf.columns.3) < 0.23,
       simd_dot(old.columns.2, tf.columns.2) > 0.965
     {
+      gate.reset()
       return
     }
+    // A photo is due. Wait briefly for a steady frame; the gate relaxes if none comes.
+    guard gate.accept(time: t, blur: blur) else { return }
     let image = CIImage(cvPixelBuffer: f.capturedImage)
     let scale = min(1, 768 / image.extent.width)
     let url = directory.appendingPathComponent("photo-\(nextPhotoID).jpg")
@@ -219,7 +239,8 @@ final class TakeRecorder {
       keyframes.append(
         CalibratedFrame(
           camera: pose, jpeg: url.lastPathComponent, depthMetersFloat32LE: depthFile,
-          confidenceUInt8: confidenceFile, depthWidth: rawWidth, depthHeight: rawHeight))
+          confidenceUInt8: confidenceFile, depthWidth: rawWidth, depthHeight: rawHeight,
+          blurPixels: (blur * 10).rounded() / 10))
     }
     // Thin previously saved views in time, keeping room for the next part of the walk.
     if photos.count == 32 {
@@ -233,6 +254,34 @@ final class TakeRecorder {
         depth: depths, depthSize: depthSize))
     lastPhoto = t
     lastPhotoPose = tf
+  }
+  /// Smear from this frame's turning and sideways movement during its exposure, in saved-photo pixels.
+  private func motionSmear(_ f: ARFrame, at t: Double) -> Double {
+    let pose = f.camera.transform
+    var rates = (turn: 0.0, sideways: 0.0)
+    if let previous = previousPose {
+      rates = MotionBlur.rates(from: previous.transform, to: pose, seconds: t - previous.t)
+    }
+    previousPose = (t, pose)
+    lock.lock()
+    let gyro = gyroTurnRate
+    lock.unlock()
+    var depth = 2.5
+    if let map = f.sceneDepth?.depthMap, CVPixelBufferGetPixelFormatType(map) == kCVPixelFormatType_DepthFloat32,
+      CVPixelBufferLockBaseAddress(map, .readOnly) == kCVReturnSuccess
+    {
+      defer { CVPixelBufferUnlockBaseAddress(map, .readOnly) }
+      if let base = CVPixelBufferGetBaseAddress(map)?.assumingMemoryBound(to: Float32.self) {
+        let stride = CVPixelBufferGetBytesPerRow(map) / MemoryLayout<Float32>.stride
+        let centre = base[(CVPixelBufferGetHeight(map) / 2) * stride + CVPixelBufferGetWidth(map) / 2]
+        if centre.isFinite, centre > 0 { depth = Double(centre) }
+      }
+    }
+    // Photos are saved at most 768 pixels wide, so judge smear at that size.
+    let scale = min(1, 768 / Double(f.camera.imageResolution.width))
+    return MotionBlur.pixels(
+      focalPixels: Double(f.camera.intrinsics[0][0]) * scale, exposure: f.camera.exposureDuration,
+      turnRate: max(gyro, rates.turn), sidewaysSpeed: rates.sideways, depth: depth)
   }
   func stopMotion() { motion.stopDeviceMotionUpdates() }
   func endMedia() async throws -> (hasVideo: Bool, motion: Int) {
