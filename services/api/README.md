@@ -10,6 +10,14 @@ CLI, installing its dependencies and processing one uploaded capture by job UUID
 The [publishing runbook](../../docs/lidar-publishing.md) covers revision approval,
 protected share assets and the complete Task 5 local workflow.
 
+## Metric scan calibration
+
+Validated native CPU captures preserve metre calibration through approval. A sole
+scan in an empty calibrated metric space needs no manual alignment checkbox.
+Owners can repair older approvals with `POST /api/scans/:id/calibration` (`{}`),
+or use separate measured-scale/alignment confirmations for imports and mocks.
+See [calibration policy, provenance trace and local tests](../../docs/scan-calibration.md).
+
 ## Auth0 login shell
 
 The Next.js App Router shell and official Auth0 SDK live in this package. Copy `.env.local.example` to `.env.local` here, then fill in `AUTH0_CLIENT_SECRET` from the Auth0 application and generate `AUTH0_SECRET` locally with `openssl rand -hex 32`. The domain, client ID and base URL in the example match the configured Regular Web Application. Keep `APP_BASE_URL=http://localhost:3000`; the registered callback is `http://localhost:3000/auth/callback` and logout URL is `http://localhost:3000/`. Do not commit `.env.local` or put secrets in `NEXT_PUBLIC_` variables.

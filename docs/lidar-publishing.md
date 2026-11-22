@@ -22,7 +22,7 @@ or bearer token and ownership of the capture and parent space. Example body:
 
 Only name is required. Visibility defaults to private; transform defaults to the
 revision matrix; coordinates retain the revision declaration without inferring
-calibration. Alignment defaults to unverified. Flags record owner assertions,
+calibration for unknown/mock inputs. Validated native CPU captures now retain metric calibration, and a sole scan can use its validated frame without manual alignment. See [calibration policy and repair](scan-calibration.md). Alignment otherwise defaults to unverified. Flags record owner assertions,
 not processor accuracy. Public scans require an already public space.
 
 First approval returns 201 `{scan,sharePath}`; retries return 200 with the same scan

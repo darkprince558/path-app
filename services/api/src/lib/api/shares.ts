@@ -8,7 +8,7 @@ import { captureObjectKey, type CaptureStorage } from '../storage/captures';
 import type { RevisionStorage } from '../storage/revisions';
 import { captureManifest } from '../capture/contract';
 import { digestBytes } from './captures';
-import { canReadScan, downloadScan, transform } from './scans';
+import { canReadScan, downloadScan, effectiveScanCalibration, transform } from './scans';
 import { revisionBytes, revisionFiles } from './revision-approval';
 import { conflict, notFound } from './http';
 import { uuid } from './validation';
@@ -17,7 +17,7 @@ type Db = ReturnType<typeof connectDatabase>['db'];
 export async function readShare(db: Db, user: AppUser | null, shareId: string) {
   const [scan] = await db.select().from(scans).where(eq(scans.shareId, uuid.parse(shareId)));
   if (!scan || scan.status !== 'ready' || !(await canReadScan(db, user, scan))) throw notFound();
-  return scan;
+  return effectiveScanCalibration(db, scan);
 }
 
 export async function shareMetadata(db: Db, user: AppUser | null, shareId: string) {

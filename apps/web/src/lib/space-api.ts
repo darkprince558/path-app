@@ -2,7 +2,7 @@ export type Visibility = "public" | "private";
 export type Position = { x: number; y: number; z: number };
 export type CoordinateSystem = { units: "relative" | "metres"; upAxis: "Y"; calibrated: boolean };
 export interface Space { id: string; ownerId: string; name: string; visibility: Visibility; boundary: Record<string, unknown> | null }
-export interface Scan { id: string; spaceId: string; name: string; format: string; status: string; visibility: Visibility; transform: number[]; metadata: Record<string, unknown>; downloadPath: string | null }
+export interface Scan { sourceRevisionId?: string | null; id: string; spaceId: string; name: string; format: string; status: string; visibility: Visibility; transform: number[]; metadata: Record<string, unknown>; downloadPath: string | null }
 export interface NavNode extends Position { id: string; spaceId: string; metadata?: Record<string, unknown> }
 export interface NavEdge { id: string; spaceId: string; fromNodeId: string; toNodeId: string; distance: number; bidirectional: boolean; accessible: boolean }
 export interface Destination { id: string; spaceId: string; nodeId: string; name: string }

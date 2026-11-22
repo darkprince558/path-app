@@ -2,6 +2,18 @@
 
 Arielle owns the website: the signed-in home, upload and sharing, and the guest 3D viewer. Build the website here. Start with an upload control, the three visibility choices, a copy-link action and a guest route at `/s/<shareId>`. Display upload, loading and processing failures where they occur.
 
+## Automatic routes from approved scans
+
+The existing space and shared-GLB viewers now have **Automatic route** and
+**Show NavMesh debug** controls. Verify calibrated metre alignment, enable automatic
+routing, then double-click two floor points. Manual graph and saved routes remain
+available when the mode is off. See the [full workflow and synthetic tests](../../docs/scan-automatic-routing.md).
+
+Calibration follows validated native capture provenance. To repair an old approved
+scan, use **Owner tools → Upload and align scans → Restore validated LiDAR calibration**.
+Scale and alignment confirmations are separate for imports and mocks. See the
+[calibration runbook](../../docs/scan-calibration.md).
+
 ## Automatic navigation demo
 
 Task 6 adds `/navmesh-demo`: Recast NavMesh generation from a synthetic room,
