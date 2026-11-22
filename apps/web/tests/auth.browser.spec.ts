@@ -2,6 +2,11 @@ import { expect, test, type Page } from "@playwright/test";
 
 // Synthetic HTTP sessions exercise React behavior, not an Auth0 credential exchange.
 const user = { id: "owner-uuid", displayName: "Sam Example" };
+// The sidebar loads the account's events on every page. A real 401 there would sign the
+// synthetic session out, so these owner tests answer it with an empty list.
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/events/mine", route => route.fulfill({ json: { events: [] } }));
+});
 async function session(page: Page, status = 200) {
   await page.route("**/api/users/me", route => route.fulfill({ status, json: status === 200 ? { user } : { error: { message: "Signed out" } } }));
 }

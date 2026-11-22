@@ -149,6 +149,16 @@ export const eventDestinations = pgTable('event_destinations', {
   destinationId: uuid('destination_id').notNull().references(() => destinations.id),
 }, (t) => [primaryKey({ columns: [t.eventId, t.destinationId] }), index('event_destinations_destination_idx').on(t.destinationId)]);
 
+// Maps an organizer shares with an event. Members can open exactly these maps
+// (scans/canReadScan), whatever each map's own visibility. Being linked to a space
+// through event_spaces still grants no scan access.
+export const eventMaps = pgTable('event_maps', {
+  eventId: uuid('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
+  scanId: uuid('scan_id').notNull().references(() => scans.id, { onDelete: 'cascade' }),
+  createdAt: createdAt(),
+}, (t) => [primaryKey({ columns: [t.eventId, t.scanId] }), index('event_maps_scan_idx').on(t.scanId)]);
+
+
 // Raw bundle metadata is owner-only. This schema does not publish captures or grant access.
 // The manifest holds the complete file inventory (paths, sizes, checksums); bytes stay in storage.
 export const captures = pgTable('captures', {
