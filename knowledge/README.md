@@ -19,6 +19,10 @@ worker completed 32 sections with 313 photo poses from a saved iPhone walk. All 
 uploaded files matched their checksums. The [contract regression test](../services/api/src/lib/api/lidar-contract-compatibility.test.ts)
 exercises the tolerated range and rejection cases with synthetic data.
 
+## iOS scanner account
+
+The [scanner sign-in instructions](../apps/capture/README.md#ios-scanner-sign-in) give Anish and Krishna the native application's callback and logout URI. The iPhone 16 Pro simulator running iOS 18.6 reached the hosted login form and returned signed out after cancellation. The [scanner check](../scripts/check-ios-scanner.sh) exercises account navigation and local review of a synthetic scan. Use a test account to verify the return with a profile, restoration after relaunch and logout.
+
 ## Calibration handoff
 
 The [calibration trace and repair](../docs/scan-calibration.md) records why capture
