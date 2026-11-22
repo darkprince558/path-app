@@ -39,9 +39,12 @@ observed for the existing `sample triangle` test model. Keep database records an
 model bytes on the same deployment: use persistent absolute `SCAN_STORAGE_DIR`,
 `CAPTURE_STORAGE_DIR` and `REVISION_STORAGE_DIR` paths across release swaps.
 Do not make a private scan public to fix missing bytes. Locate and verify its
-original file before restoring it. The local upload regression uses a real hallway
+original file before restoring it. The two reported synthetic files were recovered
+into `/var/lib/not404/scans/scans/` with private ownership and permissions; the
+LiDAR file matched its approved revision SHA-256. The live API already had absolute
+storage paths configured, but the scan directory and both objects were absent. The local upload regression uses a real hallway
 GLB with disposable PostgreSQL and verifies a byte-identical signed-out download;
-it does not establish that production storage was repaired.
+production recovery was checked separately through the live download service.
 
 ## Add a finding
 

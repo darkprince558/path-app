@@ -118,7 +118,8 @@ job constraints, approval completeness and preservation of an existing scan.
 `POST /api/scans?format=glb&visibility=unlisted&name=Hallway` accepts raw
 `application/octet-stream` GLB bytes under the authenticated browser session.
 Visibility defaults to private; names default to `Untitled map`. The body is limited
-to 32 MiB, including requests without Content-Length. PLY imports return 415.
+to 32 MiB, including requests without Content-Length. Next.js proxy buffering is
+set to 34 MiB so the default 10 MB buffer does not truncate valid uploads. PLY imports return 415.
 A successful upload returns 201 `{id, shareId, sharePath, name, visibility}`.
 
 Each browser import gets its own unlisted containing space. Its scan controls
