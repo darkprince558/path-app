@@ -193,3 +193,20 @@ The QR codes open `VITE_DEMO_SHARE_URL` (a hosted guest link, `…/s/<shareId>`)
   ```
 
   On 2026-11-21, `/`, `/maps`, `/community`, `/settings`, `/maps/new` (form and share panel) and `/s/<id>` (map and not-found) returned no violations at 1280x800, and the map also at 375x812 with Extra large text. axe can't measure text over the 3D canvas, so those pairs were checked by hand: sage on night is 9.3:1 and paper on night is 14.6:1.
+
+### Walk the map
+
+On a GLB map with a ready walkable floor, choose **Walk the map**. Start from a
+selected floor point or a named waypoint. Drag to look, use WASD to walk and
+strafe, or hold the on-screen arrows. The left and right arrow keys turn the
+camera. Choose a destination to see a floor route from your current position.
+**Map view** or Escape returns to the overview. Missing floor coverage can
+disconnect landmarks. Each waypoint can also be opened directly.
+
+A self-contained GLB can supply waypoints in the default scene's
+`extras.not404Waypoints` array. Each item contains a name and numeric x, y, z in
+the model frame, and optionally yaw in radians (zero faces −Z). A non-default
+scene marked with `extras.not404NavigationSource: true` can supply a smaller
+triangle copy of the scanned floors, walls and obstacles. The viewer applies the
+same map transform to both scenes and builds the standard clearance-aware NavMesh.
+Existing files continue to use their display geometry and account places.

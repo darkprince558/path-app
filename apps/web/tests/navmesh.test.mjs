@@ -264,3 +264,21 @@ test("a 300 x 100 m floor, rejected at a 10 cm grid, routes end to end on a coar
     } finally { nav.dispose(); }
   } finally { disposeRoom(group); }
 });
+
+test("free walking can strafe and slide along a wall, crosses only at the doorway, and stops at a gap", async () => {
+  await roomTest({}, {}, nav => {
+    let floor = nav.locate({ x: -1, y: 0, z: -2 });
+    assert.ok(floor);
+    const move = (dx, dz, count) => { for (let i = 0; i < count; i++) floor = nav.step(floor, dx, dz); };
+    move(.1, 0, 30);
+    assert.ok(floor.point.x < -.2);
+    move(0, .1, 40);
+    assert.ok(Math.abs(floor.point.z - 2) < .15);
+    move(.1, 0, 25);
+    assert.ok(floor.point.x > 1.5);
+    move(.15, 0, 100);
+    assert.ok(floor.point.x < 6 && floor.point.x > 5);
+    assert.equal(nav.locate({ x: 0, y: 18, z: 0 }), null);
+    assert.equal(nav.step(floor, 10, 0), floor);
+  });
+});

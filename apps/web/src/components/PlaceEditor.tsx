@@ -40,6 +40,7 @@ export default function PlaceEditor({ mapId, shareId, onCountChange }: {
 }) {
   const [load, setLoad] = useState<Load>({ phase: "loading" });
   const [places, setPlaces] = useState<Place[] | null>(null);
+  const [fileWaypoints, setFileWaypoints] = useState<ViewerPlace[]>([]);
   const [placesError, setPlacesError] = useState<string | null>(null);
   const [pending, setPending] = useState<PlacePosition | null>(null);
   const [name, setName] = useState("");
@@ -165,7 +166,7 @@ export default function PlaceEditor({ mapId, shareId, onCountChange }: {
         <div className="h-[26rem] overflow-hidden rounded-2xl bg-night ring-1 ring-forest/20">
           <Suspense fallback={<p role="status" className="p-6 text-paper">Building the 3D view…</p>}>
             <SpaceViewer models={load.models} nodes={[]} edges={[]} onPick={(pick) => void onPick(pick)}
-              places={viewerPlaces} highlightPlaceId={selected} onPlaceSelect={setSelected} />
+              places={viewerPlaces} onFileWaypoints={setFileWaypoints} highlightPlaceId={selected} onPlaceSelect={setSelected} />
           </Suspense>
         </div>
       ) : null}
@@ -201,7 +202,14 @@ export default function PlaceEditor({ mapId, shareId, onCountChange }: {
         </form>
       ) : null}
 
-      {places && places.length === 0 && !pending ? (
+      {fileWaypoints.length > 0 && <details className="rounded-xl bg-surface p-3">
+        <summary className="cursor-pointer font-bold">Waypoints in this scan · {fileWaypoints.length}</summary>
+        <ul className="grid gap-1 pt-2 sm:grid-cols-2">
+          {fileWaypoints.map(p => <li key={p.id}><button type="button" onClick={() => setSelected(p.id)}
+            aria-pressed={selected === p.id} className="min-h-11 rounded-lg px-2 text-left underline">{p.name}</button></li>)}
+        </ul>
+      </details>}
+      {places && places.length === 0 && fileWaypoints.length === 0 && !pending ? (
         <p className="rounded-2xl bg-amber-100 p-4 font-bold text-night ring-1 ring-amber-400">
           No places yet. Add a few (for example the entrance) so visitors know where things are.
         </p>

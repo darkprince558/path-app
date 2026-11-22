@@ -8,6 +8,7 @@ import { parseGlb, type GlbModel } from "../lib/glb";
 import { prepareScanSurfaces, type ScanSurfaces, type WallCut } from "../lib/scan-surfaces";
 import type { AutomaticState } from "./ScanNavigation";
 const ScanNavigation = lazy(() => import("./ScanNavigation"));
+import { WalkCamera, WalkPanel, startWalking, type WalkSession, type WalkWaypoint } from "./WalkView";
 import type { NavigationMesh } from "../lib/navmesh";
 
 export function NavMeshOverlay({ navigation }: { navigation: NavigationMesh }) {
@@ -56,6 +57,7 @@ export interface SpaceViewerProps {
   highlightPlaceId?: string | null;
   /** A place's label was pressed. With automatic routing on, it also sets the start or destination. */
   onPlaceSelect?: (placeId: string) => void;
+  onFileWaypoints?: (places: ViewerPlace[]) => void;
   onError?: (message: string) => void;
   onReady?: () => void;
   /** When set, renders one small dollhouse picture of the whole map (a JPEG) and hands it over. */
@@ -280,10 +282,12 @@ class ViewerBoundary extends Component<{ children: ReactNode; onError?: (message
   }
 }
 
+const NO_PLACES: ViewerPlace[] = [];
+
 /** GLBs and overlays share one space frame. The parent owns authenticated downloads. */
 export default function SpaceViewer({ models, nodes, edges, route = [], showGraph = false,
   resetToken = 0, onPick, onError, onReady, onSnapshot, automaticNavigation = false, initialAutomaticNavigation = false, navigationApproximate = false, navigationUnavailable, avoidStairs = false, onAutomaticChange,
-  places = [], highlightPlaceId, onPlaceSelect }: SpaceViewerProps) {
+  places = NO_PLACES, highlightPlaceId, onPlaceSelect, onFileWaypoints }: SpaceViewerProps) {
   const [automatic, setAutomatic] = useState(initialAutomaticNavigation);
   const [debug, setDebug] = useState(false);
   /** Minimised route card: only its status line shows, so the map stays visible. */
@@ -329,6 +333,40 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
     return sphere;
   }, [loaded]);
   const objects = useMemo(() => loaded.map(entry => entry.model.object), [loaded]);
+  const navigationObjects = useMemo(() => loaded.map(entry => entry.model.navigationObject), [loaded]);
+  const embeddedPlaces = useMemo(() => loaded.flatMap(({ id, model }) => model.waypoints.map((p, i) => ({
+    id: `scan-waypoint:${id}:${i}`, name: p.name, categoryLabel: "Scan waypoint", local: p, scanId: id, yaw: p.yaw,
+  }))), [loaded]);
+  useEffect(() => { onFileWaypoints?.(embeddedPlaces); }, [embeddedPlaces, onFileWaypoints]);
+  const allPlaces = useMemo(() => [...places, ...embeddedPlaces], [places, embeddedPlaces]);
+  const waypoints: WalkWaypoint[] = useMemo(() => allPlaces.flatMap(place => {
+    const entry = place.scanId ? loaded.find(model => model.id === place.scanId) : loaded[0];
+    if (!entry) return [];
+    const root = entry.model.object;
+    const position = root.localToWorld(new Vector3(place.local.x, place.local.y, place.local.z));
+    let yaw: number | undefined;
+    if ("yaw" in place && typeof place.yaw === "number") {
+      const forward = new Vector3(-Math.sin(place.yaw), 0, -Math.cos(place.yaw)).transformDirection(root.matrixWorld);
+      yaw = Math.atan2(-forward.x, -forward.z);
+    }
+    return [{ id: place.id, name: place.name, point: position, yaw }];
+  }), [allPlaces, loaded]);
+  const [session, setSession] = useState<WalkSession | null>(null);
+  const [walkingRoute, setWalkingRoute] = useState<Position[]>([]);
+  const [choosingFloor, setChoosingFloor] = useState(false);
+  const [walkMessage, setWalkMessage] = useState("");
+  const navigation = enabled ? autoState?.navigation : null;
+  const walk = navigation && session?.navigation === navigation ? session : null;
+  const exitWalk = useCallback(() => {
+    setSession(null); setWalkingRoute([]); setChoosingFloor(false); setWalkMessage("");
+  }, []);
+  useEffect(() => { exitWalk(); }, [resetToken, navigation, exitWalk]);
+  function enterWalk(position: Position, yaw?: number) {
+    const floor = navigation?.locate(position);
+    if (!navigation || !floor) { setWalkMessage("Choose a spot on the walkable floor."); return; }
+    setSession(startWalking(navigation, floor, yaw));
+    setChoosingFloor(false); setWalkMessage(""); setWalkingRoute([]);
+  }
   // Wall cutaway: the choices this scan supports, and the one shown (lib/scan-surfaces.ts).
   const [cuts, setCuts] = useState<WallCut[]>([]);
   const [cut, setCut] = useState<WallCut | null>(null);
@@ -349,6 +387,8 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
     return () => { cancelled = true; clearTimeout(timer); };
   }, [wantsSnapshot, three, loaded]);
   function pick(event: ThreeEvent<MouseEvent>, entry: LoadedModel) {
+    if (walk) return;
+    if (choosingFloor && navigation) { event.stopPropagation(); enterWalk(event.point); return; }
     if (enabled) { event.stopPropagation(); autoState?.pick(event.point); return; }
     if (!onPick) return;
     event.stopPropagation();
@@ -358,11 +398,11 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
   }
   if (error) return <p role="alert" className="p-6 text-paper">The model could not be opened: {error}</p>;
   if (loading) return <p role="status" className="p-6 text-paper">Building the 3D view…</p>;
-  return <div className="relative h-full w-full"><ViewerBoundary onError={onError}>
-    <Canvas flat dpr={[1, 2]} camera={{ fov: 55 }} gl={{ antialias: true, powerPreference: "high-performance" }}
+  return <div data-scan-viewer className="relative h-full w-full"><ViewerBoundary onError={onError}>
+    <Canvas flat frameloop="demand" dpr={[1, 2]} camera={{ fov: 55 }} gl={{ antialias: true, powerPreference: "high-performance" }}
       onCreated={setThree}
       fallback={<p role="alert">This browser could not start WebGL. Try another browser or device.</p>}
-      aria-label="Room model and navigation route. Drag to orbit; scroll or pinch to zoom.">
+      aria-label={walk ? "First-person hallway view. Drag to look and use WASD to walk." : "Room model and navigation route. Drag to orbit; scroll or pinch to zoom."}>
       <color attach="background" args={["#121C16"]} />
       {/* No tone curve (flat): the camera already captured the room's lighting, so a scan
           should show about 1x its colours. Floors get ~1.05x, walls ~0.85x: just enough
@@ -371,18 +411,21 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
       <directionalLight position={[2, 10, 3]} intensity={0.35} />
       {loaded.map((entry) => <primitive key={entry.id} object={entry.model.object} dispose={null}
         onDoubleClick={(event: ThreeEvent<MouseEvent>) => pick(event, entry)} />)}
-      <Overlays nodes={nodes} edges={edges} route={enabled ? (autoState?.points ?? []).map((p, i) => ({ ...p, id: `auto-${i}` })) : route} showGraph={!enabled && showGraph} radius={bounds.radius} />
-      {enabled && debug && autoState?.navigation && <NavMeshOverlay navigation={autoState.navigation} />}
-      {places.length > 0 && <PlacePins places={places} loaded={loaded} radius={bounds.radius} highlightId={highlightPlaceId}
-        onSelect={(place, world) => { if (enabled) autoState?.pick(world); onPlaceSelect?.(place.id); }} />}
+      <Overlays nodes={nodes} edges={edges} route={enabled ? (walk ? walkingRoute : autoState?.points ?? []).map((p, i) => ({ ...p, id: `auto-${i}` })) : route} showGraph={!enabled && showGraph} radius={walk ? 4 : bounds.radius} />
+      {!walk && enabled && debug && autoState?.navigation && <NavMeshOverlay navigation={autoState.navigation} />}
+      {!walk && allPlaces.length > 0 && <PlacePins places={allPlaces} loaded={loaded} radius={bounds.radius} highlightId={highlightPlaceId}
+        onSelect={(place, world) => { if (choosingFloor && navigation) { enterWalk(world, waypoints.find(p => p.id === place.id)?.yaw); return; }
+          if (enabled) autoState?.pick(world); onPlaceSelect?.(place.id); }} />}
+      {walk ? <WalkCamera walk={walk} onExit={exitWalk} /> : <>
       <OrbitControls makeDefault enableDamping dampingFactor={0.08} rotateSpeed={0.7} zoomSpeed={0.9}
         touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
         mouseButtons={{ LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }} />
-      <Framing bounds={bounds} resetToken={resetToken} />
-      <ScanLook objects={objects} cut={cut} onCuts={onCuts} />
+      <Framing bounds={bounds} resetToken={resetToken} /></>}
+      <ScanLook objects={objects} cut={walk ? "full" : cut} onCuts={onCuts} />
     </Canvas>
   </ViewerBoundary>
-    {(cuts.length > 0 || automaticNavigation) && <div className="absolute left-3 top-24 z-10 flex w-[min(19rem,calc(100%-1.5rem))] flex-col items-start gap-2 xl-text:top-32">
+    {walk && three && <WalkPanel invalidate={three.invalidate} walk={walk} waypoints={waypoints} exit={exitWalk} onRoute={setWalkingRoute} />}
+    {(cuts.length > 0 || automaticNavigation) && <div hidden={!!walk} style={walk ? { display: "none" } : undefined} className="absolute left-3 top-24 z-10 flex w-[min(19rem,calc(100%-1.5rem))] flex-col items-start gap-2 xl-text:top-32">
       {automaticNavigation && <div className="max-h-[50dvh] w-full overflow-auto rounded-2xl bg-night/90 px-3 py-2 text-paper shadow-lg ring-1 ring-sage/40 backdrop-blur-sm">
         <div className="flex min-h-11 items-center gap-2">
           <label className="flex flex-1 items-center gap-2 text-sm font-bold">
@@ -395,10 +438,27 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
             {routeFolded ? <ChevronDown className="size-5" aria-hidden /> : <ChevronUp className="size-5" aria-hidden />}
           </button>}
         </div>
+        {navigation && <div className="mb-2 flex flex-wrap items-center gap-1">
+          <button type="button" aria-pressed={choosingFloor} className="min-h-11 rounded-full bg-paper px-4 text-sm font-bold text-ink"
+            onClick={() => {
+              if (choosingFloor) { setChoosingFloor(false); setWalkMessage(""); return; }
+              const start = autoState?.points[0];
+              if (start) { enterWalk(start); return; }
+              const first = waypoints.find(p => navigation.locate(p.point));
+              if (first) { enterWalk(first.point, first.yaw); return; }
+              setChoosingFloor(true); setWalkMessage("Double-tap a floor spot to start walking.");
+            }}>{choosingFloor ? "Cancel walk" : "Walk the map"}</button>
+          {waypoints.length > 0 && <select aria-label="Start at waypoint" value="" className="min-h-11 min-w-0 max-w-full rounded-lg bg-night px-2 text-sm"
+            onChange={e => { const p = waypoints.find(item => item.id === e.target.value); if (p) enterWalk(p.point, p.yaw); }}>
+            <option value="">Start at…</option>
+            {waypoints.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>}
+          {walkMessage && <p role="status" className="text-sm">{walkMessage}</p>}
+        </div>}
         {navigationUnavailable && <p className="pb-1 text-sm">{navigationUnavailable}</p>}
         {enabled && !!objects.length && <Suspense fallback={<p role="status" className="text-sm">Loading navigation…</p>}>
           <div className="pb-1">
-            <ScanNavigation key={models.map(m => m.id).join(",")} objects={objects} avoidStairs={avoidStairs}
+            <ScanNavigation key={models.map(m => m.id).join(",")} objects={navigationObjects} avoidStairs={avoidStairs}
               approximate={navigationApproximate} collapsed={routeFolded} onChange={setAutoState}>
               <label className="flex items-center gap-2 text-paper"><input type="checkbox" checked={debug} onChange={e => setDebug(e.target.checked)} />Show NavMesh debug</label>
             </ScanNavigation>

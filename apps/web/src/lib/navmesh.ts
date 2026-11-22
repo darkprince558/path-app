@@ -3,6 +3,7 @@ import { generateSoloNavMesh } from "recast-navigation/generators";
 import { Mesh, Vector3, type Object3D } from "three";
 
 export interface Point { x: number; y: number; z: number }
+export interface FloorPosition { polyRef: number; point: Point }
 export interface Triangles { positions: number[]; indices: number[] }
 export interface Agent { radius: number; height: number; slope: number; step: number }
 export const DEFAULT_AGENT: Agent = { radius: 0.3, height: 1.8, slope: 40, step: 0.2 };
@@ -106,21 +107,32 @@ export async function buildNavMesh(input: Triangles, agent: Agent = DEFAULT_AGEN
   if (!indices.length) { mesh.destroy(); throw new Error("No walkable surfaces for these settings."); }
   const query = new NavMeshQuery(mesh);
   let disposed = false;
+  function locate(p: Point): FloorPosition | null {
+    if (disposed || !finite(p)) return null;
+    const hit = query.findClosestPoint(p, { halfExtents: { x: 0.05, y: 0.15, z: 0.05 } });
+    return hit.success && hit.polyRef && hit.isPointOverPoly && Math.abs(hit.point.y - p.y) <= 0.15
+      ? { polyRef: hit.polyRef, point: hit.point } : null;
+  }
   return {
     debug: { positions, indices },
-    /** Horizontal grid used for this scan, in metres (coarser for large footprints). */
     cellSize: cs,
     dispose() { if (!disposed) { disposed = true; query.destroy(); mesh.destroy(); } },
+    locate,
+    /** Move from the current polygon so a neighbouring wall or a different floor cannot be crossed. */
+    step(from: FloorPosition, dx: number, dz: number): FloorPosition {
+      if (disposed || !Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) > 0.25) return from;
+      const end = { x: from.point.x + dx, y: from.point.y, z: from.point.z + dz };
+      const move = query.moveAlongSurface(from.polyRef, from.point, end, { maxVisitedSize: 32 });
+      const polyRef = move.visited.at(-1);
+      if (!move.success || !polyRef || statusDetail(move.status, Detour.DT_BUFFER_TOO_SMALL)) return from;
+      const floor = query.getPolyHeight(polyRef, move.resultPosition);
+      return floor.success && Number.isFinite(floor.height)
+        ? { polyRef, point: { ...move.resultPosition, y: floor.height } } : from;
+    },
     route(start: Point, end: Point): NavRoute {
       if (disposed) return { ok: false, message: "Navigation has been disposed." };
-      // Accept only points over a walkable polygon, with small vertical rasterization tolerance.
-      // Never snap horizontally through a wall or silently move an endpoint to another floor.
-      const snap = (p: Point) => finite(p) ? query.findClosestPoint(p, { halfExtents: { x: 0.05, y: 0.15, z: 0.05 } }) : null;
-      const from = snap(start), to = snap(end);
-      if (!from?.success || !from.polyRef || !from.isPointOverPoly || Math.abs(from.point.y - start.y) > 0.15 ||
-          !to?.success || !to.polyRef || !to.isPointOverPoly || Math.abs(to.point.y - end.y) > 0.15) {
-        return { ok: false, message: "Choose start and destination inside a walkable region." };
-      }
+      const from = locate(start), to = locate(end);
+      if (!from || !to) return { ok: false, message: "Choose start and destination inside a walkable region." };
       const corridor = query.findPath(from.polyRef, to.polyRef, from.point, to.point, { maxPathPolys: 2048 });
       try {
         if (!corridor.success || statusDetail(corridor.status, Detour.DT_PARTIAL_RESULT) ||

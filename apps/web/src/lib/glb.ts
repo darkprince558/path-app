@@ -70,7 +70,20 @@ export function scanMatrix(elements: readonly number[]): Matrix4 {
   return matrix;
 }
 
+export interface ScanWaypoint { name: string; x: number; y: number; z: number; yaw?: number }
+
+function scanWaypoints(value: unknown): ScanWaypoint[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 100).flatMap(p => {
+    if (!p || typeof p.name !== "string" || !p.name.trim() || p.name.length > 80 ||
+        ![p.x, p.y, p.z].every(Number.isFinite)) return [];
+    return [{ name: p.name.trim(), x: p.x, y: p.y, z: p.z, yaw: Number.isFinite(p.yaw) ? p.yaw : undefined }];
+  });
+}
+
 export interface GlbModel {
+  navigationObject: Group;
+  waypoints: ScanWaypoint[];
   /** Wrapper applies alignment while preserving every GLTF node transform. */
   object: Group;
   bounds: Box3;
@@ -120,6 +133,15 @@ export async function parseGlb(buffer: ArrayBuffer, transform: readonly number[]
   object.matrixAutoUpdate = false;
   object.matrix.copy(matrix);
   object.add(gltf.scene);
+  // An optional second scene carries a bounded collision mesh in the same scan frame.
+  const proxy = gltf.scenes.find(scene => scene !== gltf.scene && scene.userData.not404NavigationSource === true);
+  const navigationObject = proxy ? new Group() : object;
+  if (proxy) {
+    navigationObject.matrixAutoUpdate = false;
+    navigationObject.matrix.copy(matrix);
+    navigationObject.add(proxy);
+  }
+  const dispose = () => { disposeModel(object); if (proxy) disposeModel(navigationObject); };
   try {
     if (resourceFailed) throw new ModelParseError("An embedded texture or buffer could not be decoded. Re-export the GLB with valid embedded resources.");
     let vertices = 0;
@@ -139,9 +161,9 @@ export async function parseGlb(buffer: ArrayBuffer, transform: readonly number[]
     if (!vertices || bounds.isEmpty() || ![...bounds.min.toArray(), ...bounds.max.toArray()].every(Number.isFinite)) {
       throw new ModelParseError("The GLB has no usable mesh geometry.");
     }
-    return { object, bounds, dispose: () => disposeModel(object) };
+    return { object, navigationObject, bounds, waypoints: scanWaypoints(gltf.scene.userData.not404Waypoints), dispose };
   } catch (error) {
-    disposeModel(object);
+    dispose();
     throw error;
   }
 }

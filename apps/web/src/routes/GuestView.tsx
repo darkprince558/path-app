@@ -4,7 +4,7 @@ import { Wordmark } from "../components/Logo";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { ArrowLeft, MapPin, Milestone, Settings as SettingsIcon, X } from "lucide-react";
 import { LoadingPanel, MessagePanel } from "../components/StatusPanel";
-import type { SpaceModel } from "../components/SpaceViewer";
+import type { SpaceModel, ViewerPlace } from "../components/SpaceViewer";
 import { fetchShareCues, type Cue } from "../lib/cues";
 import { CATEGORY_LABEL, fetchPlaces, type Place } from "../lib/places";
 import { readMapOrigin } from "../lib/maps";
@@ -56,6 +56,7 @@ export default function GuestView() {
   // Approved landmark directions load alongside the map; without any, nothing extra shows.
   const [cues, setCues] = useState<Cue[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
+  const [fileWaypoints, setFileWaypoints] = useState<ViewerPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function GuestView() {
     void fetchShareCues(shareId, controller.signal).then((list) => {
       if (!controller.signal.aborted) setCues(list);
     });
-    setPlaces([]);
+    setPlaces([]); setFileWaypoints([]);
     void fetchPlaces(shareId, controller.signal).then((list) => {
       if (!controller.signal.aborted) setPlaces(list);
     }).catch(() => {});
@@ -200,7 +201,7 @@ export default function GuestView() {
           avoidStairs={avoidStairs}
           onAvoidStairsChange={setAvoidStairs}
           cues={cues}
-          places={places}
+          places={[...places, ...fileWaypoints.map(p => ({ id: p.id, name: p.name, category: "other" as const, position: p.local }))]}
           selectedPlace={selectedPlace}
           onSelectPlace={setSelectedPlace}
         >
@@ -208,6 +209,7 @@ export default function GuestView() {
             <Suspense fallback={<LoadingPanel label="Building the 3D view…" />}>
               <SpaceViewer
                 places={places.map((place) => ({ id: place.id, name: place.name, categoryLabel: CATEGORY_LABEL[place.category], local: place.position }))}
+                onFileWaypoints={setFileWaypoints}
                 highlightPlaceId={selectedPlace}
                 onPlaceSelect={setSelectedPlace}
                 key={shareId}

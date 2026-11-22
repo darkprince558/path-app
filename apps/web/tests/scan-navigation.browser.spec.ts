@@ -194,3 +194,20 @@ test("a GLB can be uploaded as Public and its sharing is not locked afterwards",
   for (const radio of await page.getByRole("radio").all()) await expect(radio).toBeEnabled();
   expect(errors).toEqual([]);
 });
+
+test("start a free walk at a floor pick and return to the route planner", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const bounds = await mockScan(page);
+  await page.goto("/s/room");
+  await page.getByRole("button", { name: "Walk the map" }).click();
+  await pick(page, bounds, spacePoint({ x: -4, y: 0, z: -2 }));
+  await expect(page.getByRole("button", { name: "Map view" })).toBeVisible();
+  const canvas = page.locator("canvas");
+  await expect(canvas).toBeFocused();
+  const before = await canvas.screenshot();
+  await page.keyboard.down("d");
+  try { await expect.poll(async () => !(await canvas.screenshot()).equals(before)).toBe(true); }
+  finally { await page.keyboard.up("d"); }
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Walk the map" })).toBeVisible();
+});
