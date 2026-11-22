@@ -1,0 +1,55 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M8113Q3JWAHPFGYQQ91A2NE4",
+  "session_id": "089ab410-e7a7-481e-8945-3b95a97c6e78",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-22T07:04:17.951595184Z",
+  "branch": "fix/upload-any-visibility",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "apps/web/README.md",
+    "apps/web/src/components/PlaceEditor.tsx",
+    "apps/web/src/lib/place-rules.ts",
+    "apps/web/src/routes/ManageMap.tsx",
+    "apps/web/src/routes/Upload.tsx",
+    "apps/web/tests/places.test.ts",
+    "apps/web/tests/scan-navigation.browser.spec.ts"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5-5",
+  "turn_id": "73e68b1d1536",
+  "checkpoint_transcript_start": 333,
+  "transcript_lines_at_start": 333,
+  "compact_transcript_start": 37,
+  "token_usage": {
+    "input_tokens": 82,
+    "cache_creation_tokens": 47250,
+    "cache_read_tokens": 5381316,
+    "output_tokens": 19886,
+    "api_call_count": 38
+  },
+  "session_token_usage": {
+    "input_tokens": 148,
+    "cache_creation_tokens": 129126,
+    "cache_read_tokens": 8323675,
+    "output_tokens": 42542,
+    "api_call_count": 70
+  },
+  "redaction": {
+    "replacements": 5,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 5,
+      "credentialed_uri": 0,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 4
+  }
+}

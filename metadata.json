@@ -1,0 +1,46 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M8113Q3JWAHPFGYQQ91A2NE4",
+  "strategy": "manual-commit",
+  "branch": "fix/upload-any-visibility",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "apps/web/README.md",
+    "apps/web/src/components/PlaceEditor.tsx",
+    "apps/web/src/lib/place-rules.ts",
+    "apps/web/src/routes/ManageMap.tsx",
+    "apps/web/src/routes/Upload.tsx",
+    "apps/web/tests/places.test.ts",
+    "apps/web/tests/scan-navigation.browser.spec.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 82,
+    "cache_creation_tokens": 47250,
+    "cache_read_tokens": 5381316,
+    "output_tokens": 19886,
+    "api_call_count": 38
+  },
+  "redaction": {
+    "replacements": 5,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 5,
+      "credentialed_uri": 0,
+      "entropy": 0,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}

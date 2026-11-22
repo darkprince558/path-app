@@ -1,0 +1,23 @@
+You can merge the pr to main for me
+
+---
+
+<pasted_content id="8a8a">
+path-app main ? ❯ python tools/scan_fill_holes.py scan.glb scan-filled.glb
+Traceback (most recent call last):
+  File "/home/sam/Projects/path-app/tools/scan_fill_holes.py", line 238, in <module>
+    main()
+    ~~~~^^
+  File "/home/sam/Projects/path-app/tools/scan_fill_holes.py", line 182, in main
+    import open3d as o3d
+ModuleNotFoundError: No module named 'open3d'
+</pasted_content id="8a8a">
+
+
+whats wrong here?
+
+---
+
+Notice that for private scans, you cant share them with specific users. Could you add that functionailty? in the manage map area, there could be a "shared users" section that takes emails from the accounts table to share with users. Is this possible with the current database or do we need a new relationship? 
+
+Also take a look at the upload workflow. Currently it forces you to upload as private. Remove that block, users can upload as anything to start
