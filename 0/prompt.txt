@@ -1,0 +1,43 @@
+How do i start up the dev server so i can see everything?
+
+---
+
+Could you start up the dev servers for me
+
+---
+
+Use 5173
+
+---
+
+<task-notification>
+<task-id>bgsqlexgw</task-id>
+<tool-use-id>toolu_015e2nt5WXZrnUfWdAS91sXm</tool-use-id>
+<output-file>/tmp/claude-1000/-home-sam-Projects-path-app/089ab410-e7a7-481e-8945-3b95a97c6e78/tasks/bgsqlexgw.output</output-file>
+<status>failed</status>
+<summary>Background command "Run Vite dev server on 5174 proxied to prod API" failed with exit code 143</summary>
+</task-notification>
+
+---
+
+Close those
+
+---
+
+<task-notification>
+<task-id>bqn0wuyv9</task-id>
+<tool-use-id>toolu_016ap9Hcj6b2rPUpSknMJM7Y</tool-use-id>
+<output-file>/tmp/claude-1000/-home-sam-Projects-path-app/089ab410-e7a7-481e-8945-3b95a97c6e78/tasks/bqn0wuyv9.output</output-file>
+<status>failed</status>
+<summary>Background command "Run website dev server on 5173 against prod API" failed with exit code 143</summary>
+</task-notification>
+
+---
+
+It 404s only when i go into a map, whhy? what do i have to do on the localhost to make it not do that
+
+---
+
+This looks amazing. I found one bug: the D key doesnt work in walk mode. Could you fix that.
+
+After thats fixed update the PR and merge into main
