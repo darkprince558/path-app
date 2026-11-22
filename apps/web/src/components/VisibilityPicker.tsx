@@ -15,11 +15,28 @@ export function visibilityDetail(value: Visibility): string {
   return OPTIONS.find((o) => o.value === value)?.detail ?? "";
 }
 
-export default function VisibilityPicker(props: {
+export default function VisibilityPicker({ lockedReason, ...props }: {
   name: string;
   value: Visibility;
   onChange: (value: Visibility) => void;
   disabled?: boolean;
+  /**
+   * When set, only Private (and whatever is already chosen) can be picked, and the reason is
+   * shown. Used until a map has at least one labelled place.
+   */
+  lockedReason?: string | null;
 }) {
-  return <OptionCards {...props} options={OPTIONS} />;
+  const options = lockedReason
+    ? OPTIONS.map((option) => ({ ...option, disabled: option.value !== "private" && option.value !== props.value }))
+    : OPTIONS;
+  return (
+    <div className="grid gap-2">
+      {lockedReason ? (
+        <p id={`${props.name}-locked`} className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-bold text-night ring-1 ring-amber-400">
+          {lockedReason}
+        </p>
+      ) : null}
+      <OptionCards {...props} options={options} />
+    </div>
+  );
 }

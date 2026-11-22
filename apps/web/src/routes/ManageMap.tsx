@@ -4,7 +4,9 @@ import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import ConfirmDialog from "../components/ConfirmDialog";
 import CueReview from "../components/CueReview";
+import PlaceEditor from "../components/PlaceEditor";
 import SharePanel from "../components/SharePanel";
+import { sharingLockReason } from "../lib/places";
 import {
   cleanMapName,
   deleteMap,
@@ -108,6 +110,8 @@ function ManageReady({
   const [nameError, setNameError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Null until loaded (or when places aren't available for this map): sharing is not locked then.
+  const [placeCount, setPlaceCount] = useState<number | null>(null);
 
   const cleaned = cleanMapName(name);
   const nameChanged = cleaned !== null && cleaned !== map.name;
@@ -184,12 +188,15 @@ function ManageReady({
         ) : null}
       </form>
 
+      {map.format === "glb" ? <PlaceEditor mapId={mapEditId(map)} shareId={map.shareId} onCountChange={setPlaceCount} /> : null}
+
       <SharePanel
         mapId={mapEditId(map)}
         sharePath={map.sharePath}
         initialVisibility={map.visibility}
         viewers={viewerNames(map)}
         heading="Link and QR code"
+        lockedReason={map.format === "glb" ? sharingLockReason(placeCount) : null}
       />
 
       <CueReview shareId={map.shareId} revisionId={map.revisionId} />

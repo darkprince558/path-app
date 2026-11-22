@@ -199,6 +199,42 @@ def cues(server, ply):
     assert json.loads(request(server, "GET", guest_view)[2])["cues"] == []
 
 
+def places(server, ply):
+    """Named places: the owner pins and edits them; they follow the map's sharing."""
+    status, _, body = request(server, "POST", "/api/scans?format=ply&visibility=private", ply,
+                              {"Content-Type": "application/octet-stream", **OWNER})
+    assert status == 201
+    share = json.loads(body)["shareId"]
+    json_headers = {"Content-Type": "application/json"}
+
+    def send(method, path, change, user=OWNER):
+        status, _, body = request(server, method, path, json.dumps(change).encode(), {**json_headers, **user})
+        return status, json.loads(body) if body else None
+
+    room = {"name": "  Room   2 ", "position": {"x": 1.5, "y": 0, "z": -3}}
+    assert send("POST", f"/api/scans/{share}/places", room, GUEST)[0] == 404
+    assert send("POST", f"/api/scans/{share}/places", {"name": "", "position": room["position"]})[0] == 400
+    assert send("POST", f"/api/scans/{share}/places", {**room, "category": "dungeon"})[0] == 400
+    status, body = send("POST", f"/api/scans/{share}/places", room)
+    assert status == 201 and body["place"]["name"] == "Room 2" and body["place"]["category"] == "room"
+    place_id = body["place"]["id"]
+    assert send("POST", f"/api/scans/{share}/places", {"name": "Exit", "category": "exit", "position": {"x": 0, "y": 0, "z": 4}})[0] == 201
+
+    listing = f"/api/shares/{share}/places"
+    assert request(server, "GET", listing)[0] == 404  # private map: guests can't see its places
+    owner_view = json.loads(request(server, "GET", listing, headers=OWNER)[2])["places"]
+    assert [p["name"] for p in owner_view] == ["Exit", "Room 2"]
+    assert change_access(server, {"shareId": share}, "unlisted", []) == 200
+    assert [p["name"] for p in json.loads(request(server, "GET", listing)[2])["places"]] == ["Exit", "Room 2"]
+
+    assert send("PATCH", f"/api/places/{place_id}", {"name": "Hijacked"}, GUEST)[0] == 404
+    status, body = send("PATCH", f"/api/places/{place_id}", {"name": "Room 214", "category": "office"})
+    assert status == 200 and (body["place"]["name"], body["place"]["category"]) == ("Room 214", "office")
+    assert request(server, "DELETE", f"/api/places/{place_id}", headers=GUEST)[0] == 404
+    assert request(server, "DELETE", f"/api/places/{place_id}", headers=OWNER)[0] == 204
+    assert [p["name"] for p in json.loads(request(server, "GET", listing)[2])["places"]] == ["Exit"]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("fixture", type=Path, nargs="?",
@@ -209,6 +245,7 @@ def main():
         thread.start()
         try:
             run(server, args.fixture.read_bytes())
+            places(server, args.fixture.read_bytes())
         finally:
             server.shutdown()
             thread.join()
@@ -221,7 +258,7 @@ def main():
             server.shutdown()
             thread.join()
     print("Verified scan bytes, all three visibility modes, grants, revocation, upload failures, "
-          "names, owner and shared lists, partial changes, deletion, and landmark cue review.")
+          "names, owner and shared lists, partial changes, deletion, landmark cue review, and map places.")
 
 
 if __name__ == "__main__":

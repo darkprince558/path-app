@@ -18,6 +18,7 @@ export default function SharePanel({
   viewers = [],
   heading = "Your link is ready",
   footer,
+  lockedReason,
 }: {
   /** The ID edit calls take (mapEditId). */
   mapId: string;
@@ -31,6 +32,8 @@ export default function SharePanel({
   heading?: string;
   /** Extra actions under the sharing controls, e.g. "Upload another scan". */
   footer?: ReactNode;
+  /** Why only Private can be chosen right now (no labelled places yet). */
+  lockedReason?: string | null;
 }) {
   const url = shareUrl(sharePath);
   const [saved, setSaved] = useState(initialVisibility);
@@ -150,7 +153,7 @@ export default function SharePanel({
 
       <fieldset className="grid gap-3">
         <legend className="mb-2 font-display text-xl font-extrabold">Change who can open it</legend>
-        <VisibilityPicker name="share-visibility" value={visibility} onChange={setVisibility} disabled={saving} />
+        <VisibilityPicker name="share-visibility" value={visibility} onChange={setVisibility} disabled={saving} lockedReason={lockedReason} />
         {visibility === "private" ? (
           <div className="grid gap-1 rounded-lg bg-surface px-4 py-3 ring-1 ring-forest/15">
             <p className="font-bold">People who can view</p>

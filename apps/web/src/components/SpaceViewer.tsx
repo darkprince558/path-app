@@ -1,4 +1,4 @@
-import { Line, OrbitControls } from "@react-three/drei";
+import { Html, Line, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Box3, DoubleSide, BufferGeometry, Float32BufferAttribute, MathUtils, MOUSE, Sphere, TOUCH, Vector3, type Object3D } from "three";
@@ -28,6 +28,8 @@ export interface SpaceModel {
   transform: number[];
 }
 export interface ViewerNode { id: string; x: number; y: number; z: number }
+/** A named place pinned on a model. `local` is in that model's own coordinates. */
+export interface ViewerPlace { id: string; name: string; categoryLabel: string; local: { x: number; y: number; z: number }; scanId?: string }
 export interface ViewerEdge { id: string; fromNodeId: string; toNodeId: string }
 interface Position { x: number; y: number; z: number }
 export interface ModelPick { scanId: string; point: Position; localPoint: Position }
@@ -46,6 +48,12 @@ export interface SpaceViewerProps {
   onAutomaticChange?: (enabled: boolean) => void;
   /** Double-click a model to select a surface point. Coordinates are space-local. */
   onPick?: (pick: ModelPick) => void;
+  /** Named places to pin on the models, with a floating label each. */
+  places?: ViewerPlace[];
+  /** The place to emphasise, for example the one being edited. */
+  highlightPlaceId?: string | null;
+  /** A place's label was pressed. With automatic routing on, it also sets the start or destination. */
+  onPlaceSelect?: (placeId: string) => void;
   onError?: (message: string) => void;
   onReady?: () => void;
 }
@@ -106,6 +114,46 @@ function Overlays({ nodes, edges, route, showGraph, radius }: {
 }
 
 /**
+ * Named places: a small marker on the spot the owner chose, and a label floating above it.
+ * Labels keep a constant on-screen size so they stay readable when zoomed out.
+ */
+function PlacePins({ places, loaded, radius, highlightId, onSelect }: {
+  places: ViewerPlace[]; loaded: LoadedModel[]; radius: number; highlightId?: string | null;
+  onSelect: (place: ViewerPlace, world: Position) => void;
+}) {
+  const pins = useMemo(() => places.flatMap((place) => {
+    const entry = loaded.find((candidate) => candidate.id === place.scanId) ?? (place.scanId ? undefined : loaded[0]);
+    if (!entry || !finite(place.local)) return [];
+    const world = entry.model.object.localToWorld(new Vector3(place.local.x, place.local.y, place.local.z));
+    return [{ place, world: { x: world.x, y: world.y, z: world.z } }];
+  }), [places, loaded]);
+  const marker = Math.max(radius * 0.008, 0.06);
+  const lift = Math.max(radius * 0.04, 0.6);
+  return <>
+    {pins.map(({ place, world }) => {
+      const highlighted = place.id === highlightId;
+      return <group key={place.id} position={point(world)}>
+        <mesh renderOrder={30} raycast={() => {}}>
+          <sphereGeometry args={[highlighted ? marker * 1.6 : marker, 16, 12]} />
+          <meshBasicMaterial color={highlighted ? "#F7B955" : "#E8644A"} depthTest={false} />
+        </mesh>
+        <Line points={[[0, 0, 0], [0, lift, 0]]} color={highlighted ? "#F7B955" : "#E8644A"} lineWidth={2} depthTest={false} renderOrder={29} />
+        {/* Below the page's own panels (z-10), so labels never cover the route controls. */}
+        <Html position={[0, lift, 0]} center zIndexRange={[9, 1]}>
+          <button type="button" onClick={() => onSelect(place, world)}
+            aria-label={`${place.name}, ${place.categoryLabel}`}
+            className={`pointer-events-auto whitespace-nowrap rounded-full px-3 py-1 text-sm font-bold shadow-lg ring-2 ${
+              highlighted ? "bg-amber-300 text-night ring-amber-500" : "bg-paper text-night ring-rust/60"}`}>
+            {place.name}
+            <span className="ml-1 text-xs font-normal opacity-70">{place.categoryLabel}</span>
+          </button>
+        </Html>
+      </group>;
+    })}
+  </>;
+}
+
+/**
  * Scan readability (lib/scan-surfaces.ts): hides ARKit ceiling faces and sharpens photo
  * textures at a slant. Geometry is untouched, so route finding is unaffected.
  */
@@ -136,7 +184,8 @@ class ViewerBoundary extends Component<{ children: ReactNode; onError?: (message
 
 /** GLBs and overlays share one space frame. The parent owns authenticated downloads. */
 export default function SpaceViewer({ models, nodes, edges, route = [], showGraph = false,
-  resetToken = 0, onPick, onError, onReady, automaticNavigation = false, initialAutomaticNavigation = false, navigationApproximate = false, navigationUnavailable, avoidStairs = false, onAutomaticChange }: SpaceViewerProps) {
+  resetToken = 0, onPick, onError, onReady, automaticNavigation = false, initialAutomaticNavigation = false, navigationApproximate = false, navigationUnavailable, avoidStairs = false, onAutomaticChange,
+  places = [], highlightPlaceId, onPlaceSelect }: SpaceViewerProps) {
   const [automatic, setAutomatic] = useState(initialAutomaticNavigation);
   const [debug, setDebug] = useState(false);
   const [autoState, setAutoState] = useState<AutomaticState | null>(null);
@@ -206,6 +255,8 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
         onDoubleClick={(event: ThreeEvent<MouseEvent>) => pick(event, entry)} />)}
       <Overlays nodes={nodes} edges={edges} route={enabled ? (autoState?.points ?? []).map((p, i) => ({ ...p, id: `auto-${i}` })) : route} showGraph={!enabled && showGraph} radius={bounds.radius} />
       {enabled && debug && autoState?.navigation && <NavMeshOverlay navigation={autoState.navigation} />}
+      {places.length > 0 && <PlacePins places={places} loaded={loaded} radius={bounds.radius} highlightId={highlightPlaceId}
+        onSelect={(place, world) => { if (enabled) autoState?.pick(world); onPlaceSelect?.(place.id); }} />}
       <OrbitControls makeDefault enableDamping dampingFactor={0.08} rotateSpeed={0.7} zoomSpeed={0.9}
         touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
         mouseButtons={{ LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }} />
