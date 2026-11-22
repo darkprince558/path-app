@@ -2,7 +2,7 @@
 
 **First release goal**
 
-An organizer uploads a real venue scan as **Unlisted**. Someone on a second phone opens the link while signed out, rotates the scene, and recognizes the turn.
+A map owner uploads a real scan as **Unlisted**. Someone on a second phone opens the link while signed out, rotates the scene, and recognizes the turn.
 
 [Edit this roadmap on GitHub](https://github.com/darkprince558/path-app/edit/main/planning/ROADMAP.md) · [Live team board and checkpoints](https://github.com/darkprince558/path-app/issues/8)
 
@@ -21,8 +21,8 @@ The viewer, API, and capture trial can start in parallel. Claim your issue with 
 
 - [x] **Local integration baseline.** The synthetic fixture and upload/share mock pass `make check`. The checks cover all three visibility modes, private grants and revocation. The team has retrieved a real Claude checkpoint from a fresh clone. [CI](https://github.com/darkprince558/path-app/actions/runs/44862071536) · [Entire setup](https://github.com/darkprince558/path-app/pull/6)
 - [ ] **Share a real scan.** Connect #2–4, deploy the website and API, and complete #5 over cellular. Record the guest result on #5. Reopen the same URL after a restart and check that revoking a private viewer blocks the raw asset too. [Deployment plan](../docs/deployment.md)
-- [ ] **Give a visitor one useful direction.** Capture a recognizable junction and connect a QR start to two destinations on verified walkable paths. Generate a Gemini landmark cue from the captured frames, let an organizer approve it, and ask a first-time visitor to follow it. Record the source frame, decision and observed turn. [Gemini demo](../docs/gemini-demo.md)
-- [ ] **Publish a contribution.** Align one extra section to a known anchor. Open the guest event link before and after organizer approval and record which section appears. [Event architecture](../docs/architecture.md)
+- [ ] **Give a visitor one useful direction.** Capture a recognizable junction and connect a QR start to two destinations on verified walkable paths. Generate a Gemini landmark cue from the captured frames, let the map owner approve it, and ask a first-time visitor to follow it. Record the source frame, decision and observed turn. [Gemini demo](../docs/gemini-demo.md)
+- [ ] **Publish a contribution.** Align one extra section to a known anchor. Open the guest event link before and after the map owner's approval and record which section appears. [Event architecture](../docs/architecture.md)
 - [ ] **Rehearse and submit.** Keep a previously uploaded scan and a recording of a successful walkthrough for a slow venue connection. Identify replayed steps during the demo. Save the working commit and demonstrated tracks, then submit before **Sunday, November 22 at 9 a.m. Toronto time**. [Prize plan](../docs/prize-plan.md) · [Devpost schedule](https://hack-western-13.devpost.com/details/dates)
 
 ## Decisions at the next integration

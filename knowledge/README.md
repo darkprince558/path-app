@@ -7,10 +7,21 @@ Use this folder for knowledge a teammate will still need after your branch merge
 | Decision | Why we made it | Source |
 | --- | --- | --- |
 | Ship one scan that opens from an unlisted link on a second phone first. | It exercises the capture export, upload, permissions and guest viewer together. | [Architecture](../docs/architecture.md) |
-| Public scans appear in discovery. Unlisted scans open by link. Private scans require an owner or invited account. | Organizers choose an audience for both the scene and its underlying files. | [Sharing rules](../docs/architecture.md#sharing) |
+| Public scans appear in discovery. Unlisted scans open by link. Private scans require an owner or invited account. | Map owners choose an audience for both the scene and its underlying files. | [Sharing rules](../docs/architecture.md#sharing) |
 | GitHub holds the source and team checkpoints. The live site and scan storage need a runtime of their own. | A guest needs an HTTPS URL they can open without access to the team repository. Vultr is a deployment proposal. | [Deployment plan](../docs/deployment.md) |
 
 ## Add a finding
+
+[LiDAR ingestion contract and exporter handoff](lidar-ingestion.md) records the
+implemented backend example and native capture checks still required.
+The [contract integration handoff](../docs/lidar-contract-compatibility.md) records
+the device/database UUID distinction, generated CPU validators and separate native fixture.
+
+The [CPU worker handoff](../docs/lidar-cpu-processing.md) records the real adapter,
+child-owned lifetime lock, process cancellation and targeted local workflow.
+
+The [publishing runbook](../docs/lidar-publishing.md) records Task 5's approved
+revision-to-scan link, owner-only frames and verified synthetic viewer handoff.
 
 Create a short Markdown file here such as `capture-export.md` for a finding worth reusing. Use the real device, command or example that produced it. Link to the implementation PR or issue and add a link to the note here. If the result changes the first supported format or another team decision, update the linked architecture or plan as part of the same PR.
 

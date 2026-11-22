@@ -1,13 +1,13 @@
 # Path App architecture
 
-**First milestone:** An organizer uploads one real phone scan, chooses **Unlisted**, copies the link, and a teammate opens and orbits the scan on a second phone while signed out. Record the file size and time to first interactive view. A successful download proves transport. The second-phone test proves the user experience.
+**First milestone:** A map owner uploads one real phone scan, chooses **Unlisted**, copies the link, and a teammate opens and orbits the scan on a second phone while signed out. Record the file size and time to first interactive view. A successful download proves transport. The second-phone test proves the user experience.
 
 ## System and ownership
 
 ```mermaid
 flowchart LR
     Phone["Phone capture / exported scan"] -->|upload| API["Sam · API"]
-    Web["Arielle · organizer website"] -->|upload or change sharing| API
+    Web["Arielle · website"] -->|upload or change sharing| API
     API --> DB["Scan metadata and viewer grants"]
     API --> Store["Private object storage"]
     Guest["Guest browser /s/:shareId"] -->|resolve link| API
@@ -41,11 +41,11 @@ Keep the bucket private for every mode. Resolve the share page, metadata, thumbn
 1. Verify the uploader’s session and record a pending upload owned by that account. Accept the file into staging. For large phone exports, Sam can switch to direct storage upload and finalize with an idempotent API call.
 2. Check the stored bytes, format and parseability before marking a scan ready. A retry of finalization should resolve to the same scan. A failed upload stays out of discovery and can be retried or cleaned up.
 3. Return a stable website path such as `/s/<shareId>`. The website resolves the share metadata and fetches the authorized asset to render. Keeping a website URL lets the team replace the storage backend without changing shared links.
-4. In the later event workflow, store a contributed section as a draft. The organizer verifies alignment and approves a published event revision. Apply access checks to all included assets so adding a private scan to a public event cannot silently expand its audience.
+4. In the later event workflow, store a contributed section as a draft. The map owner verifies alignment and approves a published map revision. Apply access checks to all included assets so adding a private scan to a public event cannot silently expand its audience.
 
 ## After the first share works
 
-- **Landmarks and directions.** Keep selected RGB frames and their scan-local camera poses during capture. A geometry-only export can lose the original images. Start by matching a few frames to manually verified waypoints. Gemini suggests landmark names and visual cues for organizer review. [Gemini demo design](./gemini-demo.md)
+- **Landmarks and directions.** Keep selected RGB frames and their scan-local camera poses during capture. A geometry-only export can lose the original images. Start by matching a few frames to manually verified waypoints. Gemini suggests landmark names and visual cues for the map owner to review. [Gemini demo design](./gemini-demo.md)
 - **QR and routing.** Each entrance QR identifies an event and a known starting waypoint. Destinations reference waypoints, and hosts connect walkable edges. Compute the shortest path by edge length and handle an unreachable destination in the viewer. The fixture uses a single event frame in meters, with +Y up. [Venue fixture and axes](../fixtures/README.md)
 - **Contributions.** Test with one extra section. Before approval a guest sees the original venue. After approval the guest can open the same event link and see the new section aligned to a known anchor.
 

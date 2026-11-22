@@ -1,0 +1,393 @@
+@import "tailwindcss";
+
+/* Applies when the person picks "Extra large" text in Settings. */
+@custom-variant xl-text (&:where([data-text-size="xlarge"] *));
+
+/*
+ * Design tokens from apps/web/DESIGN.md.
+ * Contrast rules: coral is a fill only (route, pins, CTA background) — never text,
+ * never white-on-coral. Coral buttons use `ink` text. Coral-flavored text uses `rust`.
+ * Every 3D view sits on `night`.
+ */
+@theme {
+  --color-paper: #f3ebd0;
+  --color-surface: #faf5e6;
+  --color-forest: #2f4a3a;
+  --color-coral: #f48057;
+  --color-rust: #a8421f;
+  --color-night: #121c16;
+  --color-sage: #a9c4ae;
+  --color-ink: #15221b;
+  --color-muted: #5e6b60;
+
+  --font-display: "Overpass", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper font-sans text-forest antialiased;
+  }
+
+  /*
+   * Focus ring for keyboard users. It must reach 3:1 against what's behind it, and
+   * coral on cream is only 2.2:1, so the color follows the surface:
+   * forest on paper (8.1:1), paper on the forest menu (8.1:1), coral on night (6.7:1).
+   */
+  :root {
+    --focus-ring: var(--color-forest);
+  }
+  [data-surface="forest"] {
+    --focus-ring: var(--color-paper);
+  }
+  [data-surface="night"] {
+    --focus-ring: var(--color-coral);
+  }
+  [data-surface="light"] {
+    --focus-ring: var(--color-forest);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Space editor and navigation panel (Sam's /spaces pages). */
+@layer components {
+  .editor-grid { @apply grid gap-3; }
+  .editor-grid label { @apply grid gap-1 text-sm; }
+  .editor-grid input:not([type="checkbox"]), .editor-grid select, .editor-grid textarea {
+    @apply min-h-11 min-w-0 w-full rounded-lg border border-forest/40 bg-surface px-2 py-2 text-ink;
+  }
+  .editor-grid input[type="checkbox"] { @apply h-5 w-5 shrink-0; }
+  .action-button { @apply min-h-11 rounded-lg bg-forest px-3 py-2 font-bold text-paper disabled:opacity-50; }
+  .secondary-button { @apply min-h-11 rounded-lg border border-forest/40 px-3 py-2 font-bold disabled:opacity-50; }
+}
+
+/* Landing page: small loops inside the phone mockup (stopped by reduced motion below). */
+.tour-scanline {
+  animation: tour-scan 2.4s ease-in-out infinite alternate;
+}
+.tour-route {
+  animation: tour-dash 0.9s linear infinite;
+}
+/* Landing hero: panels drift gently over the scan, a few stars twinkle. */
+.hero-float {
+  animation: hero-float 7s ease-in-out infinite alternate;
+}
+.hero-float-late {
+  animation-delay: -3.5s;
+}
+.hero-twinkle {
+  animation: hero-twinkle 3.2s ease-in-out infinite alternate;
+}
+@keyframes hero-float {
+  from {
+    translate: 0 -6px;
+  }
+  to {
+    translate: 0 6px;
+  }
+}
+@keyframes hero-twinkle {
+  from {
+    opacity: 0.15;
+  }
+  to {
+    opacity: 0.8;
+  }
+}
+
+/* "The problem" loop. Each scene's end state is its finished picture, so reduced motion shows that. */
+.pb-progress-x {
+  width: 0;
+  animation-name: pb-progress-x;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.pb-gps {
+  transform: translate(60px, 300px);
+  animation:
+    pb-gps-move 2s ease-in-out forwards,
+    pb-gps-drift 1.6s ease-in-out 2.1s infinite alternate;
+}
+.pb-accuracy,
+.pb-pop-svg,
+.pb-flash {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.pb-accuracy {
+  animation: pb-grow 0.8s ease-out both;
+}
+.pb-pop,
+.pb-pop-svg {
+  animation: pb-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+.pb-rise {
+  animation: pb-rise 0.5s ease-out both;
+}
+.pb-rise.pb-shake {
+  animation:
+    pb-rise 0.5s ease-out both,
+    pb-shake 0.5s ease-in-out both;
+}
+.pb-zoom {
+  animation: pb-zoom 2.4s ease-in-out 0.5s both;
+}
+.pb-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pb-draw 1.4s ease-in-out both;
+}
+.pb-flash {
+  animation: pb-flash 0.9s ease-out 3 both;
+}
+.pb-assemble {
+  animation: pb-fade 0.9s ease-out both;
+}
+@keyframes pb-progress-x {
+  to {
+    width: 100%;
+  }
+}
+@keyframes pb-gps-move {
+  0% {
+    transform: translate(60px, 300px);
+  }
+  25% {
+    transform: translate(60px, 220px);
+  }
+  75% {
+    transform: translate(220px, 220px);
+  }
+  100% {
+    transform: translate(220px, 150px);
+  }
+}
+@keyframes pb-gps-drift {
+  0% {
+    transform: translate(220px, 150px);
+  }
+  33% {
+    transform: translate(196px, 104px);
+  }
+  66% {
+    transform: translate(246px, 92px);
+  }
+  100% {
+    transform: translate(214px, 124px);
+  }
+}
+@keyframes pb-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+@keyframes pb-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+}
+@keyframes pb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+@keyframes pb-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+@keyframes pb-zoom {
+  to {
+    transform: scale(1.9);
+  }
+}
+@keyframes pb-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes pb-flash {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+@keyframes pb-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Creators: cards that turn over. Hover with a mouse, tap on a phone, or keyboard focus inside. */
+.flip-card {
+  perspective: 1100px;
+}
+.flip-inner {
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (hover: hover) {
+  .flip-card:hover .flip-inner {
+    transform: rotateY(180deg);
+  }
+}
+.flip-card:focus-within .flip-inner,
+.flip-card[data-flipped="true"] .flip-inner {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-back {
+  transform: rotateY(180deg);
+}
+
+/* Join us: footprints step across on a loop. Each print lights up in turn, then fades behind the walker. */
+.print-step {
+  opacity: 0;
+  animation-name: print-step;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+}
+@keyframes print-step {
+  0% {
+    opacity: 0;
+  }
+  2% {
+    opacity: 0.55;
+  }
+  18% {
+    opacity: 0.4;
+  }
+  40% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.cursor-print {
+  animation: cursor-print 1.8s ease-out forwards;
+}
+@keyframes cursor-print {
+  0% {
+    opacity: 0;
+  }
+  6% {
+    opacity: 0.5;
+  }
+  45% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* "Who it's for": sign figures walk (or roll) their route. */
+.pg-walker {
+  animation: pg-across 2.6s cubic-bezier(0.45, 0.05, 0.4, 1) forwards;
+}
+.pg-walking .pg-swing {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: pg-swing 0.32s ease-in-out 8 alternate;
+  animation-delay: var(--pg-delay, 0s);
+}
+.pg-walking .pg-swing-alt {
+  animation-direction: alternate-reverse;
+}
+.pg-rolling .pg-wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pg-spin 2.6s cubic-bezier(0.45, 0.05, 0.4, 1) forwards;
+}
+@keyframes pg-across {
+  to {
+    transform: translateX(var(--walk, 218px));
+  }
+}
+@keyframes pg-swing {
+  from {
+    transform: rotate(22deg);
+  }
+  to {
+    transform: rotate(-22deg);
+  }
+}
+@keyframes pg-spin {
+  to {
+    transform: rotate(570deg);
+  }
+}
+@keyframes tour-scan {
+  to {
+    transform: translateY(78px);
+  }
+}
+@keyframes tour-dash {
+  to {
+    stroke-dashoffset: -6;
+  }
+}
+
+/*
+ * Reduced motion: on when the person picks "Reduce motion" in Settings, or when they
+ * keep "Match my device" and the device asks for it. "Allow motion" overrides the device.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) *,
+  :root:not([data-motion="full"]) *::before,
+  :root:not([data-motion="full"]) *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

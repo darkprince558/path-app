@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1795234880354,
+      "tag": "0000_cuddly_yellowjacket",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795244982446,
+      "tag": "0001_cultured_tomorrow_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795286957264,
+      "tag": "0002_lidar_capture_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795289563050,
+      "tag": "0003_durable_capture_processing",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795291070513,
+      "tag": "0004_approved_revision_scans",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795304254201,
+      "tag": "0005_landmark_cues",
+      "breakpoints": true
+    }
+  ]
+}

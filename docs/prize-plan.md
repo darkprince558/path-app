@@ -1,13 +1,13 @@
 # Hack Western prize plan
 
-Build the first demo around one question a visitor actually asks at Hack Western, such as “How do I get from check-in to the hardware lab?” Pick a real, approved stretch with a recognizable turn. The first milestone is an organizer uploading that scan and a guest opening its unlisted link on a second phone. Then add one Gemini-generated cue that helps the guest recognize where to turn.
+Build the first demo around one question a visitor actually asks at Hack Western, such as “How do I get from check-in to the hardware lab?” Pick a real, approved stretch with a recognizable turn. The first milestone is a map owner uploading that scan and a guest opening its unlisted link on a second phone. Then add one Gemini-generated cue that helps the guest recognize where to turn.
 
 ## Two primary tracks
 
 | Priority | Who builds what | What to put in front of a judge |
 | --- | --- | --- |
 | 1. Organizers Choice — Most Adventurous | Krishna and Anish capture the stretch. Sam serves the scan. Arielle makes a turn or destination easy to recognize on a phone. | Give a first-time visitor the shared link and a destination. Let them choose the turn. Record how many visitors reached the destination, how many tried, and where they needed help. The award recognizes projects that help people discover unfamiliar places. |
-| 2. MLH Best Use of Gemini API | Krishna and Anish supply a venue image that the team has permission to process and its position on the route. Sam sends it to Gemini and saves the candidate. Arielle shows the evidence, organizer approval, and resulting guest cue. | Show the source image beside the real model response. Ask for the visible text, landmark type, and a short cue, allowing an empty result for an unreadable sign. An organizer pins the cue to a verified waypoint. Show it in the shared scene. Record suggested, accepted, corrected, and rejected counts. |
+| 2. MLH Best Use of Gemini API | Krishna and Anish supply a venue image that the team has permission to process and its position on the route. Sam sends it to Gemini and saves the candidate. Arielle shows the evidence, the map owner's approval, and resulting guest cue. | Show the source image beside the real model response. Ask for the visible text, landmark type, and a short cue, allowing an empty result for an unreadable sign. The map owner pins the cue to a verified waypoint. Show it in the shared scene. Record suggested, accepted, corrected, and rejected counts. |
 
 The overall judges assess creativity, technical complexity, completeness, and design. One actual scan, a recognizable landmark, and a judge who can use the result on their own phone demonstrate all four. Google supports image inputs and schema-constrained JSON for this workflow. [Hack Western prize descriptions and judging criteria](https://hack-western-13.devpost.com/) · [Gemini image inputs](https://ai.google.dev/gemini-api/docs/image-understanding) · [Gemini structured outputs](https://ai.google.dev/gemini-api/docs/structured-output)
 

@@ -1,0 +1,169 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+		100000000000000000000001 /* Project */ = {
+			isa = PBXProject;
+			attributes = { LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; };
+			buildConfigurationList = 100000000000000000000006;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = 100000000000000000000002;
+			productRefGroup = 100000000000000000000004;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (100000000000000000000005, 100000000000000000000300);
+		};
+		100000000000000000000002 /* Main group */ = {
+			isa = PBXGroup;
+			children = (100000000000000000000003, 100000000000000000000301, 100000000000000000000004);
+			sourceTree = "<group>";
+		};
+		100000000000000000000003 /* PathCapture sources */ = {
+			isa = PBXGroup;
+			children = (100000000000000000000010, 100000000000000000000011, 100000000000000000000012, 100000000000000000000100, 100000000000000000000101, 100000000000000000000102, 100000000000000000000103, 100000000000000000000104, 100000000000000000000105);
+			path = PathCapture;
+			sourceTree = "<group>";
+		};
+		100000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (100000000000000000000013, 100000000000000000000302);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		100000000000000000000005 /* PathCapture target */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 100000000000000000000007;
+			buildPhases = (100000000000000000000008);
+			buildRules = ();
+			dependencies = ();
+			name = PathCapture;
+			productName = PathCapture;
+			productReference = 100000000000000000000013;
+			productType = "com.apple.product-type.application";
+		};
+		100000000000000000000006 /* Project configurations */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (100000000000000000000020, 100000000000000000000021);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		100000000000000000000007 /* Target configurations */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (100000000000000000000022, 100000000000000000000023);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		100000000000000000000008 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (100000000000000000000014, 100000000000000000000015, 100000000000000000000016, 100000000000000000000200, 100000000000000000000201, 100000000000000000000202, 100000000000000000000203, 100000000000000000000204, 100000000000000000000205);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		100000000000000000000010 /* PathCaptureApp.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathCaptureApp.swift; sourceTree = "<group>"; };
+		100000000000000000000011 /* CaptureController.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureController.swift; sourceTree = "<group>"; };
+		100000000000000000000012 /* PointCloud.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloud.swift; sourceTree = "<group>"; };
+		100000000000000000000013 /* PathCapture.app */ = { isa = PBXFileReference; explicitFileType = wrapper.application; path = PathCapture.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		100000000000000000000014 /* PathCaptureApp.swift in Sources */ = { isa = PBXBuildFile; fileRef = 100000000000000000000010; };
+		100000000000000000000015 /* CaptureController.swift in Sources */ = { isa = PBXBuildFile; fileRef = 100000000000000000000011; };
+		100000000000000000000016 /* PointCloud.swift in Sources */ = { isa = PBXBuildFile; fileRef = 100000000000000000000012; };
+		100000000000000000000100 /* ScanGeometry.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanGeometry.swift; sourceTree = "<group>"; };
+		100000000000000000000200 = { isa = PBXBuildFile; fileRef = 100000000000000000000100; };
+		100000000000000000000101 /* TakeRecorder.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakeRecorder.swift; sourceTree = "<group>"; };
+		100000000000000000000201 = { isa = PBXBuildFile; fileRef = 100000000000000000000101; };
+		100000000000000000000102 /* MacConnection.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacConnection.swift; sourceTree = "<group>"; };
+		100000000000000000000202 = { isa = PBXBuildFile; fileRef = 100000000000000000000102; };
+		100000000000000000000103 /* ModelPreview.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPreview.swift; sourceTree = "<group>"; };
+		100000000000000000000203 = { isa = PBXBuildFile; fileRef = 100000000000000000000103; };
+		100000000000000000000105 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureBundle.swift; sourceTree = "<group>"; };
+		100000000000000000000205 = { isa = PBXBuildFile; fileRef = 100000000000000000000105; };
+		100000000000000000000104 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanRecord.swift; sourceTree = "<group>"; };
+		100000000000000000000204 = { isa = PBXBuildFile; fileRef = 100000000000000000000104; };
+    100000000000000000000300 /* UI tests */ = { isa = PBXNativeTarget; buildConfigurationList = 100000000000000000000307; buildPhases = (100000000000000000000303); buildRules = (); dependencies = (10000000000000000000030A); name = PathCaptureUITests; productName = PathCaptureUITests; productReference = 100000000000000000000302; productType = "com.apple.product-type.bundle.ui-testing"; };
+    100000000000000000000301 = { isa = PBXGroup; children = (100000000000000000000304); path = PathCaptureUITests; sourceTree = "<group>"; };
+    100000000000000000000302 = { isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = PathCaptureUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+    100000000000000000000303 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000305); runOnlyForDeploymentPostprocessing = 0; };
+    100000000000000000000304 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathCaptureUITests.swift; sourceTree = "<group>"; };
+    100000000000000000000305 = { isa = PBXBuildFile; fileRef = 100000000000000000000304; };
+    100000000000000000000307 = { isa = XCConfigurationList; buildConfigurations = (100000000000000000000308, 100000000000000000000309); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+    10000000000000000000030A = { isa = PBXTargetDependency; target = 100000000000000000000005; targetProxy = 10000000000000000000030B; };
+    10000000000000000000030B = { isa = PBXContainerItemProxy; containerPortal = 100000000000000000000001; proxyType = 1; remoteGlobalIDString = 100000000000000000000005; remoteInfo = PathCapture; };
+    100000000000000000000308 = { isa = XCBuildConfiguration; buildSettings = { GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.pathapp.demo.capture.uitests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; TEST_TARGET_NAME = PathCapture; }; name = Debug; };
+    100000000000000000000309 = { isa = XCBuildConfiguration; buildSettings = { GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.pathapp.demo.capture.uitests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; TEST_TARGET_NAME = PathCapture; }; name = Release; };
+
+		100000000000000000000020 /* Debug project */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		100000000000000000000021 /* Release project */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+			};
+			name = Release;
+		};
+		100000000000000000000022 /* Debug target */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_FILE = PathCapture/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Path Capture";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Record the hallway and align its camera images with the 3D scan.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Record gyro and acceleration alongside your hallway scan.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Send scans to your paired Mac for reconstruction and sharing.";
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pathapp.demo.capture;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		100000000000000000000023 /* Release target */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_FILE = PathCapture/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Path Capture";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Record the hallway and align its camera images with the 3D scan.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Record gyro and acceleration alongside your hallway scan.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Send scans to your paired Mac for reconstruction and sharing.";
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pathapp.demo.capture;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+	};
+	rootObject = 100000000000000000000001 /* Project */;
+}
