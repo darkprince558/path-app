@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:,">
+<title>Hallway walks · Not 404 design preview</title>
+<style>
+:root{--paper:#f3ebd0;--surface:#faf5e6;--forest:#2f4a3a;--ink:#15221b;--night:#121c16;--muted:#536458;--coral:#f48057;--sage:#a9c4ae;--line:#b8bea6;--rust:#963b21}
+*{box-sizing:border-box}html{min-height:100%;background:var(--paper);color:var(--ink)}
+body{margin:0;font:16px/1.48 "Atkinson Hyperlegible Next",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,select{font:inherit;color:inherit}button{cursor:pointer}button:disabled{cursor:default;opacity:.55}button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #0074ba;outline-offset:3px}
+button{touch-action:manipulation}button:active:enabled{transform:translateY(1px)}
+.shell{max-width:1180px;margin:auto;padding:0 clamp(16px,4vw,56px) 36px}
+.mast{display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid var(--line);padding:20px 0 14px}
+.brand{font:900 22px/1 "Overpass",-apple-system,BlinkMacSystemFont,sans-serif;color:var(--forest);letter-spacing:-1px;white-space:nowrap}.ring{display:inline-block;height:.68em;width:.61em;border:.14em solid var(--coral);border-radius:50%;margin:0 .015em;vertical-align:.002em}
+.mast small,.fine{color:var(--muted);font-size:13px}.layout{display:grid;grid-template-columns:minmax(245px,.83fr) minmax(380px,1.17fr);align-items:start;gap:clamp(32px,8vw,110px);padding-top:clamp(32px,6vh,72px)}
+h1,h2,h3,p{margin:0}h1,h2,h3{font-family:Overpass,-apple-system,BlinkMacSystemFont,sans-serif}h1{font-size:clamp(40px,5.2vw,72px);line-height:.97;letter-spacing:-.055em;color:var(--forest);max-width:8ch;font-weight:850}
+.lead{color:var(--muted);max-width:33ch;margin:18px 0 26px;font-size:17px}.steps{border-top:1px solid var(--line)}
+.step{appearance:none;text-align:left;display:flex;width:100%;gap:14px;align-items:center;background:none;border:0;border-bottom:1px solid var(--line);padding:14px 3px;color:var(--muted)}
+.step b{font-size:17px}.step span:last-child{margin-left:auto;font-size:21px}.step[aria-pressed=true]{color:var(--forest)}.step[aria-pressed=true] b{text-decoration:underline;text-decoration-color:var(--coral);text-decoration-thickness:3px;text-underline-offset:5px}
+.scenario{padding-top:24px}.scenario p{font-size:15px;color:var(--muted);margin:5px 0 10px}.scenario h2{font-size:16px}.scenario-actions{display:flex;gap:8px;flex-wrap:wrap}
+.chip,.ghost,.primary,select{border-radius:10px;padding:9px 13px;min-height:44px;font-size:14px;font-weight:650}
+.chip,.ghost,select{background:var(--surface);border:1px solid #aab49e}.primary{background:var(--forest);color:white;border:1px solid var(--forest)}.primary:hover{background:#213b2a}.chip:hover,.ghost:hover{background:#edead7}
+.device{width:100%;max-width:475px;justify-self:center;overflow:hidden;border:1px solid #a0aa96;border-radius:25px;background:var(--surface);box-shadow:0 18px 48px -28px #20382c73}
+.deviceHead{padding:15px 18px 12px;display:flex;align-items:center;justify-content:space-between;gap:5px}.deviceHead h2{font-size:20px;letter-spacing:-.035em}.state{font-size:13px;color:var(--forest);display:flex;align-items:center;gap:6px}.dot{width:9px;height:9px;border-radius:50%;background:#537956}.state.live .dot{background:var(--rust)}
+.map{position:relative;background:var(--night);color:#eff6ed;height:clamp(310px,42vh,410px)}canvas{width:100%;height:100%;display:block;touch-action:pan-y}
+.mapbar{position:absolute;left:12px;top:10px;right:12px;display:flex;align-items:flex-start;justify-content:space-between;gap:6px;pointer-events:none}
+.mapbar>*{pointer-events:auto}.mapbar select,.mapbar button,.rotate{color:#edf5e9;background:#203527;border:1px solid #637b68;font-size:13px;min-height:44px;border-radius:10px;padding:6px 10px}
+.mapbar select{max-width:50%}.mapbar button:hover,.rotate:hover{background:#2d4836}.rotate{position:absolute;right:12px;bottom:10px}
+.legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 16px;color:#e2edde;background:#1d2b22;font-size:12px}
+.legend span{display:inline-flex;align-items:center;gap:5px}.key{width:14px;height:10px;border-radius:2px;background:#8fb198}.key.hatch{border:1px solid #f1bc68;background:repeating-linear-gradient(-45deg,#4c412d 0px,#4c412d 2px,#f1bc68 3px,#4c412d 4px)}.key.trail{height:3px;background:var(--coral)}
+.detail{padding:15px 18px 17px;min-height:166px}.context{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:5px}.detail h3{font-size:20px;letter-spacing:-.025em;line-height:1.15}.detail p{margin:5px 0 12px;color:#465749;font-size:15px}.row{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.detail ul{margin:0 0 10px;padding:0;list-style:none}.place{background:none;border:none;text-decoration:underline;text-underline-offset:2px;font-size:14px;color:var(--forest);padding:9px 2px;min-height:44px}.places li{display:inline-block;margin-right:12px}
+.status{padding:0 18px 13px;font-size:14px;color:var(--rust)}.status:empty{display:none}.scale{font-size:12px;color:#bbcebe;position:absolute;left:14px;bottom:9px;pointer-events:none}.scale::before{content:"";display:inline-block;width:18px;height:5px;border:1px solid #bbcebe;border-top:0;margin-right:5px}
+[hidden]{display:none!important}
+@media(max-width:720px){.layout{display:flex;flex-direction:column;gap:15px;padding-top:18px}.intro{width:100%;display:contents}.copy h1{font-size:34px;max-width:none}.lead{font-size:15px;max-width:48ch;margin:5px 0 0}.steps{width:100%;display:flex;border:0;gap:3px}.step{justify-content:center;padding:7px 3px;min-height:44px}.step b{font-size:14px}.step span:last-child{display:none}.device{align-self:center;max-width:520px}.scenario{order:4;padding-top:3px;width:100%}.map{height:clamp(285px,39dvh,380px)}.mast{padding:14px 0 12px}.mast small{font-size:12px}.shell{padding-bottom:22px}.detail{min-height:0}}
+@media(max-width:365px){.shell{padding-left:8px;padding-right:8px}.legend{gap:6px}.deviceHead{padding-left:12px;padding-right:12px}}
+@media(prefers-reduced-motion:reduce){button:active:enabled{transform:none}}
+</style>
+</head>
+<body>
+<main class="shell">
+<header class="mast"><span class="brand" aria-label="Not 404">Not 4<span class="ring"></span>4</span><small>Design preview · synthetic walk</small></header>
+<div class="layout">
+<section class="intro" aria-label="Design preview controls">
+<div class="copy"><h1>Hallway walks</h1><p class="lead">Try the recorder’s view, then open the same walk as a visitor.</p></div>
+<nav class="steps" aria-label="Preview screen">
+<button class="step" data-screen="record" aria-pressed="true"><b>Record</b><span aria-hidden="true">↗</span></button>
+<button class="step" data-screen="review" aria-pressed="false"><b>Review &amp; upload</b><span aria-hidden="true">↗</span></button>
+<button class="step" data-screen="visit" aria-pressed="false"><b>Visitor map</b><span aria-hidden="true">↗</span></button>
+</nav>
+<section class="scenario"><h2>Try a scenario</h2><p id="instruction"></p><div class="scenario-actions"><button class="chip" id="scenario"></button><button class="chip" id="restart">Restart preview</button></div></section>
+</section>
+<section class="device" aria-label="Proposed app screen">
+<header class="deviceHead"><h2 id="screenTitle">Walk map</h2><span class="state" id="state"><i class="dot" aria-hidden="true"></i><span id="stateText"></span></span></header>
+<div class="map"><canvas id="map" role="img" aria-label="Synthetic hallway floor plan"></canvas>
+<div class="mapbar"><select id="floor" aria-label="Map level"><option value="lower">Lower level</option><option value="upper">Upper level</option></select><button id="mapMode" type="button"></button></div><span class="scale" id="scale"></span><button id="rotate" class="rotate" hidden>Rotate view</button></div>
+<div class="legend" aria-label="Map legend"><span class="qualityKey"><i class="key"></i>Repeat views</span><span class="qualityKey"><i class="key hatch"></i>One view</span><span><i class="key trail"></i>Walked path</span></div>
+<div class="detail"><div id="context" class="context"></div><h3 id="detailTitle"></h3><p id="detailText"></p><ul id="places" class="places" aria-label="Landmarks" hidden></ul><div class="row"><button id="action" class="primary"></button><button id="secondary" class="ghost"></button></div></div>
+<div role="status" class="status" id="notice" aria-live="polite"></div>
+</section></div></main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const levels = {
+  lower: {name:'Lower level', path:[[26,147],[103,147],[103,101],[154,101],[154,62],[209,62]], corner:[154,101], doorway:[98,139], current:[145,101], transition:[209,62], angle:0},
+  upper: {name:'Upper level', path:[[209,62],[209,91],[140,91],[140,128],[56,128],[56,163]], corner:[140,128], doorway:[142,118], current:[140,117], transition:[209,62], angle:Math.PI/2}
+};
+function initial(){
+  return {screen:'record',floor:'lower',seen:{lower:false,upper:true},marked:{lower:false,upper:false},
+    revisited:{lower:false,upper:false},network:false,saved:false,job:'local',progress:0,
+    focused:false,iso:false,rotation:0,place:null,paused:false,visibility:'private'};
+}
+let s=initial(), timer;
+const map=$('map'), ctx=map.getContext('2d');
+function line(points,color,width,dash=[]){
+  ctx.beginPath(); points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
+  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.stroke();ctx.setLineDash([]);
+}
+function polygon(points,fill){
+  ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=fill;ctx.fill();
+}
+function pin(p,label,color,align='left'){
+  ctx.beginPath();ctx.arc(...p,3.8,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.lineWidth=1;ctx.strokeStyle='#121c16';ctx.stroke();
+  if(!label)return;
+  ctx.save();ctx.font='600 7.5px system-ui';ctx.textAlign=align;ctx.fillStyle='#eff4e9';ctx.lineWidth=2.6;ctx.strokeStyle='#17251b';
+  ctx.strokeText(label,p[0]+(align==='left'?5:-5),p[1]-7);ctx.fillText(label,p[0]+(align==='left'?5:-5),p[1]-7);ctx.restore();
+}
+function draw(){
+  const box=map.getBoundingClientRect(); if(!box.width)return;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  map.width=Math.round(box.width*dpr);map.height=Math.round(box.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle='#121e17';ctx.fillRect(0,0,box.width,box.height);
+  ctx.fillStyle='#294132';for(let x=8;x<box.width;x+=13)for(let y=8;y<box.height;y+=13)ctx.fillRect(x,y,1.25,1.25);
+  const l=levels[s.floor], cameraPoint=s.floor==='lower'&&s.seen.lower?[154,83]:l.current;
+  const destination=targetPlace()||cameraPoint;
+  const factor=Math.min(box.width/250,(box.height-50)/154)*(s.focused?1.5:1);
+  ctx.translate(box.width/2,box.height/2+10);ctx.scale(factor,factor);
+  const center=s.focused?destination:[118,111];
+  function project([x,y],height=0){
+    const dx=x-center[0],dy=y-center[1];if(!s.iso)return[dx,dy];
+    const a=-.37+s.rotation;return [dx*Math.cos(a)-dy*Math.sin(a),(dx*Math.sin(a)+dy*Math.cos(a))*.69-height*.88];
+  }
+  const plan=l.path.map(p=>project(p));ctx.lineCap='round';ctx.lineJoin='round';
+  if(s.iso){const base=l.path.map(p=>project(p,-5));line(base,'#25372c',23)}
+  line(plan,'#698774',23);line(plan,'#344e3f',20);
+  if(s.iso){
+    for(let i=1;i<l.path.length;i++){
+      const a=l.path[i-1],b=l.path[i],dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy);
+      const offset=[-dy/len*10,dx/len*10];const A=[a[0]+offset[0],a[1]+offset[1]],B=[b[0]+offset[0],b[1]+offset[1]];
+      polygon([project(A),project(B),project(B,12),project(A,12)],'#546d5c');line([project(A,12),project(B,12)],'#a7b9a6',1);
+    }
+  }
+  if(s.screen!=='visit'&&!s.seen[s.floor]){
+    const [x,y]=l.corner, square=[[x-10,y-10],[x+10,y-10],[x+10,y+10],[x-10,y+10]].map(p=>project(p));
+    ctx.save();polygon(square,'#5e4c33');ctx.clip();
+    for(let i=-22;i<24;i+=4)line([project([x+i,y-11]),project([x+i+19,y+11])],'#e9ba72',1);
+    ctx.restore();
+  }
+  // Only the simulated second pass extends the recorded line through the marked corner.
+  const path=s.screen==='record' ? (s.floor==='lower' ? (s.seen.lower?[...l.path.slice(0,4),cameraPoint]:[...l.path.slice(0,3),cameraPoint]) : [...l.path.slice(0,3),cameraPoint]) : l.path;
+  line(path.map(p=>project(p,1)),'#f48057',2.7);
+  pin(project(l.path[0]),s.floor==='lower'?'Start':'Landing','#f6e8bf');
+  pin(project(l.path.at(-1)),s.floor==='lower'?'Landing':'Finish','#e9b87b','right');
+  if(s.marked[s.floor])pin(project(l.doorway),'Doorway','#b1dfbf');
+  if(s.place)pin(project(destination),s.place,'#ffe29a');
+  if(s.screen==='record'){
+    const c=cameraPoint,angle=s.floor==='lower'&&s.seen.lower?Math.PI/2:l.angle;
+    const position=project(c),beam=(a,r)=>project([c[0]+Math.cos(a)*r,c[1]+Math.sin(a)*r]);
+    polygon([position,beam(angle-.48,25),beam(angle+.48,25)],'rgba(193,223,196,.44)');
+    ctx.beginPath();ctx.arc(...position,5.3,0,Math.PI*2);ctx.fillStyle='#faf5e6';ctx.fill();ctx.strokeStyle='#2f4a3a';ctx.lineWidth=2;ctx.stroke();
+  }
+  $('scale').textContent=s.iso?'Cutaway':(s.focused?'Detail view':'Whole level');
+  const quality=s.screen==='visit'?'':s.seen[s.floor]?'Corner seen from two angles.':'Single-view corner at the bend.';
+  map.setAttribute('aria-label',[l.name,s.iso?'Cutaway.':'Top-down map.',quality,s.marked[s.floor]?'Doorway marked.':''].filter(Boolean).join(' '));
+}
+function targetPlace(){
+  const l=levels[s.floor];return ({Start:l.path[0],Finish:l.path.at(-1),Landing:l.transition,Doorway:l.doorway,Corner:l.corner})[s.place];
+}
+function say(text){$('notice').textContent=text}
+function setScreen(next){
+  if(next==='record' && s.saved){s.screen='review';say('This walk is saved. Use Back to recording before upload, or restart the preview for a new walk.');render();return;}
+  s.screen=next;s.focused=false;s.place=null;s.iso=false;s.rotation=0;say('');render();
+}
+function button(id,label,fn){
+  const b=$(id);b.textContent=label||'';b.hidden=!label;b.disabled=false;b.onclick=fn||null;
+}
+function setDetail(context,title,detail){
+  $('context').textContent=context;$('detailTitle').textContent=title;$('detailText').textContent=detail;
+}
+function setFloor(floor){
+  s.floor=floor;s.place=null;s.focused=false;say('');render();
+}
+function choosePlace(name){s.place=name;s.focused=true;say(name+' selected on '+levels[s.floor].name.toLowerCase()+'.');draw()}
+function landmarkList(names){
+  const list=$('places');list.replaceChildren();list.hidden=!names.length;
+  names.forEach(name=>{const li=document.createElement('li'),b=document.createElement('button');b.type='button';b.className='place';b.textContent=name;b.onclick=()=>choosePlace(name);li.append(b);list.append(li)});
+}
+function startUpload(){
+  if(!s.saved||!s.network||s.job==='ready'||s.job==='uploading'||s.job==='processing')return;
+  s.job='uploading';clearInterval(timer);
+  timer=setInterval(()=>{
+    if(!s.network&&s.job==='uploading'){clearInterval(timer);s.job='waiting';render();return;}
+    if(s.job==='uploading'){s.progress=Math.min(4,s.progress+1);if(s.progress===4)s.job='processing';}
+    else {s.job='ready';clearInterval(timer);say('Your private map is ready.');}
+    render();
+  },650);
+}
+function toggleNetwork(){
+  s.network=!s.network;
+  if(!s.network&&s.job==='uploading'){s.job='waiting';clearInterval(timer)}
+  if(s.network)startUpload();render();
+}
+function render(){
+  const f=s.floor,level=levels[f],record=s.screen==='record',review=s.screen==='review';
+  document.querySelectorAll('[data-screen]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.screen===s.screen)));
+  document.querySelectorAll('.qualityKey').forEach(el=>el.hidden=s.screen==='visit');
+  $('floor').value=f;$('state').classList.toggle('live',record&&!s.paused);
+  $('screenTitle').textContent=record?'Walk map':review?'Walk review':'East corridor';
+  $('stateText').textContent=record?(s.paused?'Interrupted':'Recording'):review?({local:'On this iPhone',waiting:'Waiting for Wi-Fi',uploading:'Uploading',processing:'Processing',ready:'Ready'})[s.job]:(s.visibility==='unlisted'?'Anyone with the link':'Visitor preview');
+  button('mapMode',s.screen==='visit'?(s.iso?'Top down':'3D cutaway'):(s.focused?'Whole level':record?'Follow me':'Focus corner'),()=>{
+    if(s.screen==='visit'){s.iso=!s.iso;s.rotation=0}else{s.focused=!s.focused;s.place=review&&s.focused?'Corner':null}render()});
+  button('rotate',s.iso?'Rotate view':null,()=>{s.rotation+=Math.PI/5;draw()});
+  landmarkList([]);
+  if(record){
+    $('instruction').textContent=s.paused?'Simulate recovery at the last saved doorway.':'Simulate a second view of the bend, or try a tracking interruption.';
+    button('scenario',s.paused?'Recover tracking':s.seen[f]?'Interrupt tracking':'Walk a second pass',()=>{
+      if(s.paused){s.paused=false;say('Tracking recovered at the saved checkpoint.');}
+      else if(s.seen[f]){s.paused=true;say('Section saved. The path pauses here.');}
+      else{s.seen[f]=true;say('Second angle recorded.');}
+      render();
+    });
+    setDetail(level.name+' · 38 m recorded',s.paused?'Tracking interrupted':s.seen[f]?'Corner seen from two angles':'Look back at the corner',
+      s.paused?'The last section is saved. Return to the checkpoint to continue.':s.seen[f]?'The bend now has overlapping views. Continue along the hall.':'Turn toward the doorway you just passed to capture the other side.');
+    button('action',!s.marked[f]?'Mark doorway':s.revisited[f]?'Undo revisit':'Mark return',()=>{
+      if(!s.marked[f]){s.marked[f]=true;say('Doorway marked on '+level.name.toLowerCase()+'.');}
+      else{s.revisited[f]=!s.revisited[f];say(s.revisited[f]?'Return observation saved for review.':'Return observation removed.');}render();
+    });
+    $('action').disabled=s.paused;
+    button('secondary','Finish walk',()=>{s.saved=true;if(s.job!=='ready'&&!s.network)s.job='waiting';if(s.network)startUpload();setScreen('review')});
+    if(s.marked[f]&&!s.revisited[f]){
+      const li=document.createElement('li'),undo=document.createElement('button');undo.className='place';undo.textContent='Undo doorway';
+      undo.onclick=()=>{s.marked[f]=false;say('Doorway removed.');render()};li.append(undo);$('places').append(li);$('places').hidden=false;
+    }
+  }else if(review){
+    $('instruction').textContent='Toggle the simulated connection during transfer. Confirmed sections stay saved.';
+    button('scenario',s.network?'Disconnect Wi-Fi':'Reconnect Wi-Fi',toggleNetwork);
+    const issues=Object.values(s.seen).filter(x=>!x).length;
+    let title=issues?'One corner needs another view':'Coverage reviewed';
+    let detail=issues?'Inspect the lower-level bend or save the walk and come back later.':'Both bends have overlapping views.';
+    if(s.job==='waiting'){title='Saved on this iPhone';detail='Waiting for Wi-Fi. '+s.progress+' of 4 example sections uploaded.'}
+    if(s.job==='uploading'){title='Uploading walk';detail=s.progress+' of 4 example sections confirmed. You can leave this screen.'}
+    if(s.job==='processing'){title='Building the map';detail='The worker is combining the four example sections.'}
+    if(s.job==='ready'){title=s.visibility==='unlisted'?'Link sharing on':'Your private map is ready';detail=s.visibility==='unlisted'?'Anyone who receives the link can open this map.':'Only the owner can open this map.'}
+    setDetail('East corridor · 2 levels',title,detail);
+    if(s.job==='ready'){
+      button('action',s.visibility==='unlisted'?'Open visitor map':'Enable link sharing',()=>{if(s.visibility==='unlisted')setScreen('visit');else{s.visibility='unlisted';say('Link sharing enabled in this preview.');render()}});
+      button('secondary',s.visibility==='unlisted'?'Revoke link':'Preview visitor view',()=>{if(s.visibility==='unlisted'){s.visibility='private';say('Link revoked.');render()}else setScreen('visit')});
+    }else{
+      button('action',s.saved?'Inspect corner':'Save walk',()=>{if(s.saved){setFloor('lower');choosePlace('Corner')}else{s.saved=true;s.job='waiting';startUpload();render()}});
+      button('secondary','Back to recording',()=>{if(s.progress>0||s.job==='uploading'||s.job==='processing')return;s.saved=false;s.job='local';s.progress=0;setScreen('record')});
+      $('secondary').disabled=s.progress>0||['uploading','processing'].includes(s.job);
+    }
+    if(s.revisited[f]){const info=document.createElement('li');info.textContent='Doorway revisit recorded';$('places').append(info);$('places').hidden=false;}
+  }else{
+    $('instruction').textContent='Choose a level or landmark, then compare the plan with its 3D cutaway.';
+    button('scenario','Show other level',()=>setFloor(f==='lower'?'upper':'lower'));
+    setDetail('Recorded walk · '+level.name,'Landmarks',f==='lower'?'The route enters at Start and reaches the landing.':'From the landing, follow the upper corridor to Finish.');
+    landmarkList([f==='lower'?'Start':'Finish','Landing',...(s.marked[f]?['Doorway']:[])]);
+    button('action','Fit map',()=>{s.focused=false;s.place=null;s.rotation=0;say('Showing the whole level.');draw()});
+    button('secondary','Other level',()=>setFloor(f==='lower'?'upper':'lower'));
+  }
+  draw();
+}
+$('floor').onchange=e=>setFloor(e.target.value);
+document.querySelectorAll('[data-screen]').forEach(el=>el.onclick=()=>setScreen(el.dataset.screen));
+$('restart').onclick=()=>{clearInterval(timer);s=initial();say('Preview restarted.');render()};
+new ResizeObserver(draw).observe(map);render();
+</script>
+</body>
+</html>
