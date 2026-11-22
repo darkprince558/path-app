@@ -5,7 +5,7 @@ struct WalkReview: View {
   @Binding var paired: MacAddress?
   var replayMap: WalkMap? = nil
   @Environment(\.dismiss) var dismiss
-  @State private var map = WalkMap()
+  @State private var layer = WalkLayer(WalkMap())
   @State private var section: ScanRecord?
   @State private var archive: URL?
   @State private var working = false
@@ -14,8 +14,8 @@ struct WalkReview: View {
     NavigationStack {
       List {
         Section {
-          WalkMapView(map: replayMap ?? map, style: .review)
-          LabeledContent("Tracked distance", value: "\(Int((replayMap ?? map).distance.rounded())) m")
+          WalkMapView(layers: [layer], style: .review)
+          LabeledContent("Tracked distance", value: "\(Int(layer.map.distance.rounded())) m")
           if let reason = records.last?.walkEndReason { Text(reason).foregroundStyle(.orange) }
           if !message.isEmpty { Text(message).font(.footnote) }
         }
@@ -59,16 +59,16 @@ struct WalkReview: View {
         }
       }.navigationTitle("Walk review").toolbar { Button("Done") { dismiss() } }
     }.task {
-      guard replayMap == nil else { return }
+      if let replayMap { layer = WalkLayer(replayMap); return }
       let (combined, missing) = await Task.detached {
         var combined = WalkMap()
         var missing = 0
         for r in records {
           do { combined.include(try WalkMap.read(from: r.folder)) } catch { missing += 1 }
         }
-        return (combined, missing)
+        return (WalkLayer(combined), missing)
       }.value
-      map = combined
+      layer = combined
       if missing > 0 { message = "Map data is unavailable for \(missing) section(s)." }
     }.sheet(item: $section) { ScanDetail(record: $0, mac: $paired) }
   }

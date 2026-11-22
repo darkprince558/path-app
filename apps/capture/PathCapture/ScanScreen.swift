@@ -13,7 +13,15 @@ struct ScanScreen<Source: ScanSource, Camera: View>: View {
 
   var body: some View {
     ZStack {
-      camera(overlay).ignoresSafeArea()
+      Color.black.ignoresSafeArea()
+      GeometryReader { viewport in
+        // Resizing the same preview preserves the AR session and its delegate.
+        camera(overlay)
+          .frame(width: layout == .map ? 86 : viewport.size.width,
+                 height: layout == .map ? 44 : viewport.size.height)
+          .clipShape(RoundedRectangle(cornerRadius: layout == .map ? 8 : 0))
+          .offset(x: layout == .map ? 12 : 0, y: layout == .map ? 6 : 0)
+      }
       VStack(alignment: .trailing, spacing: 8) {
         HStack {
           Spacer()
@@ -28,16 +36,16 @@ struct ScanScreen<Source: ScanSource, Camera: View>: View {
         }.buttonStyle(ScannerToolButton())
         if layout == .mini {
           Button { layout = .map } label: {
-            WalkMapView(map: scanner.liveMap, style: .mini)
+            WalkMapView(layers: scanner.mapLayers, style: .mini)
           }.buttonStyle(.plain)
             .accessibilityLabel("Expand walk map")
-            .accessibilityValue("\(Int(scanner.liveMap.distance)) metres walked")
+            .accessibilityValue("\(Int(scanner.walkedDistance)) metres walked")
             .accessibilityIdentifier("scan-map")
             .simultaneousGesture(LongPressGesture().onEnded { _ in layout = .camera })
         } else if layout == .map {
-          WalkMapView(map: scanner.liveMap, style: .panel) {
+          WalkMapView(layers: scanner.mapLayers, style: .panel) {
             layout = .mini
-          }.accessibilityIdentifier("scan-map")
+          }
         }
         Spacer(minLength: 4)
         if showInstruction || scanner.tracking != .normal || expandedHUD {
@@ -54,7 +62,7 @@ struct ScanScreen<Source: ScanSource, Camera: View>: View {
               .foregroundStyle(scanner.tracking == .normal ? Color.primary : .orange)
               .accessibilityIdentifier("scan-tracking")
             Spacer()
-            Text("\(Int(scanner.liveMap.distance)) m · " + Duration.seconds(scanner.duration).formatted(.time(pattern: .minuteSecond)))
+            Text("\(Int(scanner.walkedDistance)) m · " + Duration.seconds(scanner.duration).formatted(.time(pattern: .minuteSecond)))
               .font(.subheadline.monospacedDigit()).accessibilityIdentifier("scan-distance")
           }
           HStack {

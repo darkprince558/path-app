@@ -36,6 +36,12 @@ struct LibraryScreen: View {
                     scanner.phase == .saving || scanner.phase == .requestingCamera)
                 } else {
                   Text("Live AR capture requires a compatible iPhone or iPad.").font(.footnote)
+                  #if targetEnvironment(simulator)
+                  if let url = Bundle.main.url(forResource: "hallway", withExtension: "json"),
+                    let script = try? ReplayScript(contentsOf: url) {
+                    NavigationLink("Try a simulated walk") { ReplayScreen(script: script) }
+                  }
+                  #endif
                 }
                 if scanner.phase == .saving { ProgressView("Saving scan") }
               }.padding(.vertical, 6)
