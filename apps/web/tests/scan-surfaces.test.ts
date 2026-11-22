@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { Mesh, Raycaster, Vector3, type Intersection } from "three";
+import { Float32BufferAttribute, Mesh, Raycaster, Vector3, type Intersection } from "three";
 import { parseGlb } from "../src/lib/glb.ts";
 import { prepareScanSurfaces } from "../src/lib/scan-surfaces.ts";
 
@@ -54,6 +54,32 @@ test("scans without classification or from other tools are left alone", async ()
   const model = await parseGlb(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer, identity);
   const surfaces = prepareScanSurfaces([model.object], 8);
   assert.equal(surfaces.hasCeiling, false);
+  surfaces.dispose();
+  model.dispose();
+});
+
+test("unlabelled phone scans hide downward-facing surfaces in the upper half", async () => {
+  const model = await parseGlb(room(), identity);
+  const mesh = firstMesh(model.object);
+  // Like "Path Capture depth fusion": no surface labels, normals facing the scanner (ceilings face down).
+  const classes = mesh.geometry.getAttribute("_ar_classification");
+  const normals = new Float32Array(classes.count * 3);
+  for (let i = 0; i < classes.count; i++) {
+    const label = classes.getX(i);
+    normals.set(label === 3 ? [0, -1, 0] : label === 2 ? [0, 1, 0] : [1, 0, 0], i * 3);
+  }
+  mesh.geometry.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+  mesh.geometry.deleteAttribute("_ar_classification");
+  const surfaces = prepareScanSurfaces([model.object], 8);
+  assert.equal(surfaces.hasCeiling, true);
+  const down = () => {
+    const hits: Intersection[] = [];
+    new Raycaster(new Vector3(-2, 5, 0), new Vector3(0, -1, 0)).intersectObject(model.object, true, hits);
+    return hits[0]?.point.y;
+  };
+  assert.ok(Math.abs(down()! - 0) < 1e-6, "the ceiling is skipped, the floor is hit");
+  surfaces.setCeilingHidden(false);
+  assert.ok(Math.abs(down()! - 2.5) < 1e-6, "shown again, the ceiling is hit");
   surfaces.dispose();
   model.dispose();
 });
