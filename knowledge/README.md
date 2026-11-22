@@ -10,6 +10,21 @@ Use this folder for knowledge a teammate will still need after your branch merge
 | Public scans appear in discovery. Unlisted scans open by link. Private scans require an owner or invited account. | Map owners choose an audience for both the scene and its underlying files. | [Sharing rules](../docs/architecture.md#sharing) |
 | GitHub holds the source and team checkpoints. The live site and scan storage need a runtime of their own. | A guest needs an HTTPS URL they can open without access to the team repository. Vultr is a deployment proposal. | [Deployment plan](../docs/deployment.md) |
 
+## Calibration handoff
+
+The [calibration trace and repair](../docs/scan-calibration.md) records why capture
+metres were lost at approval, the CPU provenance gate, and the owner repair action.
+Sam need not change production records or the capture contract; Arielle's editor
+now separates metric scale from alignment. The synthetic `mock-lidar` remains
+unverified unless an owner independently confirms its scale.
+
+## Automatic routing handoff
+
+The [scan routing runbook](../docs/scan-automatic-routing.md) records the viewer
+integration and elevated doorway GLB checks. Arielle can use the existing floor
+picks; Sam need not add navigation APIs or database fields. Anish/Krishna still need
+to validate geometry coverage and measured clearance on a real approved capture.
+
 ## Add a finding
 
 [LiDAR ingestion contract and exporter handoff](lidar-ingestion.md) records the

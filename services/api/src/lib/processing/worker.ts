@@ -11,6 +11,7 @@ import { captureObjectKey, type CaptureStorage } from '../storage/captures';
 import type { RevisionStorage } from '../storage/revisions';
 import { identityTransform } from '../api/scans';
 import { ProcessingFailure, type CaptureProcessor } from './processor';
+import { validatedMetricCapture } from './calibration';
 import { CAPTURE_WORKER_LOCK, CAPTURE_CPU_LOCK } from './locks';
 
 export { CAPTURE_WORKER_LOCK } from './locks';
@@ -143,7 +144,8 @@ export class CaptureWorker {
             processingJobId: job.id, revision: Number(latest.number) + 1, objectKey: scene.objectKey,
             outputSha256: scene.sha256, transform: identityTransform,
             metadata: { files: outputs.files, report: outputs.report, processor: { id: processor.id, version: processor.version },
-              inputSha256: job.inputSha256, alignmentVerified: false, coordinateSystem: manifest.coordinateSystem },
+              inputSha256: job.inputSha256, alignmentVerified: false, coordinateSystem: { ...manifest.coordinateSystem,
+                calibrated: validatedMetricCapture(manifest, outputs.report, processor, job.inputSha256) } },
           });
           const rows = await tx.update(processingJobs).set({ status: 'succeeded', stage: 'complete', progress: 100,
             completedAt: new Date(), leaseToken: null, leaseExpiresAt: null, errorCode: null, updatedAt: new Date(),

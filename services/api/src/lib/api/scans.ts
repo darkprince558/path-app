@@ -9,6 +9,7 @@ import type { ScanStorage } from '../storage';
 import { canReadSpace, readSpace } from './access';
 import { ApiError, badRequest, conflict, notFound } from './http';
 import { metadata, name, uuid, visibility } from './validation';
+import { metricSpace, preservesMetricFrame } from '../processing/calibration';
 import { isApprovedScan } from './approved-scans';
 
 type Db = ReturnType<typeof connectDatabase>['db'];
@@ -134,15 +135,25 @@ export async function canReadScan(db: Db, user: AppUser | null, scan: Scan) {
 export async function readScan(db: Db, user: AppUser | null, id: string) {
   const [scan] = await db.select().from(scans).where(eq(scans.id, uuid.parse(id))).limit(1);
   if (!scan || !(await canReadScan(db, user, scan))) throw notFound();
-  return scan;
+  return effectiveScanCalibration(db, scan);
 }
 
 export async function listScans(db: Db, user: AppUser | null, spaceId: string) {
   await readSpace(db, user, uuid.parse(spaceId));
   const rows = await db.select().from(scans).where(eq(scans.spaceId, spaceId));
   const accessible: Scan[] = [];
-  for (const row of rows) if (await canReadScan(db, user, row)) accessible.push(row);
+  for (const row of rows) if (await canReadScan(db, user, row)) accessible.push(await effectiveScanCalibration(db, row));
   return accessible.map(scanResponse);
+}
+
+/** Resolve single-capture alignment against all scans, including ones hidden from this reader. */
+export async function effectiveScanCalibration(db: Pick<Db, 'select'>, scan: Scan): Promise<Scan> {
+  if (scan.metadata.alignmentSource !== 'single-capture') return scan;
+  const siblings = await db.select({ id: scans.id }).from(scans).where(and(
+    eq(scans.spaceId, scan.spaceId), eq(scans.status, 'ready'), eq(scans.format, 'glb'))).limit(2);
+  const [space] = await db.select().from(spaces).where(eq(spaces.id, scan.spaceId));
+  if (siblings.length === 1 && space && metricSpace(space.boundary) && preservesMetricFrame(scan.transform)) return scan;
+  return { ...scan, metadata: { ...scan.metadata, alignmentVerified: false } };
 }
 
 export function scanResponse(scan: Scan) {
@@ -162,7 +173,7 @@ export async function createScan(db: Db, storage: ScanStorage, user: AppUser, sp
   try {
     const [scan] = await db.insert(scans).values({ id, spaceId, ownerId: user.id,
       name: input.name, visibility: input.visibility ?? 'private', transform: input.transform,
-      metadata: input.metadata ?? {}, format: 'glb', status: 'ready', byteSize: bytes.byteLength, objectKey }).returning();
+      metadata: input.metadata ? { ...input.metadata, alignmentSource: input.metadata.alignmentVerified === true ? 'owner' : 'unverified' } : {}, format: 'glb', status: 'ready', byteSize: bytes.byteLength, objectKey }).returning();
     return scanResponse(scan);
   } catch (error) {
     await storage.delete(objectKey).catch(cleanupError => console.error('Scan upload cleanup failed', cleanupError));
@@ -177,8 +188,23 @@ export async function updateScan(db: Db, user: AppUser, id: string, input: z.inf
     const [space] = await db.select().from(spaces).where(eq(spaces.id, scan.spaceId)).limit(1);
     if (space?.visibility !== 'public') throw badRequest('A public scan requires a public space');
   }
-  const [updated] = await db.update(scans).set({ ...input, updatedAt: new Date() }).where(eq(scans.id, scan.id)).returning();
-  return scanResponse(updated);
+  const next = { ...input };
+  if (input.metadata) {
+    // An explicit owner alignment assertion replaces the automatic single-capture assertion.
+    next.metadata = { ...input.metadata, alignmentSource: input.metadata.alignmentVerified === true
+      ? input.metadata.alignmentSource === 'single-capture' && scan.metadata.alignmentSource === 'single-capture' ? 'single-capture' : 'owner'
+      : 'unverified' };
+  }
+  if (input.transform && JSON.stringify(input.transform) !== JSON.stringify(scan.transform)) {
+    const metadata = { ...scan.metadata, ...next.metadata };
+    if (!input.metadata) metadata.alignmentVerified = false;
+    if (!preservesMetricFrame(input.transform) && !input.metadata?.coordinateSystem) {
+      metadata.coordinateSystem = { ...(metadata.coordinateSystem as object), calibrated: false };
+    }
+    next.metadata = metadata;
+  }
+  const [updated] = await db.update(scans).set({ ...next, updatedAt: new Date() }).where(eq(scans.id, scan.id)).returning();
+  return scanResponse(await effectiveScanCalibration(db, updated));
 }
 
 export async function deleteScan(db: Db, storage: ScanStorage, user: AppUser, id: string) {

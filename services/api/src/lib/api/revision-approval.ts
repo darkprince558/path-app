@@ -1,19 +1,21 @@
-import { randomUUID } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { randomUUID, createHash } from 'node:crypto';
+import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { connectDatabase } from '../../db/client';
 import { captures, navNodes, processingJobs, scanRevisions, scans, spaces } from '../../db/schema';
 import type { AppUser } from '../auth/user-sync';
 import type { ScanStorage } from '../storage';
 import type { RevisionStorage } from '../storage/revisions';
+import { canonicalJson, captureManifest } from '../capture/contract';
+import { metricCoordinates, metricSpace, preservesMetricFrame, validatedMetricCapture } from '../processing/calibration';
 import { badRequest, conflict, notFound } from './http';
 import { name, uuid, visibility } from './validation';
-import { scanResponse, transform, validateGlb } from './scans';
+import { effectiveScanCalibration, scanResponse, transform, validateGlb } from './scans';
 
 const coordinateSystem = z.object({ units: z.enum(['metres', 'relative']), upAxis: z.literal('Y'), calibrated: z.boolean() }).strict();
 export const approvalInput = z.object({ name, visibility: visibility.default('private'),
   transform: transform.optional(), coordinateSystem: coordinateSystem.optional(),
-  alignmentVerified: z.boolean().default(false),
+  alignmentVerified: z.boolean().optional(),
 }).strict();
 const outputFile = z.object({ path: z.enum(['master.glb', 'scene.glb', 'scene.ply', 'preview.jpg', 'report.json']),
   objectKey: z.string(), byteSize: z.number().int().positive().max(32 * 1024 * 1024),
@@ -58,9 +60,10 @@ export async function approveRevision(db: ReturnType<typeof connectDatabase>['db
       const [existing] = await tx.select().from(scans).where(eq(scans.sourceRevisionId, revision.id));
       if (existing) {
         if (revision.status !== 'approved') throw conflict('Revision approval has been withdrawn');
-        return { scan: scanResponse(existing), created: false, sharePath: `/s/${existing.shareId}` };
+        return { scan: scanResponse(await effectiveScanCalibration(tx, existing)), created: false, sharePath: `/s/${existing.shareId}` };
       }
       if (input.visibility === 'public' && space.visibility !== 'public') throw badRequest('A public scan requires a public space');
+      await tx.select({ id: spaces.id }).from(spaces).where(eq(spaces.id, space.id)).for('update');
       const files = revisionFiles(revision);
       let scene: Uint8Array | undefined;
       for (const file of files) {
@@ -69,15 +72,23 @@ export async function approveRevision(db: ReturnType<typeof connectDatabase>['db
       }
       if (!scene) throw conflict('Revision scene is missing');
       validateGlb(scene, 'scene.glb');
+      const matrix = input.transform ?? transform.parse(revision.transform);
+      const manifest = captureManifest.parse(capture.manifest);
+      const metric = createHash('sha256').update(canonicalJson(manifest)).digest('hex') === job.inputSha256 &&
+        validatedMetricCapture(manifest, revision.metadata.report as Record<string, unknown> ?? {},
+          { id: job.configuration.processorId, version: job.processorVersion }, job.inputSha256) && preservesMetricFrame(matrix);
       const frame = coordinateSystem.safeParse(revision.metadata.coordinateSystem);
-      const coordinates = input.coordinateSystem ?? (frame.success ? frame.data : {
-        units: (revision.metadata.coordinateSystem as { units?: unknown })?.units === 'metres' ? 'metres' as const : 'relative' as const,
+      const coordinates = input.coordinateSystem ?? (metric ? metricCoordinates : {
+        units: frame.success ? frame.data.units : (revision.metadata.coordinateSystem as { units?: unknown })?.units === 'metres' ? 'metres' as const : 'relative' as const,
         upAxis: 'Y' as const, calibrated: false,
       });
+      const [otherScan] = await tx.select({ id: scans.id }).from(scans).where(and(eq(scans.spaceId, space.id), eq(scans.status, 'ready'), eq(scans.format, 'glb'))).limit(1);
       const [node] = await tx.select({ id: navNodes.id }).from(navNodes).where(eq(navNodes.spaceId, space.id)).limit(1);
       const declared = space.boundary?.coordinateSystem as { units?: string; calibrated?: boolean } | undefined;
       const spaceUnits = declared?.units === 'metres' && declared.calibrated === true ? 'metres' : 'relative';
-      if (node && (!input.alignmentVerified || coordinates.units !== spaceUnits || (spaceUnits === 'metres' && !coordinates.calibrated))) {
+      const automaticAlignment = metric && metricSpace(space.boundary) && coordinates.units === 'metres' && coordinates.calibrated && !otherScan && !node;
+      const alignmentVerified = input.alignmentVerified ?? automaticAlignment;
+      if (node && (!alignmentVerified || coordinates.units !== spaceUnits || (spaceUnits === 'metres' && !coordinates.calibrated))) {
         throw conflict('Confirm alignment and matching space units before adding a model to an existing navigation graph');
       }
       const id = randomUUID(); newKey = `scans/${id}.glb`;
@@ -85,8 +96,8 @@ export async function approveRevision(db: ReturnType<typeof connectDatabase>['db
       const now = new Date();
       const [scan] = await tx.insert(scans).values({ id, sourceRevisionId: revision.id, ownerId: user.id,
         spaceId: space.id, name: input.name, visibility: input.visibility, format: 'glb', status: 'ready',
-        objectKey: newKey, byteSize: scene.length, transform: input.transform ?? transform.parse(revision.transform),
-        metadata: { coordinateSystem: coordinates, alignmentVerified: input.alignmentVerified,
+        objectKey: newKey, byteSize: scene.length, transform: matrix,
+        metadata: { coordinateSystem: coordinates, alignmentVerified, alignmentSource: input.alignmentVerified === true ? 'owner' : automaticAlignment && alignmentVerified ? 'single-capture' : 'unverified',
           processing: { processorId: job.configuration.processorId, processorVersion: job.processorVersion,
             mock: (revision.metadata.report as { mock?: boolean } | undefined)?.mock === true } },
       }).returning();
