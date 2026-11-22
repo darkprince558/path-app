@@ -284,3 +284,22 @@ export const landmarkCues = pgTable('landmark_cues', {
   check('landmark_cues_decision_pair_check', sql`(${t.decidedBy} IS NULL) = (${t.decidedAt} IS NULL)`),
   check('landmark_cues_decision_state_check', sql`(${t.status} IN ('approved', 'rejected')) = (${t.decidedBy} IS NOT NULL)`),
 ]);
+
+// Named places pinned on a scan ("Room 2", "Washroom"), so first-time visitors know what is
+// where and can pick a destination. Positions are in the scan's own model coordinates, so a
+// pin stays on its spot if the owner later re-aligns the scan. Readable wherever the scan's
+// share is readable; only the scan's owner can change them.
+export const scanPlaceCategory = pgEnum('scan_place_category',
+  ['room', 'entrance', 'exit', 'washroom', 'stairs', 'elevator', 'office', 'food', 'info', 'other']);
+
+export const scanPlaces = pgTable('scan_places', {
+  id: id(), scanId: uuid('scan_id').notNull().references(() => scans.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(), category: scanPlaceCategory('category').default('room').notNull(),
+  x: doublePrecision('x').notNull(), y: doublePrecision('y').notNull(), z: doublePrecision('z').notNull(),
+  createdBy: uuid('created_by').notNull().references(() => users.id),
+  createdAt: createdAt(), updatedAt: updatedAt(),
+}, (t) => [
+  index('scan_places_scan_idx').on(t.scanId),
+  check('scan_places_name_check', sql`length(trim(${t.name})) BETWEEN 1 AND 80`),
+  check('scan_places_finite_check', sql`${t.x} > '-Infinity'::float8 AND ${t.x} < 'Infinity'::float8 AND ${t.y} > '-Infinity'::float8 AND ${t.y} < 'Infinity'::float8 AND ${t.z} > '-Infinity'::float8 AND ${t.z} < 'Infinity'::float8`),
+]);

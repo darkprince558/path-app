@@ -4,6 +4,8 @@ export interface Option<T extends string> {
   value: T;
   label: ReactNode;
   detail?: ReactNode;
+  /** This one option can't be chosen right now. */
+  disabled?: boolean;
 }
 
 /**
@@ -29,20 +31,21 @@ export default function OptionCards<T extends string>({
     <div className={`grid gap-2 ${columns === 3 ? "sm:grid-cols-3" : ""}`}>
       {options.map((option) => {
         const checked = option.value === value;
+        const off = disabled || option.disabled;
         const detailId = option.detail ? `${name}-${option.value}-detail` : undefined;
         return (
           <label
             key={option.value}
             className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border-2 px-4 py-3 transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--focus-ring) ${
               checked ? "border-forest bg-surface ring-2 ring-forest ring-inset" : "border-forest/15 bg-surface hover:border-forest/40"
-            } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+            } ${off ? "cursor-not-allowed opacity-60" : ""}`}
           >
             <input
               type="radio"
               name={name}
               value={option.value}
               checked={checked}
-              disabled={disabled}
+              disabled={off}
               aria-describedby={detailId}
               onChange={() => onChange(option.value)}
               className="mt-1 size-5 shrink-0 accent-forest focus-visible:outline-none"

@@ -23,6 +23,35 @@ MAX_NAME_LENGTH = 80
 DEFAULT_NAME = "Untitled map"
 PATCH_FIELDS = {"name", "visibility", "viewerIds"}
 CUE_ID = r"[a-f0-9]{32}"
+PLACE_ID = r"[a-f0-9]{32}"
+PLACE_CATEGORIES = ("room", "entrance", "exit", "washroom", "stairs", "elevator", "office", "food", "info", "other")
+MAX_PLACES = 200
+
+
+def clean_place(change, partial):
+    """Validates a place body like the Next.js API. Returns (fields, error)."""
+    allowed = {"name", "category", "position"}
+    if not isinstance(change, dict) or set(change) - allowed or (partial and not change):
+        return None, "Expected name, category or position"
+    fields = {}
+    if "name" in change or not partial:
+        name = clean_name(change.get("name"))
+        if name is None:
+            return None, f"Name must be 1-{MAX_NAME_LENGTH} characters"
+        fields["name"] = name
+    if "category" in change or not partial:
+        category = change.get("category", "room")
+        if category not in PLACE_CATEGORIES:
+            return None, "Unknown category"
+        fields["category"] = category
+    if "position" in change or not partial:
+        position = change.get("position")
+        if (not isinstance(position, dict) or set(position) != {"x", "y", "z"} or
+                any(isinstance(position[k], bool) or not isinstance(position[k], (int, float)) or
+                    not abs(position[k]) <= 100_000 for k in "xyz")):
+            return None, "Position must be {x, y, z} numbers"
+        fields["position"] = {k: float(position[k]) for k in "xyz"}
+    return fields, None
 CUE_STATUSES = ("draft", "approved", "rejected")
 MAX_INSTRUCTION_LENGTH = 200
 
@@ -100,6 +129,8 @@ class ScanServer(ThreadingHTTPServer):
         # Landmark cues per share (the mock uses the share ID as its revision ID). Only with --demo-cues.
         self.with_demo_cues = with_demo_cues
         self.cues = {}
+        # Named places pinned on each share's model: {share_id: [place, ...]}.
+        self.places = {}
         super().__init__(("127.0.0.1", port), ScanHandler)
 
     def newest_first(self, keep):
@@ -159,8 +190,55 @@ class ScanHandler(BaseHTTPRequestHandler):
             return None, None
         return share_id, scan
 
+    def read_json(self):
+        """The JSON body, or None after replying with the error."""
+        if self.headers.get_content_type() != "application/json":
+            self.reject(415, "Expected application/json")
+            return None
+        data = self.read_body(16 * 1024)
+        if data is None:
+            return None
+        try:
+            return json.loads(data)
+        except (ValueError, RecursionError):
+            self.json_reply(400, {"error": "Invalid JSON"})
+            return None
+
+    def owned_place(self, place_id):
+        """(share_id, place) for a place on one of the caller's scans, else (None, None)."""
+        for share_id, places in self.server.places.copy().items():
+            scan = self.server.scans.get(share_id)
+            for place in places:
+                if place["id"] == place_id and scan is not None and self.user() == scan.owner:
+                    return share_id, place
+        return None, None
+
+    def create_place(self, share_id):
+        """POST /api/scans/<id>/places: the owner pins {name, category?, position}."""
+        if self.user() is None:
+            return self.reject(401, "X-Dev-User required")
+        scan = self.server.scans.get(share_id)
+        if scan is None or self.user() != scan.owner:
+            return self.reject(404, "Unknown scan")
+        change = self.read_json()
+        if change is None:
+            return
+        fields, error = clean_place(change, partial=False)
+        if error:
+            return self.json_reply(400, {"error": error})
+        places = self.server.places.setdefault(share_id, [])
+        if len(places) >= MAX_PLACES:
+            return self.json_reply(409, {"error": f"A map can have at most {MAX_PLACES} places"})
+        _, updated_at = now()
+        place = {"id": secrets.token_hex(16), "scanId": share_id, **fields, "updatedAt": updated_at}
+        places.append(place)
+        self.json_reply(201, {"place": place})
+
     def do_POST(self):
         target = urlsplit(self.path)
+        place_match = re.fullmatch(rf"/api/scans/({SHARE_ID})/places", target.path)
+        if place_match:
+            return self.create_place(place_match.group(1))
         if target.path != "/api/scans":
             return self.reject(404, "Unknown endpoint")
         user = self.user()
@@ -230,6 +308,20 @@ class ScanHandler(BaseHTTPRequestHandler):
         cue_match = re.fullmatch(rf"/api/cues/({CUE_ID})", urlsplit(self.path).path)
         if cue_match:
             return self.patch_cue(cue_match.group(1))
+        place_match = re.fullmatch(rf"/api/places/({PLACE_ID})", urlsplit(self.path).path)
+        if place_match:
+            share_id, place = self.owned_place(place_match.group(1))
+            if place is None:
+                return self.reject(404, "Unknown place")
+            change = self.read_json()
+            if change is None:
+                return
+            fields, error = clean_place(change, partial=True)
+            if error:
+                return self.json_reply(400, {"error": error})
+            _, updated_at = now()
+            place.update(fields, updatedAt=updated_at)
+            return self.json_reply(200, {"place": place})
         share_id, scan = self.owned_scan()
         if scan is None:
             return self.reject(404, "Unknown scan")
@@ -261,10 +353,18 @@ class ScanHandler(BaseHTTPRequestHandler):
                               "viewerIds": sorted(scan.viewers)})
 
     def do_DELETE(self):
+        place_match = re.fullmatch(rf"/api/places/({PLACE_ID})", urlsplit(self.path).path)
+        if place_match:
+            share_id, place = self.owned_place(place_match.group(1))
+            if place is None:
+                return self.json_reply(404, {"error": "Unknown place"})
+            self.server.places[share_id] = [p for p in self.server.places[share_id] if p["id"] != place["id"]]
+            return self.reply(204, "application/json", b"")
         share_id, scan = self.owned_scan()
         if scan is None:
             return self.json_reply(404, {"error": "Unknown scan"})
         self.server.scans.pop(share_id, None)
+        self.server.places.pop(share_id, None)
         scan.path.unlink(missing_ok=True)
         self.reply(204, "application/json", b"")
 
@@ -299,6 +399,13 @@ class ScanHandler(BaseHTTPRequestHandler):
                 return self.json_reply(404, {"error": "Unknown share"})
             approved = [c for c in self.server.cues.get(share_id, []) if c["status"] == "approved"]
             return self.json_reply(200, {"cues": approved})
+        places_match = re.fullmatch(rf"/api/shares/({SHARE_ID})/places", target)
+        if places_match:
+            scan = self.server.scans.get(places_match.group(1))
+            if scan is None or not scan.visible_to(self.user()):
+                return self.json_reply(404, {"error": "Unknown share"})
+            places = sorted(self.server.places.get(places_match.group(1), []), key=lambda p: (p["name"], p["id"]))
+            return self.json_reply(200, {"places": places})
         match = re.fullmatch(rf"/api/shares/({SHARE_ID})(/asset)?|/s/({SHARE_ID})", target)
         if not match:
             return self.json_reply(404, {"error": "Unknown share"})

@@ -54,3 +54,21 @@ The GLB validator checks the GLB v2 header, declared length, JSON chunk and chun
 The normal automated database test uses a tiny synthetic GLB and a disposable PostgreSQL database. It verifies multiple scans, owner-only writes, public and private downloads, immediate visibility changes, and that event membership alone cannot reveal private scan bytes. A scan viewer grant also requires access to the parent space; revoking that space access blocks the next download. Graph tests reject foreign-space nodes and reverse traversal of one-way edges. Browser imports support public, unlisted and private visibility; changing visibility immediately rechecks metadata and asset reads. Unlisted containing spaces are excluded from anonymous space discovery. Production file imports accept GLB; PLY remains supported only by the Python fixture mock.
 
 Run `TEST_DATABASE_URL=<disposable-migrated-url> npm test` with the Auth0 configuration from the API README. To exercise a real capture without adding private geometry to Git, also set `REAL_SCAN_GLB_FILE=/absolute/path/to/room.glb`. That optional test parses multipart form data, stores the model through the production scan service, checks its public download SHA-256 and metadata, and changes it to private to verify denial. It is skipped when no real file is supplied and does not verify rendering, physical scale, or an Auth0 browser login. Do not run these tests against a shared Tiger Data database.
+
+## Map places
+
+Owners pin named places ("Room 2", "Washroom") on a scan so first-time visitors know what is where. Migration `0006_scan_places.sql` adds the `scan_places` table. It only creates a new table and enum. Review it, then apply it with `npm run db:migrate`, the same way as the earlier migrations.
+
+| Request | Behavior |
+| --- | --- |
+| `GET /api/shares/:shareId/places` | Anyone who may open the share gets `{places: [{id, scanId, name, category, position: {x,y,z}, updatedAt}]}`, sorted by name. Private maps return 404 to everyone but the owner and granted viewers, exactly like the share. |
+| `POST /api/scans/:scanId/places` | The owner sends `{name, category?, position}`. Returns 201 `{place}`. Another signed-in user gets 403; signed-out callers get 401. |
+| `PATCH /api/places/:id` | The owner sends any of `{name, category, position}`. Returns `{place}`. Other users get 404. |
+| `DELETE /api/places/:id` | The owner removes a place. Returns 204. |
+
+- **Names:** 1–80 characters, with whitespace collapsed and no control characters.
+- **`category`:** one of `room`, `entrance`, `exit`, `washroom`, `stairs`, `elevator`, `office`, `food`, `info` or `other`. The default is `room`.
+- **`position`:** in the scan's **own model coordinates** (the GLB before `scan.transform`), so a pin stays on its spot if the owner re-aligns the map. Coordinates must be finite and within ±100 km.
+- **Limits:** a map holds at most 200 places. Places are deleted with their scan.
+
+The website requires at least one place before a GLB map can be shared beyond Private. That rule lives in the website, not the API, so existing uploads and scripts keep working. The Python mock implements the same endpoints (it uses the share ID as the scan ID), and `tools/smoke_scan_mock.py` checks them.

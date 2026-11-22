@@ -99,6 +99,12 @@ with no visible change, and still routes. Smaller files load faster on phones an
 under the 400 MB limit. Clean up first (`scan_fill_holes.py`, which also drops floating
 fragments), then compress: compressed files can't be read back by `scan_fill_holes.py`.
 
+## Places on a map
+
+New GLB maps upload as **Private**. The upload's finish screen leads to **Next: label places**. On **Manage map**, the owner double-clicks the floor in front of a room or door, names it and picks a type (`PlaceEditor`). Pins can be renamed, re-typed, moved or removed later. Sharing beyond Private stays locked (`VisibilityPicker lockedReason`) until the map has at least one place.
+
+Guests see each place as a floating label on the 3D model (`SpaceViewer places`), plus a **Places · N** list. With automatic routing on, tapping a label sets the start, then the destination. Place positions are in the model's own coordinates, so pins follow the model's saved transform. API contract: [Map places](../../docs/scan-api.md#map-places).
+
 ## Run locally
 
 Requires Node 22+ and pnpm. Set `API_TARGET=http://127.0.0.1:8001` for the legacy mock.

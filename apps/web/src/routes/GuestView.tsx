@@ -2,10 +2,11 @@ import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from
 import { singleScanNavigation } from "../lib/automatic-navigation";
 import { Wordmark } from "../components/Logo";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
-import { ArrowLeft, Milestone, Settings as SettingsIcon, X } from "lucide-react";
+import { ArrowLeft, MapPin, Milestone, Settings as SettingsIcon, X } from "lucide-react";
 import { LoadingPanel, MessagePanel } from "../components/StatusPanel";
 import type { SpaceModel } from "../components/SpaceViewer";
 import { fetchShareCues, type Cue } from "../lib/cues";
+import { CATEGORY_LABEL, fetchPlaces, type Place } from "../lib/places";
 import { readMapOrigin } from "../lib/maps";
 import { useReducedMotion, useTripAvoidStairs } from "../lib/preferences";
 import type { PointScan } from "../lib/ply";
@@ -52,6 +53,8 @@ export default function GuestView() {
   const resetView = useCallback(() => setResetToken((n) => n + 1), []);
   // Approved landmark directions load alongside the map; without any, nothing extra shows.
   const [cues, setCues] = useState<Cue[]>([]);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -59,6 +62,10 @@ export default function GuestView() {
     void fetchShareCues(shareId, controller.signal).then((list) => {
       if (!controller.signal.aborted) setCues(list);
     });
+    setPlaces([]);
+    void fetchPlaces(shareId, controller.signal).then((list) => {
+      if (!controller.signal.aborted) setPlaces(list);
+    }).catch(() => {});
     return () => controller.abort();
   }, [shareId]);
 
@@ -172,10 +179,16 @@ export default function GuestView() {
           avoidStairs={avoidStairs}
           onAvoidStairsChange={setAvoidStairs}
           cues={cues}
+          places={places}
+          selectedPlace={selectedPlace}
+          onSelectPlace={setSelectedPlace}
         >
           <div className="absolute inset-0 touch-none" onPointerDown={() => setTouched(true)}>
             <Suspense fallback={<LoadingPanel label="Building the 3D view…" />}>
               <SpaceViewer
+                places={places.map((place) => ({ id: place.id, name: place.name, categoryLabel: CATEGORY_LABEL[place.category], local: place.position }))}
+                highlightPlaceId={selectedPlace}
+                onPlaceSelect={setSelectedPlace}
                 key={shareId}
                 automaticNavigation
                 initialAutomaticNavigation
@@ -234,6 +247,9 @@ function ViewerChrome({
   avoidStairs,
   onAvoidStairsChange,
   cues,
+  places = [],
+  selectedPlace = null,
+  onSelectPlace,
   children,
 }: {
   /** Map name from the API, if it sent one. */
@@ -244,6 +260,10 @@ function ViewerChrome({
   onAvoidStairsChange: (value: boolean) => void;
   /** Approved landmark directions for this map, if any. */
   cues: Cue[];
+  /** Named places the owner pinned on the map. */
+  places?: Place[];
+  selectedPlace?: string | null;
+  onSelectPlace?: (id: string) => void;
   /** The 3D map, placed between the top bar and the bottom controls in reading order. */
   children: ReactNode;
 }) {
@@ -256,6 +276,7 @@ function ViewerChrome({
   // A map opened straight from a link or QR has no previous page in Not 404.
   const canGoBack = origin !== null && (window.history.state as { idx?: number } | null)?.idx !== 0;
   const [directionsOpen, setDirectionsOpen] = useState(false);
+  const [placesOpen, setPlacesOpen] = useState(false);
   return (
     <>
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-gradient-to-b from-night/90 to-transparent px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-8">
@@ -315,13 +336,27 @@ function ViewerChrome({
               type="button"
               aria-expanded={directionsOpen}
               aria-controls="map-directions"
-              onClick={() => setDirectionsOpen((open) => !open)}
+              onClick={() => { setDirectionsOpen((open) => !open); setPlacesOpen(false); }}
               className={`pointer-events-auto flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold ring-1 ${
                 directionsOpen ? "bg-sage text-ink ring-sage" : "bg-night/80 text-paper ring-sage/50"
               }`}
             >
               <Milestone className="size-5" aria-hidden />
               Directions · {cues.length}
+            </button>
+          ) : null}
+          {places.length ? (
+            <button
+              type="button"
+              aria-expanded={placesOpen}
+              aria-controls="map-places"
+              onClick={() => { setPlacesOpen((open) => !open); setDirectionsOpen(false); }}
+              className={`pointer-events-auto flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold ring-1 ${
+                placesOpen ? "bg-sage text-ink ring-sage" : "bg-night/80 text-paper ring-sage/50"
+              }`}
+            >
+              <MapPin className="size-5" aria-hidden />
+              Places · {places.length}
             </button>
           ) : null}
           <button
@@ -332,6 +367,47 @@ function ViewerChrome({
             Reset view
           </button>
         </div>
+
+        {places.length && placesOpen ? (
+          <section
+            id="map-places"
+            aria-labelledby="map-places-title"
+            className="pointer-events-auto mx-auto max-h-[40dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-night/95 p-4 text-paper ring-1 ring-sage/40"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h2 id="map-places-title" className="font-display text-lg font-black">
+                Places
+              </h2>
+              <button
+                type="button"
+                onClick={() => setPlacesOpen(false)}
+                aria-label="Hide places"
+                className="-mt-1 -mr-1 grid size-11 shrink-0 place-items-center rounded-full text-paper ring-1 ring-sage/40"
+              >
+                <X className="size-5" aria-hidden />
+              </button>
+            </div>
+            <p className="mt-1 text-sm text-sage">Tap a label on the map to choose it as your start or destination.</p>
+            <ul className="mt-2 grid gap-2">
+              {places.map((place) => (
+                <li key={place.id}>
+                  <button
+                    type="button"
+                    aria-pressed={selectedPlace === place.id}
+                    onClick={() => onSelectPlace?.(place.id)}
+                    className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left ring-1 ${
+                      selectedPlace === place.id ? "bg-amber-300 text-night ring-amber-500" : "ring-sage/30"
+                    }`}
+                  >
+                    <MapPin className="size-5 shrink-0" aria-hidden />
+                    <span className="text-lg leading-snug">{place.name}</span>
+                    <span className="ml-auto text-sm opacity-80">{CATEGORY_LABEL[place.category]}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         {cues.length && directionsOpen ? (
           <section
