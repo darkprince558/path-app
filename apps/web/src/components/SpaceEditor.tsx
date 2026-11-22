@@ -24,6 +24,8 @@ export default function SpaceEditor({ space, scans, graph, paths, picked, onChan
   const [b, setB] = useState<PickedPoint | null>(null);
   const [measured, setMeasured] = useState(1);
   const [calibration, setCalibration] = useState<Record<string, unknown> | undefined>();
+  const [alignmentChanged, setAlignmentChanged] = useState(false);
+  const [metricVerified, setMetricVerified] = useState(false);
   const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -40,7 +42,9 @@ export default function SpaceEditor({ space, scans, graph, paths, picked, onChan
     setMatrix(JSON.stringify(values)); setA(null); setB(null);
     const controls = alignmentControls(values);
     setScale(controls?.scale ?? 1); setRotation(controls?.rotation ?? zero); setTranslation(controls?.translation ?? zero);
-    setVerified(selectedScan?.metadata.alignmentVerified === true);
+    setVerified(selectedScan?.metadata.alignmentVerified === true); setAlignmentChanged(false);
+    const declared = selectedScan?.metadata.coordinateSystem as { units?: string; calibrated?: boolean } | undefined;
+    setMetricVerified(declared?.units === "metres" && declared.calibrated === true);
     setCalibration(selectedScan?.metadata.calibration as Record<string, unknown> | undefined);
   }, [selectedScan]);
   async function perform(action: () => Promise<unknown>) {
@@ -57,7 +61,7 @@ export default function SpaceEditor({ space, scans, graph, paths, picked, onChan
   function metadata() {
     const result = { ...selectedScan?.metadata };
     delete result.calibration;
-    return { ...result, coordinateSystem: { ...frame, calibrated: frame.units === "metres" && verified }, alignmentVerified: verified,
+    return { ...result, coordinateSystem: { ...frame, calibrated: frame.units === "metres" && metricVerified }, alignmentVerified: verified, alignmentSource: verified && alignmentChanged ? "owner" : result.alignmentSource ?? "owner",
       ...(calibration ? { calibration } : {}) };
   }
   async function upload(event: FormEvent<HTMLFormElement>) {
@@ -77,7 +81,7 @@ export default function SpaceEditor({ space, scans, graph, paths, picked, onChan
       const current = alignmentControls(transform());
       if (!current) throw new Error("Two-point calibration requires a uniform-scale alignment. Restore a uniform transform first.");
       setScale(next); setCalibration({ sourceDistance: measured / next, measuredDistanceMetres: measured, scale: next });
-      setRotation(current.rotation); setTranslation(current.translation); setVerified(false);
+      setRotation(current.rotation); setTranslation(current.translation); setVerified(false); setMetricVerified(false);
       setMatrix(JSON.stringify(alignmentMatrix(next, current.rotation, current.translation)));
     } catch (e) { setError((e as Error).message); }
   }
@@ -85,7 +89,7 @@ export default function SpaceEditor({ space, scans, graph, paths, picked, onChan
     <div className="editor-grid mt-3">
       {error && <p role="alert" className="text-rust">{error}</p>}{notice && <p role="status">{notice}</p>}
       <details><summary className="cursor-pointer">Upload and align scans</summary><div className="editor-grid mt-3">
-        <label>Scan<select value={selected} onChange={e => setSelected(e.target.value)}><option value="">Upload a new scan</option>{scans.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+        <label>Scan<select aria-label="Scan" value={selected} onChange={e => setSelected(e.target.value)}><option value="">Upload a new scan</option>{scans.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
         {selectedScan && <label>Scan sharing<select disabled={busy} value={selectedScan.visibility} onChange={e => void perform(() => send(`/api/scans/${selected}`, "PATCH", { visibility: e.target.value }))}><option value="private">Private</option>{space.visibility === "public" && <option value="public">Public</option>}</select></label>}
         {graphExists && selectedScan && <p className="text-sm">Alignment is locked after navigation nodes are added. This keeps the recorded route in place.</p>}
         <fieldset disabled={busy || (graphExists && !!selectedScan)} className="editor-grid">
@@ -93,8 +97,8 @@ export default function SpaceEditor({ space, scans, graph, paths, picked, onChan
           <label>Uniform scale<input type="number" min="0.000001" step="any" value={scale} onChange={e => { setScale(e.target.valueAsNumber); }} /></label>
           <VectorFields label="Rotation in degrees" value={rotation} onChange={setRotation} />
           <VectorFields label="Position" value={translation} onChange={setTranslation} />
-          <button className="secondary-button" onClick={() => { try { setMatrix(JSON.stringify(alignmentMatrix(scale, rotation, translation))); setCalibration(undefined); setVerified(false); setError(""); } catch (e) { setError((e as Error).message); } }}>Use these alignment values</button>
-          <label>Scan-to-space matrix<textarea rows={4} value={matrix} onChange={e => { setMatrix(e.target.value); setCalibration(undefined); setVerified(false); }} /></label>
+          <button className="secondary-button" onClick={() => { try { setMatrix(JSON.stringify(alignmentMatrix(scale, rotation, translation))); setCalibration(undefined); setVerified(false); setMetricVerified(false); setError(""); } catch (e) { setError((e as Error).message); } }}>Use these alignment values</button>
+          <label>Scan-to-space matrix<textarea rows={4} value={matrix} onChange={e => { setMatrix(e.target.value); setCalibration(undefined); setVerified(false); setMetricVerified(false); }} /></label>
           {selectedScan && frame.units === "metres" && <div className="editor-grid">
             <p className="text-sm">Double-click two recognizable points on this scan. Enter the distance measured at the venue.</p>
             <button className="secondary-button" disabled={!picked || picked.scanId !== selected} onClick={() => setA(picked)}>Use picked point A{a ? " ✓" : ""}</button>
@@ -103,7 +107,9 @@ export default function SpaceEditor({ space, scans, graph, paths, picked, onChan
             <button className="secondary-button" disabled={!a || !b} onClick={calibrate}>Calculate scale</button>
           </div>}
         </fieldset>
-        <label className="flex gap-2"><input type="checkbox" disabled={busy} checked={verified} onChange={e => setVerified(e.target.checked)} />I verified the floor is Y-up and the origin and {frame.units === "metres" ? "measured scale" : "relative alignment"} match this space.</label>
+        {selectedScan?.sourceRevisionId && <button className="secondary-button" disabled={busy} onClick={() => void perform(() => send(`/api/scans/${selected}/calibration`, "POST", {}))}>Restore validated LiDAR calibration</button>}
+        {frame.units === "metres" && <label className="flex gap-2"><input type="checkbox" disabled={busy} checked={metricVerified} onChange={e => setMetricVerified(e.target.checked)} />I independently verified this scan's metric scale (metres).</label>}
+        <label className="flex gap-2"><input type="checkbox" disabled={busy} checked={verified} onChange={e => { setVerified(e.target.checked); setAlignmentChanged(true); }} />I verified the floor is Y-up and the origin and alignment match this space. Scale is verified separately.</label>
         {selectedScan && <button className="action-button" disabled={busy} onClick={() => void perform(() => send(`/api/scans/${selected}`, "PATCH", { transform: graphExists ? selectedScan.transform : transform(), metadata: metadata() }))}>{graphExists ? "Save alignment confirmation" : "Save scan alignment"}</button>}
         {!selectedScan && <form onSubmit={upload} className="editor-grid">
           <label>Scan name<input name="name" required maxLength={200} /></label>

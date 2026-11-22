@@ -2,6 +2,18 @@
 
 Arielle owns the website: the signed-in home, upload and sharing, and the guest 3D viewer. Build the website here. Start with an upload control, the three visibility choices, a copy-link action and a guest route at `/s/<shareId>`. Display upload, loading and processing failures where they occur.
 
+## Automatic routes from approved scans
+
+The existing space and shared-GLB viewers now have **Automatic route** and
+**Show NavMesh debug** controls. Verify calibrated metre alignment, enable automatic
+routing, then double-click two floor points. Manual graph and saved routes remain
+available when the mode is off. See the [full workflow and synthetic tests](../../docs/scan-automatic-routing.md).
+
+Calibration follows validated native capture provenance. To repair an old approved
+scan, use **Owner tools → Upload and align scans → Restore validated LiDAR calibration**.
+Scale and alignment confirmations are separate for imports and mocks. See the
+[calibration runbook](../../docs/scan-calibration.md).
+
 ## Automatic navigation demo
 
 Task 6 adds `/navmesh-demo`: Recast NavMesh generation from a synthetic room,
@@ -82,6 +94,7 @@ Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), c
 | `src/routes/GuestView.tsx` | `/s/:shareId`: PLY point clouds (`ScanViewer`) or GLB models (`SpaceViewer`, with the share's saved transform), with loading, not-found/denied, download and parse-failure states. When the owner approved landmark directions, a **Directions** button opens them above the map controls, each marked "Approved by the map owner". |
 | `src/routes/SpaceView.tsx` | Accessible Next.js scans and graph, route selection, owner upload/alignment and graph tools. |
 | `src/components/SpaceViewer.tsx` | GLTFLoader meshes/materials, combined transformed bounds, graph/route overlays and orbit controls. |
+| `src/lib/scan-surfaces.ts` | Makes phone scans easier to read without changing their geometry: hides ARKit ceiling faces (a **Show ceiling** button brings them back; clicks pass through hidden ones), turns on the GPU's best anisotropic filtering for photo textures, and converts Path Capture vertex colours from camera sRGB to linear so they no longer look washed out. Test room: `fixtures/venue/classified-room.glb` from `tools/make_classified_room.py`. |
 | `src/routes/Home.tsx`, `src/landing/` | The landing page at `/`, described below. |
 
 ## Landing page

@@ -109,3 +109,70 @@ test("extraction preserves hierarchy, scan transform and winding under reflectio
     assert.equal(route.ok, true); assert.ok(route.distance > 10);
   } finally { nav.dispose(); disposeRoom(room); }
 });
+
+test("approved GLB routes through doorway at elevated height with transforms applied once", async () => {
+  const { roomGlb, approvedTransform, spacePoint } = await import("./helpers/room-glb.ts");
+  const { parseGlb } = await import("../src/lib/glb.ts");
+  for (const closed of [false, true]) {
+    const model = await parseGlb(roomGlb({ closed }), approvedTransform);
+    const nav = await buildNavMesh(trianglesFromObject(model.object));
+    try {
+      const route = nav.route(spacePoint(start), spacePoint(end));
+      assert.equal(route.ok, !closed);
+      if (route.ok) {
+        assert.ok(route.distance > 10 && route.distance < 13);
+        assert.ok(route.points.every(p => Math.abs(p.y - 7.5) < 0.15));
+        for (let i = 1; i < route.points.length; i++) {
+          const a = route.points[i - 1], b = route.points[i];
+          if ((a.x - 11) * (b.x - 11) <= 0 && a.x !== b.x) {
+            const z = a.z + (b.z - a.z) * ((11 - a.x) / (b.x - a.x));
+            assert.ok(z >= -3.7 && z <= -2.3, `route crossed wall at ${z}`);
+          }
+        }
+      }
+      assert.equal(nav.route(start, end).ok, false, "raw GLB coordinates must not reach translated floor");
+      assert.equal(nav.route({ ...spacePoint(start), y: 0 }, spacePoint(end)).ok, false);
+    } finally { nav.dispose(); model.dispose(); }
+  }
+});
+
+test("automatic routing requires calibrated and verified coordinate declarations", async () => {
+  const { automaticNavigationIssue } = await import("../src/lib/automatic-navigation.ts");
+  const { approvedMetadata, roomGlb, approvedTransform } = await import("./helpers/room-glb.ts");
+  const { parseGlb } = await import("../src/lib/glb.ts");
+  assert.equal(automaticNavigationIssue(approvedMetadata), undefined);
+  for (const metadata of [undefined, {}, { ...approvedMetadata, alignmentVerified: false },
+    { ...approvedMetadata, coordinateSystem: { units: "relative", upAxis: "Y" } },
+    { ...approvedMetadata, coordinateSystem: { units: "metres", upAxis: "Z", calibrated: true } }]) {
+    assert.match(automaticNavigationIssue(metadata), /requires/);
+  }
+  const model = await parseGlb(roomGlb({ noFloor: true }), approvedTransform);
+  try { await assert.rejects(buildNavMesh(trianglesFromObject(model.object)), /empty bounds|walkable|failed/); }
+  finally { model.dispose(); }
+});
+
+test("stacked floors at arbitrary heights remain independent without a traversable connector", async () => {
+  const group = new Group(), rooms = [createRoom(), createRoom()];
+  rooms[0].position.y = -3.25; rooms[1].position.y = 2.75;
+  for (const room of rooms) group.add(room);
+  const nav = await buildNavMesh(trianglesFromObject(group));
+  try {
+    for (const y of [-3.25, 2.75]) assert.equal(nav.route({ ...start, y }, { ...end, y }).ok, true);
+    const route = nav.route({ ...start, y: -3.25 }, { ...end, y: 2.75 });
+    assert.equal(route.ok, false); assert.match(route.message, /No complete route/);
+  } finally { nav.dispose(); for (const room of rooms) disposeRoom(room); }
+});
+
+test("viewer eligibility keeps metric calibration independent from alignment", async () => {
+  const { automaticNavigationIssue } = await import("../src/lib/automatic-navigation.ts");
+  const space = { boundary: { coordinateSystem: { units: "metres", upAxis: "Y", calibrated: true } } };
+  for (const metadata of [
+    { alignmentVerified: true, coordinateSystem: { units: "relative", upAxis: "Y", calibrated: false } },
+    { alignmentVerified: false, coordinateSystem: { units: "metres", upAxis: "Y", calibrated: true } },
+    { alignmentVerified: true, coordinateSystem: { units: "metres", upAxis: "Y", calibrated: false } },
+  ]) {
+    assert.match(automaticNavigationIssue(metadata), /requires/);
+  }
+  const automatic = { alignmentVerified: true, alignmentSource: "single-capture", coordinateSystem: space.boundary.coordinateSystem };
+  assert.equal(automaticNavigationIssue(automatic), undefined);
+});

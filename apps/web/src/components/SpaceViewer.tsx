@@ -1,8 +1,25 @@
 import { Line, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Box3, MathUtils, MOUSE, Sphere, TOUCH, Vector3 } from "three";
+import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Box3, DoubleSide, BufferGeometry, Float32BufferAttribute, MathUtils, MOUSE, Sphere, TOUCH, Vector3, type Object3D } from "three";
 import { parseGlb, type GlbModel } from "../lib/glb";
+import { prepareScanSurfaces, type ScanSurfaces } from "../lib/scan-surfaces";
+import type { AutomaticState } from "./ScanNavigation";
+const ScanNavigation = lazy(() => import("./ScanNavigation"));
+import type { NavigationMesh } from "../lib/navmesh";
+
+export function NavMeshOverlay({ navigation }: { navigation: NavigationMesh }) {
+  const geometry = useMemo(() => {
+    const value = new BufferGeometry();
+    value.setAttribute("position", new Float32BufferAttribute(navigation.debug.positions, 3));
+    value.setIndex(navigation.debug.indices); return value;
+  }, [navigation]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return <mesh geometry={geometry} position={[0, 0.025, 0]} raycast={() => {}}>
+    <meshBasicMaterial side={DoubleSide} color="#40d8ac" transparent opacity={0.5} depthWrite={false} polygonOffset polygonOffsetFactor={-1} />
+  </mesh>;
+}
+
 
 export interface SpaceModel {
   id: string;
@@ -21,6 +38,10 @@ export interface SpaceViewerProps {
   route?: ViewerNode[];
   showGraph?: boolean;
   resetToken?: number;
+  automaticNavigation?: boolean;
+  navigationUnavailable?: string;
+  avoidStairs?: boolean;
+  onAutomaticChange?: (enabled: boolean) => void;
   /** Double-click a model to select a surface point. Coordinates are space-local. */
   onPick?: (pick: ModelPick) => void;
   onError?: (message: string) => void;
@@ -81,6 +102,26 @@ function Overlays({ nodes, edges, route, showGraph, radius }: {
   </>;
 }
 
+/**
+ * Scan readability (lib/scan-surfaces.ts): hides ARKit ceiling faces and sharpens photo
+ * textures at a slant. Geometry is untouched, so route finding is unaffected.
+ */
+function ScanLook({ objects, ceilingHidden, onCeiling }: {
+  objects: Object3D[]; ceilingHidden: boolean; onCeiling: (hasCeiling: boolean) => void;
+}) {
+  const gl = useThree((state) => state.gl);
+  const invalidate = useThree((state) => state.invalidate);
+  const [surfaces, setSurfaces] = useState<ScanSurfaces | null>(null);
+  useEffect(() => {
+    const prepared = prepareScanSurfaces(objects, gl.capabilities.getMaxAnisotropy());
+    setSurfaces(prepared);
+    onCeiling(prepared.hasCeiling);
+    return () => { prepared.dispose(); setSurfaces(null); };
+  }, [objects, gl, onCeiling]);
+  useEffect(() => { surfaces?.setCeilingHidden(ceilingHidden); invalidate(); }, [surfaces, ceilingHidden, invalidate]);
+  return null;
+}
+
 class ViewerBoundary extends Component<{ children: ReactNode; onError?: (message: string) => void }, { error: string | null }> {
   state = { error: null as string | null };
   static getDerivedStateFromError(error: Error) { return { error: error.message }; }
@@ -92,7 +133,15 @@ class ViewerBoundary extends Component<{ children: ReactNode; onError?: (message
 
 /** GLBs and overlays share one space frame. The parent owns authenticated downloads. */
 export default function SpaceViewer({ models, nodes, edges, route = [], showGraph = false,
-  resetToken = 0, onPick, onError, onReady }: SpaceViewerProps) {
+  resetToken = 0, onPick, onError, onReady, automaticNavigation = false, navigationUnavailable, avoidStairs = false, onAutomaticChange }: SpaceViewerProps) {
+  const [automatic, setAutomatic] = useState(false);
+  const [debug, setDebug] = useState(false);
+  const [autoState, setAutoState] = useState<AutomaticState | null>(null);
+  const enabled = automatic && automaticNavigation && !navigationUnavailable;
+  useEffect(() => {
+    onAutomaticChange?.(enabled);
+    return () => onAutomaticChange?.(false);
+  }, [enabled, onAutomaticChange]);
   const [loaded, setLoaded] = useState<LoadedModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +176,11 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
     sphere.radius = Math.max(sphere.radius, 0.001);
     return sphere;
   }, [loaded]);
+  const objects = useMemo(() => loaded.map(entry => entry.model.object), [loaded]);
+  const [hasCeiling, setHasCeiling] = useState(false);
+  const [ceilingHidden, setCeilingHidden] = useState(true);
   function pick(event: ThreeEvent<MouseEvent>, entry: LoadedModel) {
+    if (enabled) { event.stopPropagation(); autoState?.pick(event.point); return; }
     if (!onPick) return;
     event.stopPropagation();
     const local = entry.model.object.worldToLocal(event.point.clone());
@@ -136,7 +189,7 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
   }
   if (error) return <p role="alert" className="p-6 text-paper">The model could not be opened: {error}</p>;
   if (loading) return <p role="status" className="p-6 text-paper">Building the 3D view…</p>;
-  return <ViewerBoundary onError={onError}>
+  return <div className="relative h-full w-full"><ViewerBoundary onError={onError}>
     <Canvas dpr={[1, 2]} camera={{ fov: 55 }} gl={{ antialias: true, powerPreference: "high-performance" }}
       fallback={<p role="alert">This browser could not start WebGL. Try another browser or device.</p>}
       aria-label="Room model and navigation route. Drag to orbit; scroll or pinch to zoom.">
@@ -146,11 +199,29 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
       <directionalLight position={[3, 8, 5]} intensity={2} />
       {loaded.map((entry) => <primitive key={entry.id} object={entry.model.object} dispose={null}
         onDoubleClick={(event: ThreeEvent<MouseEvent>) => pick(event, entry)} />)}
-      <Overlays nodes={nodes} edges={edges} route={route} showGraph={showGraph} radius={bounds.radius} />
+      <Overlays nodes={nodes} edges={edges} route={enabled ? (autoState?.points ?? []).map((p, i) => ({ ...p, id: `auto-${i}` })) : route} showGraph={!enabled && showGraph} radius={bounds.radius} />
+      {enabled && debug && autoState?.navigation && <NavMeshOverlay navigation={autoState.navigation} />}
       <OrbitControls makeDefault enableDamping dampingFactor={0.08} rotateSpeed={0.7} zoomSpeed={0.9}
         touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
         mouseButtons={{ LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }} />
       <Framing bounds={bounds} resetToken={resetToken} />
+      <ScanLook objects={objects} ceilingHidden={ceilingHidden} onCeiling={setHasCeiling} />
     </Canvas>
-  </ViewerBoundary>;
+  </ViewerBoundary>
+    {(hasCeiling || automaticNavigation) && <div className="absolute left-3 top-24 z-10 flex w-[min(22rem,calc(100%-1.5rem))] flex-col items-start gap-2 xl-text:top-32">
+      {automaticNavigation && <div className="max-h-[45vh] w-full overflow-auto rounded-xl bg-night/95 p-3 text-paper ring-1 ring-sage/50">
+      <label className="flex gap-2"><input type="checkbox" checked={enabled} disabled={!!navigationUnavailable}
+        onChange={e => { setAutomatic(e.target.checked); setAutoState(null); }} />Automatic route</label>
+      {navigationUnavailable && <p className="text-sm">{navigationUnavailable}</p>}
+      {enabled && !!objects.length && <Suspense fallback={<p role="status">Loading navigation…</p>}>
+        <ScanNavigation key={models.map(m => m.id).join(",")} objects={objects} avoidStairs={avoidStairs} onChange={setAutoState} />
+        <label className="mt-2 flex gap-2"><input type="checkbox" checked={debug} onChange={e => setDebug(e.target.checked)} />Show NavMesh debug</label>
+      </Suspense>}
+    </div>}
+      {hasCeiling && <button type="button" aria-pressed={!ceilingHidden} onClick={() => setCeilingHidden(hidden => !hidden)}
+        className="min-h-11 rounded-full bg-night/80 px-4 text-sm font-bold text-paper ring-1 ring-sage/50">
+        {ceilingHidden ? "Show ceiling" : "Hide ceiling"}
+      </button>}
+    </div>}
+  </div>;
 }

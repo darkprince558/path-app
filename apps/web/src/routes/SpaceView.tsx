@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
+import { automaticNavigationIssue } from "../lib/automatic-navigation";
 import NavigationPanel from "../components/NavigationPanel";
 import SpaceEditor, { type PickedPoint } from "../components/SpaceEditor";
 import { LoadingPanel } from "../components/StatusPanel";
@@ -21,6 +22,7 @@ export default function SpaceView() {
   const [revision, setRevision] = useState(0);
   const [assetAttempt, setAssetAttempt] = useState(0);
   const [route, setRoute] = useState<Route | null>(null);
+  const [automatic, setAutomatic] = useState(false);
   const [showGraph, setShowGraph] = useState(true);
   const [resetToken, setResetToken] = useState(0);
   const [picked, setPicked] = useState<PickedPoint | null>(null);
@@ -58,6 +60,7 @@ export default function SpaceView() {
   const owner = !!data?.user && data.user.id === data.space.ownerId;
   const frame = data ? coordinates(data.space) : null;
   const alignmentWarning = data?.scans.some(s => s.status === "ready" && s.format === "glb" && !scanAligned(s, data.space)) ?? false;
+  const navigationUnavailable = alignmentWarning || frame?.units !== "metres" ? "Automatic routing requires every visible scan aligned in calibrated metres." : readyScans.map(s => automaticNavigationIssue(s.metadata)).find(Boolean);
   return <main className="flex h-dvh flex-col bg-night md:flex-row" aria-label="3D space navigation">
     <aside className="z-10 max-h-[46dvh] shrink-0 space-y-4 overflow-y-auto bg-paper p-4 text-forest md:max-h-none md:w-80">
       <header className="flex items-center justify-between"><Link className="font-display text-2xl font-black" to="/spaces">!404</Link><button className="underline" onClick={() => { refresh(); setAssetAttempt(n => n + 1); }}>Refresh</button></header>
@@ -66,7 +69,7 @@ export default function SpaceView() {
       {data && <>
         <h1 className="text-xl font-bold">{data.space.name}</h1>
         <p className="text-sm text-muted">{frame?.units === "metres" ? "Space coordinates in metres; verify each scan's calibration." : "Relative scale — physical distances have not been established."}</p>
-        {alignmentWarning ? <p role="status" className="text-sm text-rust">Navigation is hidden until the owner verifies every visible scan's alignment and units.</p> : <NavigationPanel space={data.space} graph={data.graph} paths={data.paths} user={data.user} initialPath={search.get("path") ?? undefined} onRoute={onRoute} onSaved={refresh} />}
+        {alignmentWarning ? <p role="status" className="text-sm text-rust">Navigation is hidden until the owner verifies every visible scan's alignment and units.</p> : <div hidden={automatic}><NavigationPanel space={data.space} graph={data.graph} paths={data.paths} user={data.user} initialPath={search.get("path") ?? undefined} onRoute={onRoute} onSaved={refresh} /></div>}
         <label className="flex gap-2"><input type="checkbox" checked={showGraph} onChange={e => setShowGraph(e.target.checked)} />Show navigation graph</label>
         <button className="secondary-button" onClick={() => setResetToken(n => n + 1)}>Reset view</button>
         <label className="editor-grid">Space link<input readOnly value={`${window.location.origin}/spaces/${spaceId}`} onFocus={e => e.target.select()} /></label>
@@ -77,7 +80,7 @@ export default function SpaceView() {
       </>}
     </aside>
     <section className="relative min-h-0 flex-1 text-paper" aria-label="Room and route viewer">
-      {!!models.length && <Suspense fallback={<LoadingPanel label="Loading 3D viewer…" />}><SpaceViewer models={models} nodes={alignmentWarning ? [] : data?.graph.nodes ?? []} edges={alignmentWarning ? [] : data?.graph.edges ?? []} route={alignmentWarning ? undefined : route?.nodes} showGraph={showGraph} resetToken={resetToken} onPick={owner ? setPicked : undefined} onReady={() => setLoading(false)} onError={message => { setAssetError(message); setLoading(false); }} /></Suspense>}
+      {!!models.length && <Suspense fallback={<LoadingPanel label="Loading 3D viewer…" />}><SpaceViewer automaticNavigation navigationUnavailable={navigationUnavailable} onAutomaticChange={setAutomatic} models={models} nodes={alignmentWarning ? [] : data?.graph.nodes ?? []} edges={alignmentWarning ? [] : data?.graph.edges ?? []} route={alignmentWarning ? undefined : route?.nodes} showGraph={showGraph} resetToken={resetToken} onPick={owner ? setPicked : undefined} onReady={() => setLoading(false)} onError={message => { setAssetError(message); setLoading(false); }} /></Suspense>}
       {loading && data && !assetError && <LoadingPanel label="Downloading and building the 3D view…" />}
       {assetError && <p role="alert" className="absolute inset-x-4 top-4 rounded-xl bg-paper p-4 text-rust">Could not display the scan: {assetError}</p>}
       {!loading && !models.length && !assetError && data && <p className="p-6">No accessible GLB scans in this space.{owner ? " Upload one using Owner tools." : " Ask the owner to publish the room scan."}</p>}
