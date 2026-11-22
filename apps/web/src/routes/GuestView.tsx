@@ -345,7 +345,7 @@ function ViewerChrome({
         }`}
         aria-hidden="true"
       >
-        Drag to turn · pinch to zoom
+        Drag to move · two fingers to turn · Walk inside to look around
       </p>
 
       {/* Controls first in reading order; flex-col-reverse draws the open Directions panel above them,
