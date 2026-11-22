@@ -13,6 +13,48 @@ struct SurfaceChunk {
   var vertices: [SIMD3<Float>]
   var faces: [SurfaceFace]
 }
+extension SurfaceChunk {
+  /// Dense ARKit surfaces repeat vertices within centimetres. Cluster within each
+  /// anchor before texturing, retaining face winding and skipping collapsed faces.
+  func clustered(cell: Float) -> SurfaceChunk {
+    var slots = [SIMD3<Int32>: Int32]()
+    var remap = [Int32](), sums = [SIMD3<Float>](), counts = [Int]()
+    remap.reserveCapacity(vertices.count)
+    for p in vertices {
+      // Reject unusable sensor coordinates before converting to integers.
+      guard abs(p.x) < 1000, abs(p.y) < 1000, abs(p.z) < 1000 else {
+        remap.append(-1)
+        continue
+      }
+      let key = SIMD3<Int32>(floor(p / cell))
+      let index: Int32
+      if let existing = slots[key] {
+        index = existing
+        sums[Int(index)] += p
+        counts[Int(index)] += 1
+      } else {
+        index = Int32(sums.count)
+        slots[key] = index
+        sums.append(p)
+        counts.append(1)
+      }
+      remap.append(index)
+    }
+    let positions = zip(sums, counts).map { $0 / Float($1) }
+    var seen = Set<SIMD3<Int32>>()
+    var result = [SurfaceFace]()
+    for f in faces {
+      let src = f.indices
+      guard [src.x, src.y, src.z].allSatisfy({ remap.indices.contains(Int($0)) }) else { continue }
+      let a = remap[Int(src.x)], b = remap[Int(src.y)], c = remap[Int(src.z)]
+      guard min(a,b,c) >= 0, a != b, a != c, b != c else { continue }
+      // Match cyclic duplicates without sorting away winding or overflowing Int32.
+      let key = a < b && a < c ? SIMD3(a,b,c) : (b < c ? SIMD3(b,c,a) : SIMD3(c,a,b))
+      if seen.insert(key).inserted { result.append(SurfaceFace(indices: SIMD3(a,b,c), classification: f.classification)) }
+    }
+    return SurfaceChunk(vertices: positions, faces: result)
+  }
+}
 struct ScanPhoto {
   let url: URL
   let worldToCamera: simd_float4x4

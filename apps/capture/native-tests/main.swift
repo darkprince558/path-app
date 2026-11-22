@@ -178,3 +178,35 @@ precondition(legacyDevice["osVersion"] == "unknown (legacy scan)")
 let legacyIndex = try JSONSerialization.jsonObject(with: Data(contentsOf: legacyBundle.appendingPathComponent("frames.json"))) as! [String: Any]
 precondition((legacyIndex["frames"] as! [[String: Any]]).allSatisfy { $0["intrinsics"] == nil })
 print("Stable device IDs, frame dimensions, scaled intrinsics and legacy export passed.")
+
+// A three-minute L-shaped replay crosses the old time and face budgets. A
+// tracking loss must leave a gap and the camera path alone must never paint coverage.
+var accumulated = WalkMap(), sectionMap = WalkMap()
+var walkSections = 0, began = 0
+for second in 0...180 {
+  let here = SIMD2<Float>(Float(min(second,90)) * 0.5, Float(max(0,second-90)) * 0.5)
+  sectionMap.locate(here, forward: SIMD2(1,0), at: Double(second), normal: !(74...79).contains(second))
+  if second == 4 { precondition(sectionMap.tiles.isEmpty) }
+  if second >= 5 && sectionMap.tracked {
+    sectionMap.observe(SIMD3(here.x, 0, here.y + 1), cameraHeight: 1.5)
+  }
+  if SectionBudget.shouldSave(seconds: Double(second-began), points: 130_000, faces: 115_000) || second == 180 {
+    accumulated.include(sectionMap)
+    sectionMap = sectionMap.nextSection()
+    walkSections += 1
+    began = second
+  }
+}
+precondition(walkSections > 5 && accumulated.distance > 85 && accumulated.distance < 89)
+precondition(accumulated.tiles.count > 150)
+precondition(!accumulated.tiles.contains(SIMD2(150,4)))  // unseen during tracking loss
+precondition(accumulated.tracks.allSatisfy { run in zip(run,run.dropFirst()).allSatisfy { simd_distance($0,$1) <= 0.51 } })
+try accumulated.write(to: dest)
+let reopenedMap = try WalkMap.read(from: dest)
+precondition(reopenedMap.tiles == accumulated.tiles && reopenedMap.tracks == accumulated.tracks)
+let almostAffine: [Float] = [1,0,0,0, 0,1,0,0, 0,0,1,0, 3,2,1,0.99999994]
+let exactPose = try CaptureBundle.affinePose(almostAffine)
+precondition(exactPose[15] == 1 && exactPose[12] == 3)
+var projective = almostAffine; projective[3] = 0.1
+precondition((try? CaptureBundle.affinePose(projective)) == nil)
+print("180-second route replay: \(walkSections) sections, \(accumulated.distance) tracked metres; map survived reload.")

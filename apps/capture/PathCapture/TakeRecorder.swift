@@ -42,7 +42,7 @@ final class TakeRecorder {
   private var poses: [CameraSample] = []
   private var keyframes: [CalibratedFrame] = []
   private let context = CIContext(options: [.cacheIntermediates: false])
-  private var photoInterval = 0.8
+  private let photoInterval = 0.8
   private var nextPhotoID = 0
   private var lastPhotoPose: simd_float4x4?
   private(set) var photos: [ScanPhoto] = []
@@ -224,7 +224,6 @@ final class TakeRecorder {
     // Thin previously saved views in time, keeping room for the next part of the walk.
     if photos.count == 32 {
       photos = photos.enumerated().compactMap { $0.offset.isMultiple(of: 2) ? $0.element : nil }
-      photoInterval *= 2
     }
     nextPhotoID += 1
     photos.append(
@@ -235,8 +234,8 @@ final class TakeRecorder {
     lastPhoto = t
     lastPhotoPose = tf
   }
+  func stopMotion() { motion.stopDeviceMotionUpdates() }
   func endMedia() async throws -> (hasVideo: Bool, motion: Int) {
-    motion.stopDeviceMotionUpdates()
     if let writer = video, writer.status == .writing {
       input?.markAsFinished()
       await writer.finishWriting()

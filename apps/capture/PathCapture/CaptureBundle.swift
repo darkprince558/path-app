@@ -51,6 +51,18 @@ enum CaptureBundle {
     init(_ reason: String) { errorDescription = reason }
   }
 
+  // ARKit sometimes returns 0.99999994 in the homogeneous corner. The upload
+  // contract requires an exact affine row; leave the measured pose axes and translation intact.
+  static func affinePose(_ values: [Float]) throws -> [Float] {
+    guard values.count == 16, values.allSatisfy(\.isFinite),
+      [3,7,11].allSatisfy({ abs(values[$0]) < 0.00001 }), abs(values[15] - 1) < 0.00001
+    else { throw Incomplete("Invalid camera-to-world transform.") }
+    var pose = values
+    for i in [3,7,11] { pose[i] = 0 }
+    pose[15] = 1
+    return pose
+  }
+
   static func write(take: URL, record: ScanRecord, to destination: URL) throws {
     guard record.triangles > 0, record.pointCount > 0 else {
       throw Incomplete("A LiDAR bundle needs a surface mesh and colored points.")
@@ -122,7 +134,7 @@ enum CaptureBundle {
       frames.append(
         Frame(
           id: frameId, imagePath: path, timestampSeconds: keyframe.camera.t,
-          width: width, height: height, cameraPose: keyframe.camera.cameraToWorld,
+          width: width, height: height, cameraPose: try affinePose(keyframe.camera.cameraToWorld),
           intrinsics: intrinsics))
     }
     let deviceID = record.id.uuidString.lowercased()
@@ -140,7 +152,7 @@ enum CaptureBundle {
     let manifest = Manifest(
       captureId: deviceID,
       capturedAt: ISO8601DateFormatter().string(from: record.created),
-      device: device, entrancePose: entrance.cameraToWorld,
+      device: device, entrancePose: try affinePose(entrance.cameraToWorld),
       files: files.sorted { $0.path < $1.path }, trackingWarnings: warnings)
     try encoder.encode(manifest).write(to: stage.appendingPathComponent("manifest.json"))
     try fm.moveItem(at: stage, to: destination)
