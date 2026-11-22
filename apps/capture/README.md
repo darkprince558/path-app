@@ -33,3 +33,7 @@ apps/capture/walk/.venv/bin/python apps/capture/walk/reconstruct.py "/path/to/ex
 The Mac integrates tracked keyframes and confidence-filtered metric LiDAR depth in the recorded ARKit frame using Open3D’s scalable TSDF. The output is a coloured 3D surface. The default voxel width is 4 cm. Missing depth, tracking gaps and accumulated pose drift can leave holes or misaligned surfaces. Separately started walks need an explicit alignment before their geometry can be combined. [Open3D RGB-D integration](https://open3d.org/html/tutorial/pipelines/rgbd_integration.html)
 
 Krishna and Anish own the physical trial. Walk a measured hallway with two turns past the former 85-second limit. Revisit the starting doorway and check end offset, measured width, both turns, and any uncovered stretches. Keep the capture on the device or Mac.
+
+### Try a walk in the simulator
+
+Add `-PathCaptureReplay hallway` to the Xcode scheme's launch arguments to open the scan screen with a synthetic three-minute hallway at four times walking speed. Tap **Finish walk** to review the map you just saw. Remove the argument to return to the saved-scan library or record on a compatible phone.

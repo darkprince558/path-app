@@ -2,8 +2,7 @@ import ARKit
 import AVFoundation
 import SwiftUI
 
-final class CaptureController: NSObject, ObservableObject, ARSessionDelegate {
-  enum Phase { case ready, requestingCamera, recording, saving, finished }
+final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
   let session = ARSession()
   let supportsDepth = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
   let supportsMesh = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
@@ -11,14 +10,14 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate {
   var mode: String {
     supportsMesh ? "LiDAR surface" : (supportsDepth ? "LiDAR points" : "Tracked camera")
   }
-  @Published private(set) var phase: Phase = .ready
+  @Published private(set) var phase: ScanPhase = .ready
   @Published private(set) var instruction =
     "Keep a doorway or another fixed feature in view through the turn."
   @Published private(set) var pointCount = 0
   @Published private(set) var faceCount = 0
   @Published private(set) var motionCount = 0
   @Published private(set) var duration = 0.0
-  @Published private(set) var tracking = "Waiting"
+  @Published private(set) var tracking: TrackingQuality = .waiting
   @Published private(set) var library = ScanRecord.all()
   @Published var selected: ScanRecord?
   private var cloud = PointCloud(), mesh: [UUID: ARMeshAnchor] = [:]
@@ -82,7 +81,7 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate {
     motionCount = 0
     duration = 0
     lastSampleTime = -.infinity
-    tracking = "Starting"
+    tracking = .starting
     let c = ARWorldTrackingConfiguration()
     c.worldAlignment = .gravity
     c.planeDetection = [.horizontal, .vertical]
@@ -116,14 +115,14 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate {
   }
   func session(_ session: ARSession, didUpdate frame: ARFrame) {
     guard phase == .recording, let take else { return }
-    let quality: String
+    let quality: TrackingQuality
     let guide: String
     switch frame.camera.trackingState {
     case .normal:
-      quality = "normal"
+      quality = .normal
       guide = "Keep the same wall or landmark in view as you turn."
     case .limited(let reason):
-      quality = "limited"
+      quality = .limited
       switch reason {
       case .excessiveMotion: guide = "Steady the phone until the camera catches up."
       case .insufficientFeatures: guide = "Point toward a doorway, floor pattern or sign."
@@ -131,21 +130,21 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate {
       default: guide = "Hold still while tracking starts."
       }
     case .notAvailable:
-      quality = "unavailable"
+      quality = .unavailable
       guide = "Waiting for camera tracking."
     }
     if walkStart == nil { walkStart = frame.timestamp }
-    take.frame(frame, tracking: quality, usePhotos: supportsMesh)
+    take.frame(frame, tracking: quality.rawValue, usePhotos: supportsMesh)
     // A short tracking loss between display updates still breaks the route line.
-    if quality != "normal" { sectionMap.tracked = false }
+    if quality != .normal { sectionMap.tracked = false }
     guard frame.timestamp - lastSampleTime >= 0.20 else { return }
     lastSampleTime = frame.timestamp
     let camera = frame.camera.transform
     sectionMap.locate(SIMD2(camera.columns.3.x, camera.columns.3.z),
-      forward: SIMD2(-camera.columns.2.x, -camera.columns.2.z), at: frame.timestamp, normal: quality == "normal")
+      forward: SIMD2(-camera.columns.2.x, -camera.columns.2.z), at: frame.timestamp, normal: quality == .normal)
     let before = sectionMap.tiles.count
     depthHits = 0
-    if quality == "normal" {
+    if quality == .normal {
       if let d = frame.sceneDepth, let conf = d.confidenceMap {
         sample(frame, depth: d.depthMap, confidence: conf)
       } else if let features = frame.rawFeaturePoints {
@@ -156,12 +155,12 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate {
     faceCount = mesh.values.reduce(retiredFaces) { $0 + $1.geometry.faces.count }
     motionCount = take.motionCount
     duration = frame.timestamp - (walkStart ?? frame.timestamp)
-    tracking = quality.capitalized
+    tracking = quality
     instruction = guide
     if sectionMap.tiles.count > before { lastNewTile = frame.timestamp }
-    if quality == "normal", supportsDepth, depthHits < 4 {
+    if quality == .normal, supportsDepth, depthHits < 4 {
       instruction = "Few depth returns. Aim at a closer wall or tilt toward the floor."
-    } else if quality == "normal", frame.timestamp - lastNewTile > 3, !sectionMap.tiles.isEmpty {
+    } else if quality == .normal, frame.timestamp - lastNewTile > 3, !sectionMap.tiles.isEmpty {
       instruction = "This area is already on the map. Sweep toward a dark edge to add coverage."
     }
     if frame.timestamp - lastMapPublish >= 0.4 {
@@ -184,7 +183,7 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate {
       } else if take.seconds >= 90 {
         stop(reason: "Two sections are still writing to storage. Earlier sections remain on this phone.")
       } else {
-        instruction = quality == "normal" ? "Still recording while earlier sections save." : guide
+        instruction = quality == .normal ? "Still recording while earlier sections save." : guide
       }
     }
   }
