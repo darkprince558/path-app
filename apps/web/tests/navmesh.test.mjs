@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Group, BufferGeometry, Float32BufferAttribute, Mesh } from "three";
+import { BoxGeometry, Group, BufferGeometry, Float32BufferAttribute, Mesh, MeshStandardMaterial } from "three";
 import { buildNavMesh, DEFAULT_AGENT, trianglesFromObject } from "../src/lib/navmesh.ts";
 import { createRoom, disposeRoom } from "../src/lib/navmesh-room.ts";
 
@@ -225,4 +225,20 @@ test("navigation accepts a dense scan above the former 200k triangle ceiling", a
       assert.ok(route.distance > 10, "dense geometry must still route through the doorway");
     } finally { nav.dispose(); }
   } finally { disposeRoom(room); }
+});
+
+test("a tall multi-storey footprint builds although its bounding volume exceeds 30M voxels", async () => {
+  // ACEB-sized: 48 x 45 m and 9.5 m tall is ~41M bounding voxels, yet Recast stores only
+  // occupied spans. A lower floor and an upper floor must both become walkable.
+  const group = new Group();
+  for (const [y, size] of [[-1.5, [48, 0.2, 45]], [3, [20, 0.2, 20]], [8, [4, 0.2, 4]]]) {
+    const slab = new Mesh(new BoxGeometry(...size), new MeshStandardMaterial()); slab.position.set(0, y, 0); group.add(slab);
+  }
+  try {
+    const nav = await buildNavMesh(trianglesFromObject(group));
+    try {
+      assert.equal(nav.route({ x: -20, y: -1.4, z: -20 }, { x: 20, y: -1.4, z: 20 }).ok, true, "lower floor routes");
+      assert.equal(nav.route({ x: -5, y: 3.1, z: -5 }, { x: 5, y: 3.1, z: 5 }).ok, true, "upper floor routes");
+    } finally { nav.dispose(); }
+  } finally { disposeRoom(group); }
 });
