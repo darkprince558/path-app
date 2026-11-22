@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { MathUtils, PerspectiveCamera, Sphere, Vector3 } from "three";
+import { PerspectiveCamera, Vector3 } from "three";
+import { overviewPose, samplePoints } from "../src/lib/framing";
 import { parseGlb } from "../src/lib/glb";
+
+/** Points sampled from the scan: the viewer frames its opening view from these (lib/framing.ts). */
+type Frame = Vector3[];
 import { approvedMetadata, approvedTransform, roomGlb, spacePoint } from "./helpers/room-glb";
 
 async function mockScan(page: Page, options: { closed?: boolean; noFloor?: boolean; unverified?: boolean; denied?: boolean; owner?: boolean; legacy?: boolean; upload?: boolean } = {}) {
@@ -32,18 +36,20 @@ async function mockScan(page: Page, options: { closed?: boolean; noFloor?: boole
     if (path === "/api/spaces/room") return route.fulfill({ json: { space: { id: "room", ownerId: "owner", name: "Doorway room", visibility: "public", boundary: { coordinateSystem: approvedMetadata.coordinateSystem } } } });
     return route.fulfill({ json: { shareId: "room", scanId: "scan", name: "Doorway room", format: "glb", assetPath: "/api/shares/room/asset", transform: approvedTransform, metadata: scanMetadata } });
   });
-  const model = await parseGlb(bytes, approvedTransform), sphere = model.bounds.getBoundingSphere(new Sphere());
-  model.dispose(); return sphere;
+  const model = await parseGlb(bytes, approvedTransform), points: Frame = samplePoints([model.object]);
+  model.dispose(); return points;
 }
-async function pick(page: Page, bounds: Sphere, p: { x: number; y: number; z: number }) {
-  const canvas = page.locator("canvas"), rect = (await canvas.boundingBox())!;
+/** Where a world point appears on the canvas in the viewer's opening view. */
+function project(rect: { width: number; height: number }, frame: Frame, p: { x: number; y: number; z: number }) {
+  const pose = overviewPose(frame, 55, rect.width / rect.height);
   const camera = new PerspectiveCamera(55, rect.width / rect.height);
-  const vertical = MathUtils.degToRad(55), horizontal = 2 * Math.atan(Math.tan(vertical / 2) * rect.width / rect.height);
-  const distance = bounds.radius / Math.sin(Math.min(vertical, horizontal) / 2) * 1.1;
-  camera.position.copy(bounds.center).add(new Vector3(0, distance * 0.77, distance * 0.64));
-  camera.lookAt(bounds.center); camera.updateMatrixWorld();
+  camera.position.copy(pose.position); camera.lookAt(pose.target); camera.updateMatrixWorld();
   const screen = new Vector3(p.x, p.y, p.z).project(camera);
-  await canvas.dblclick({ position: { x: (screen.x + 1) * rect.width / 2, y: (1 - screen.y) * rect.height / 2 } });
+  return { x: (screen.x + 1) * rect.width / 2, y: (1 - screen.y) * rect.height / 2 };
+}
+async function pick(page: Page, frame: Frame, p: { x: number; y: number; z: number }) {
+  const canvas = page.locator("canvas"), rect = (await canvas.boundingBox())!;
+  await canvas.dblclick({ position: project(rect, frame, p) });
 }
 for (const width of [1280, 390]) {
   test(`shared approved GLB floor picking and debug at ${width}px`, async ({ page }, info) => {
@@ -193,4 +199,84 @@ test("a GLB can be uploaded as Public and its sharing is not locked afterwards",
   await expect(page.getByText(/before sharing|start private/i)).toHaveCount(0);
   for (const radio of await page.getByRole("radio").all()) await expect(radio).toBeEnabled();
   expect(errors).toEqual([]);
+});
+
+async function canvasShot(page: Page) { return page.locator("canvas").screenshot(); }
+/** R3F puts the Canvas aria-label on its wrapper div. */
+const viewer = (page: Page) => page.locator("[data-space-viewer] > div[aria-label]");
+function screenPoint(box: { x: number; y: number; width: number; height: number }, frame: Frame, p: { x: number; y: number; z: number }) {
+  const at = project(box, frame, p);
+  return { x: box.x + at.x, y: box.y + at.y };
+}
+
+test("walk inside: press, pick a floor spot, look and walk, then back to the overview", async ({ page }) => {
+  const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+  const bounds = await mockScan(page);
+  await page.goto("/s/room");
+  const canvas = page.locator("canvas");
+  await expect(viewer(page)).toHaveAttribute("aria-label", /Drag to move/);
+  const box = (await canvas.boundingBox())!;
+
+  // A click that misses the model says so and stays in the overview.
+  await page.getByRole("button", { name: "Walk inside" }).click();
+  await expect(page.getByText(/Click or tap the spot to stand on/)).toBeVisible();
+  await page.mouse.click(box.x + 5, box.y + 5);
+  await expect(page.getByText("No floor there. Try a spot on the floor.")).toBeVisible();
+
+  // Measure the canvas now: right after load it can still be the default 300 x 150.
+  // Right of the room: the route card covers the left of the screen.
+  const floor = screenPoint((await canvas.boundingBox())!, bounds, spacePoint({ x: 4, y: 0, z: -2 }));
+  await page.mouse.click(floor.x, floor.y);
+  await expect(viewer(page)).toHaveAttribute("aria-label", /Walking inside the model/);
+  await expect(page.getByRole("button", { name: "Back to overview" })).toBeVisible();
+  await page.waitForTimeout(300);
+  const standing = await canvasShot(page);
+
+  // Drag to look around (in the open room, before walking up to a plain wall).
+  const full = (await canvas.boundingBox())!;
+  await page.mouse.move(full.x + full.width / 2, full.y + full.height / 2);
+  await page.mouse.down(); await page.mouse.move(full.x + full.width / 2 + 400, full.y + full.height / 2 - 150, { steps: 10 }); await page.mouse.up();
+  await page.waitForTimeout(400); // a quick release would also schedule a glide; let it settle
+  const looked = await canvasShot(page);
+  expect(looked.equals(standing)).toBe(false);
+
+  await page.keyboard.down("w"); await page.waitForTimeout(600); await page.keyboard.up("w");
+  await page.waitForTimeout(200);
+  expect((await canvasShot(page)).equals(looked)).toBe(false);
+
+  await page.keyboard.press("Escape");
+  await expect(viewer(page)).toHaveAttribute("aria-label", /Drag to move/);
+  await expect(page.getByRole("button", { name: "Walk inside" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("walk inside by dragging the person onto the model; Reset view returns to the overview", async ({ page }) => {
+  const bounds = await mockScan(page);
+  await page.goto("/s/room");
+  const canvas = page.locator("canvas");
+  await expect(viewer(page)).toHaveAttribute("aria-label", /Drag to move/);
+  await page.waitForTimeout(300);
+  const box = (await canvas.boundingBox())!;
+  const person = (await page.getByRole("button", { name: "Walk inside" }).boundingBox())!;
+  const floor = screenPoint(box, bounds, spacePoint({ x: 4, y: 0, z: -2 }));
+  await page.mouse.move(person.x + person.width / 2, person.y + person.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(floor.x, floor.y, { steps: 12 });
+  await page.mouse.up();
+  await expect(viewer(page)).toHaveAttribute("aria-label", /Walking inside the model/);
+  await page.getByRole("button", { name: /Reset view/i }).click();
+  await expect(viewer(page)).toHaveAttribute("aria-label", /Drag to move/);
+});
+
+test("the overview pans with a plain drag", async ({ page }) => {
+  await mockScan(page);
+  await page.goto("/s/room");
+  const canvas = page.locator("canvas");
+  const box = (await canvas.boundingBox())!;
+  await page.waitForTimeout(500);
+  const before = await canvasShot(page);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down(); await page.mouse.move(box.x + box.width / 2 - 150, box.y + box.height / 2 + 60, { steps: 8 }); await page.mouse.up();
+  await page.waitForTimeout(600);
+  expect((await canvasShot(page)).equals(before)).toBe(false);
 });

@@ -87,7 +87,7 @@ export default function SpaceView() {
       {loading && data && !assetError && <LoadingPanel label="Downloading and building the 3D view…" />}
       {assetError && <p role="alert" className="absolute inset-x-4 top-4 rounded-xl bg-paper p-4 text-rust">Could not display the scan: {assetError}</p>}
       {!loading && !models.length && !assetError && data && <p className="p-6">No accessible GLB scans in this space.{owner ? " Upload one using Owner tools." : " Ask the owner to publish the room scan."}</p>}
-      {!!models.length && <p className="pointer-events-none absolute right-3 bottom-3 rounded bg-night/80 px-3 py-2 text-sm">Drag to orbit · scroll or pinch to zoom{owner ? " · double-click to pick" : ""}</p>}
+      {!!models.length && <p className="pointer-events-none absolute right-3 bottom-3 rounded bg-night/80 px-3 py-2 text-sm">Drag to move · right-drag or two fingers to turn · scroll or pinch to zoom{owner ? " · double-click to pick" : ""}</p>}
     </section>
   </main>;
 }
