@@ -1,0 +1,44 @@
+Merge them into main for me. make sure to pull origin first. You have my permission to ssh into the vm and run the migration too
+
+---
+
+go ahead and install the deploy script and release the API
+
+---
+
+/home/sam/Downloads/full_preview
+
+I need you to run the python script from eariler on this plus another:
+
+python tools/scan_fill_holes.py scan.glb scan-filled.glb
+
+python tools/scan_fill_holes.py scan.glb scan-best.glb --levels
+
+
+Remember open3d didnt work you may have to use uv to make an environment
+
+---
+
+<task-notification>
+<task-id>b1g4l655q</task-id>
+<tool-use-id>toolu_015JV7zEdk7wQvca9TuY25Z8</tool-use-id>
+<output-file>/tmp/claude-1000/-home-sam-Projects-path-app/089ab410-e7a7-481e-8945-3b95a97c6e78/tasks/b1g4l655q.output</output-file>
+<status>completed</status>
+<summary>Background command "Run both hole-fill jobs sequentially, logging" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bewwtezi3</task-id>
+<tool-use-id>toolu_016LtX24CVj9YfumSM2Zurmj</tool-use-id>
+<output-file>/tmp/claude-1000/-home-sam-Projects-path-app/089ab410-e7a7-481e-8945-3b95a97c6e78/tasks/bewwtezi3.output</output-file>
+<status>completed</status>
+<summary>Background command "Rerun default fill at Poisson depth 12, track memory" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+WE need a drop in feature. Or a different way to move perspective. Like google maps sort of, and we need a better way to move around the model.
+
+Another issue is our model is to huge, it wont let us do auto routing. Im referring to Hack Western DEMO. Cook up something. Main priorities are a way to actually see each part of the model, because right now we can only spin and zoom
