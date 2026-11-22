@@ -44,7 +44,7 @@ Zod rejects unknown fields and enforces:
 | `files` | Unique `{path,byteSize,sha256}` entries for every file except the manifest. Positive integer sizes and lowercase 64-character SHA-256. |
 
 Required entries: `source.glb`, `points.ply`, `frames.json`, `preview.jpg`, and at
-least one `frames/<id>.jpg`. Limits are 32 MiB per file, 256 MiB total, 2 MiB for
+least one `frames/<id>.jpg`. Limits are 100 MiB per file, 512 MiB total, 2 MiB for
 `frames.json`, and 1,000 frame images. Revisit these conservative development limits
 with measured real exports before larger uploads.
 

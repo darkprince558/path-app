@@ -7,7 +7,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { captureManifest, captureFrameIndex, validateFrameReferences, canonicalJson } from '../capture/contract';
+import { captureManifest, captureFrameIndex, validateFrameReferences, canonicalJson, MAX_CAPTURE_FILE_BYTES } from '../capture/contract';
 import { captureManifest as cpuManifest, captureFrameIndex as cpuFrames } from '../../../../../apps/capture/processor/contract.mjs';
 
 const exec = promisify(execFile);
@@ -81,7 +81,7 @@ test('exporter/CPU contract rejects old fields, unsafe paths, invalid poses and 
     { ...manifest, coordinateSystem: { ...manifest.coordinateSystem, units: 'meters' } },
     { ...manifest, files: manifest.files.map((f: object) => ({ ...f, type: 'mesh' })) },
     { ...manifest, files: manifest.files.map((f: object, i: number) => i ? f : { ...f, path: '../source.glb' }) },
-    { ...manifest, files: manifest.files.map((f: object, i: number) => i ? f : { ...f, byteSize: 32 * 1024 * 1024 + 1 }) },
+    { ...manifest, files: manifest.files.map((f: object, i: number) => i ? f : { ...f, byteSize: MAX_CAPTURE_FILE_BYTES + 1 }) },
     { ...manifest, entrancePose: Array(16).fill(0) },
   ];
   for (const invalid of badManifests) {

@@ -16,8 +16,9 @@ import type { ScanFormat } from "./shares";
 export type { ScanFormat };
 export type Visibility = "public" | "unlisted" | "private";
 
-/** Matches the mock's upload limit. */
-export const MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
+/** Largest scan the website, Sam's API and the mock accept (keep in step with services/api MAX_GLB_BYTES). */
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+export const MAX_UPLOAD_LABEL = "100 MB";
 
 /** Account IDs the mock accepts for viewers (and for X-Dev-User). */
 export const VIEWER_ID_PATTERN = /^[a-zA-Z0-9_.@-]{1,64}$/;
@@ -114,7 +115,7 @@ export async function checkFile(file: File): Promise<{ format: ScanFormat } | { 
   if (!format) return { problem: "Choose a .ply point cloud or a .glb model." };
   if (file.size === 0) return { problem: "This file is empty." };
   if (file.size > MAX_UPLOAD_BYTES) {
-    return { problem: `This scan is ${formatBytes(file.size)}. The limit is 32 MB, so crop or downsample it first.` };
+    return { problem: `This scan is ${formatBytes(file.size)}. The limit is ${MAX_UPLOAD_LABEL}, so crop or downsample it first.` };
   }
   const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
   const magic = String.fromCharCode(...head);
@@ -144,7 +145,7 @@ function messageFor(status: number, serverError: string | undefined, format: Sca
     case 401:
       return "Sign in to upload scans.";
     case 413:
-      return "This scan is over the 32 MB limit. Crop or downsample it and try again.";
+      return `This scan is over the ${MAX_UPLOAD_LABEL} limit. Crop or downsample it and try again.`;
     case 415:
       return "The server expected raw scan bytes. This is a bug in the website, not your file.";
     default:

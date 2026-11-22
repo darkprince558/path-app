@@ -18,8 +18,8 @@ export const transform = affineTransform(0);
 // ARKit stores camera poses as floats. Retain the recorded w for checksum and provenance checks.
 const cameraPose = affineTransform(1e-6);
 
-export const MAX_CAPTURE_FILE_BYTES = 32 * 1024 * 1024;
-export const MAX_CAPTURE_BYTES = 256 * 1024 * 1024;
+export const MAX_CAPTURE_FILE_BYTES = 100 * 1024 * 1024;
+export const MAX_CAPTURE_BYTES = 512 * 1024 * 1024;
 export const MAX_CAPTURE_JSON_BYTES = 2 * 1024 * 1024;
 export const MAX_CAPTURE_FRAMES = 1000;
 export const REQUIRED_CAPTURE_FILES = ['source.glb', 'points.ply', 'frames.json', 'preview.jpg'] as const;

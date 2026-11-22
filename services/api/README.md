@@ -118,7 +118,7 @@ job constraints, approval completeness and preservation of an existing scan.
 `POST /api/scans?format=glb&visibility=unlisted&name=Hallway` accepts raw
 `application/octet-stream` GLB bytes under the authenticated browser session.
 Visibility defaults to private; names default to `Untitled map`. The body is limited
-to 32 MiB, including requests without Content-Length. Next.js proxy buffering is
+to 100 MiB, including requests without Content-Length. Next.js proxy buffering is
 set to 34 MiB so the default 10 MB buffer does not truncate valid uploads. PLY imports return 415.
 A successful upload returns 201 `{id, shareId, sharePath, name, visibility}`.
 
@@ -159,7 +159,7 @@ Names are 1–80 characters after trimming and collapsing spaces, with no contro
 
 To grant private access, send `{"visibility":"private","viewerIds":["teammate"]}` as the owner. Repeat with an empty list to revoke access. To rename, send `{"name":"Library study rooms"}`. The smoke test covers these changes, partial changes, the owner and shared lists, deletion, the raw asset URL, and unauthenticated discovery.
 
-The mock binds to loopback, uses `X-Dev-User` to simulate an account, checks file headers, limits uploads to 32 MiB, and discards data on exit. On the hosted API derive identity from a verified session, validate the uploaded model, persist grants, and enforce visibility on every read. Use the deployed site’s origin for portable share URLs. [Architecture and data model](../../docs/architecture.md)
+The mock binds to loopback, uses `X-Dev-User` to simulate an account, checks file headers, limits uploads to 100 MiB, and discards data on exit. On the hosted API derive identity from a verified session, validate the uploaded model, persist grants, and enforce visibility on every read. Use the deployed site’s origin for portable share URLs. [Architecture and data model](../../docs/architecture.md)
 
 ## React authentication and production
 
