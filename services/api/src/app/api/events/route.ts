@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { events } from '../../../db/schema';
 import { canReadEvent, eventResponse, replaceEventLinks, validateEventLinks } from '../../../lib/api/events';
+import { eventDetail } from '../../../lib/api/event-maps';
 import { api, body, signedIn } from '../../../lib/api/http';
 import { eventInput } from '../../../lib/api/validation';
 
@@ -24,6 +25,6 @@ export function POST(request: Request) {
       await replaceEventLinks(tx, created.id, links);
       return created;
     });
-    return Response.json(await eventResponse(db, owner, event), { status: 201 });
+    return Response.json(await eventDetail(db, owner, event), { status: 201 });
   });
 }

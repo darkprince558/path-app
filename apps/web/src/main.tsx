@@ -16,7 +16,10 @@ import Settings from "./routes/Settings";
 import Upload from "./routes/Upload";
 import Spaces from "./routes/Spaces";
 import SpaceView from "./routes/SpaceView";
-import EventView from "./routes/EventView";
+import EventPage from "./routes/EventPage";
+import Events from "./routes/Events";
+import JoinEvent from "./routes/JoinEvent";
+import NewEvent from "./routes/NewEvent";
 
 const NavMeshDemo = lazy(() => import("./routes/NavMeshDemo"));
 
@@ -29,7 +32,12 @@ const router = createBrowserRouter([
         { path: "/maps", element: <MyMaps /> },
         { path: "/maps/new", element: <Upload /> },
         { path: "/maps/:shareId", element: <ManageMap /> },
+        { path: "/events", element: <Events /> },
+        { path: "/events/new", element: <NewEvent /> },
       ] },
+      // Event pages handle signed-out visitors themselves (invite links must open signed out).
+      { path: "/events/:eventId", element: <EventPage /> },
+      { path: "/events/:eventId/join", element: <JoinEvent /> },
       { path: "/community", element: <Community /> },
       { path: "/settings", element: <Settings /> },
     ],
@@ -38,7 +46,6 @@ const router = createBrowserRouter([
   { path: "/s/:shareId", element: <GuestView /> },
   { path: "/spaces", element: <Spaces /> },
   { path: "/spaces/:spaceId", element: <SpaceView /> },
-  { path: "/events/:eventId", element: <EventView /> },
   { path: "/navmesh-demo", element: <Suspense fallback={<p>Loading navigation demo…</p>}><NavMeshDemo /></Suspense> },
   { path: "*", element: <NotFound /> },
 ]);

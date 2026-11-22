@@ -2,7 +2,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { connectDatabase } from '../../db/client';
-import { scans, scanViewers, spaces, scanRevisions } from '../../db/schema';
+import { eventMaps, eventMembers, events, scans, scanViewers, spaces, scanRevisions } from '../../db/schema';
 import type { AppUser } from '../auth/user-sync';
 import { requireOwner } from '../auth/authorization';
 import { thumbnailObjectKey, type ScanStorage } from '../storage';
@@ -114,8 +114,22 @@ export function validateGlb(bytes: Uint8Array, filename: string) {
   }
 }
 
+/**
+ * The organizer attached this map to an event the user joined. Only the map's owner can
+ * attach it (event-maps.ts); the owner check here also keeps a later ownership change
+ * from carrying old grants. Event spaces alone never grant scan access.
+ */
+async function isEventMapFor(db: Db, user: AppUser, scan: Scan) {
+  const [row] = await db.select({ eventId: eventMaps.eventId }).from(eventMaps)
+    .innerJoin(events, and(eq(events.id, eventMaps.eventId), eq(events.ownerId, scan.ownerId)))
+    .innerJoin(eventMembers, and(eq(eventMembers.eventId, events.id), eq(eventMembers.userId, user.id)))
+    .where(eq(eventMaps.scanId, scan.id)).limit(1);
+  return !!row;
+}
+
 export async function canReadScan(db: Db, user: AppUser | null, scan: Scan) {
   if (!(await isApprovedScan(db, scan))) return false;
+  if (user && scan.ownerId !== user.id && scan.status === 'ready' && await isEventMapFor(db, user, scan)) return true;
   const [space] = await db.select().from(spaces).where(eq(spaces.id, scan.spaceId)).limit(1);
   if (!space || !(await canReadSpace(db, user, space))) return false;
   if (scan.ownerId === user?.id) return true;

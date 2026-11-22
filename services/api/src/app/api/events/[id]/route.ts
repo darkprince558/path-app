@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { events } from '../../../../db/schema';
-import { eventLinks, eventResponse, readEvent, replaceEventLinks, validateEventLinks } from '../../../../lib/api/events';
+import { eventLinks, readEvent, replaceEventLinks, validateEventLinks } from '../../../../lib/api/events';
+import { eventDetail } from '../../../../lib/api/event-maps';
 import { api, body, signedIn } from '../../../../lib/api/http';
 import { eventInput, uuid } from '../../../../lib/api/validation';
 import { requireOwner } from '../../../../lib/auth/authorization';
@@ -9,7 +10,7 @@ import { requireOwner } from '../../../../lib/auth/authorization';
 type Context = { params: Promise<{ id: string }> };
 export async function GET(request: Request, context: Context) {
   const { id } = await context.params;
-  return api(request, async ({ db, user }) => Response.json(await eventResponse(db, user, await readEvent(db, user, uuid.parse(id)))), true);
+  return api(request, async ({ db, user }) => Response.json(await eventDetail(db, user, await readEvent(db, user, uuid.parse(id)))), true);
 }
 export async function PATCH(request: Request, context: Context) {
   const { id } = await context.params;
@@ -30,7 +31,7 @@ export async function PATCH(request: Request, context: Context) {
       await replaceEventLinks(tx, id, links);
       return row;
     });
-    return Response.json(await eventResponse(db, owner, updated));
+    return Response.json(await eventDetail(db, owner, updated));
   });
 }
 export async function DELETE(request: Request, context: Context) {

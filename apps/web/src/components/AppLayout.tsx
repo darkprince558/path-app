@@ -1,8 +1,10 @@
-import { Map as MapIcon, Plus, Settings as SettingsIcon, Users } from "lucide-react";
-import { useEffect, useState, type ComponentType } from "react";
+import { CalendarDays, Map as MapIcon, Plus, Settings as SettingsIcon, Users } from "lucide-react";
+import { Fragment, useEffect, useState, type ComponentType } from "react";
 import { Link, NavLink, Outlet } from "react-router";
 import { Toaster } from "sonner";
 import { AccountControls } from "../lib/auth";
+import { MyEventsProvider } from "../lib/events";
+import EventsNav from "./EventsNav";
 import { Wordmark } from "./Logo";
 
 interface NavItem {
@@ -17,13 +19,17 @@ const NAV: NavItem[] = [
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
+/** Phone tab for the Events list; the sidebar has the Events dropdown instead. */
+const EVENTS_TAB: NavItem = { to: "/events", label: "Events", icon: CalendarDays };
+
 /**
- * Signed-in shell. Desktop: forest sidebar (My maps, Community, New map, account).
- * Phone: slim top bar plus a bottom tab bar, since a sidebar doesn't fit at 375px.
+ * Signed-in shell. Desktop: forest sidebar (My maps, Community, Events dropdown, Settings,
+ * New map, account). Phone: slim top bar plus a bottom tab bar, since a sidebar doesn't fit at 375px.
  */
 export default function AppLayout() {
 
   return (
+    <MyEventsProvider>
     <div className="min-h-dvh bg-paper md:flex">
       <SkipLink />
       {/* Desktop sidebar */}
@@ -33,8 +39,8 @@ export default function AppLayout() {
         </Link>
         <nav aria-label="Main" className="mt-8 grid gap-1">
           {NAV.map(({ to, label, icon: Icon }) => (
+            <Fragment key={to}>
             <NavLink
-              key={to}
               to={to}
               end
               className={({ isActive }) =>
@@ -46,6 +52,8 @@ export default function AppLayout() {
               <Icon className="size-5" aria-hidden />
               {label}
             </NavLink>
+            {to === "/community" ? <EventsNav /> : null}
+            </Fragment>
           ))}
         </nav>
         <Link
@@ -84,9 +92,10 @@ export default function AppLayout() {
       <nav
         aria-label="Main"
         data-surface="forest"
-        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-3 bg-forest px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-paper md:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 bg-forest px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-paper md:hidden"
       >
         <TabLink item={NAV[0]!} />
+        <TabLink item={EVENTS_TAB} end={false} />
         <Link
           to="/maps/new"
           className="mx-auto -mt-6 grid size-14 place-items-center rounded-full bg-coral text-ink shadow-lg ring-4 ring-paper"
@@ -95,16 +104,18 @@ export default function AppLayout() {
           <Plus className="size-7" aria-hidden />
         </Link>
         <TabLink item={NAV[1]!} />
+        <TabLink item={NAV[2]!} />
       </nav>
     </div>
+    </MyEventsProvider>
   );
 }
 
-function TabLink({ item: { to, label, icon: Icon } }: { item: NavItem }) {
+function TabLink({ item: { to, label, icon: Icon }, end = true }: { item: NavItem; end?: boolean }) {
   return (
     <NavLink
       to={to}
-      end
+      end={end}
       className={({ isActive }) =>
         `flex min-h-12 flex-col items-center justify-center gap-0.5 text-xs font-bold ${
           isActive ? "text-paper" : "text-sage"
