@@ -6,8 +6,8 @@ Capture and frontend teams share the [GLB and navigation coordinate contract](sc
 
 | Request | Result |
 | --- | --- |
-| `POST /api/scans?format=glb&visibility=unlisted&name=Hallway` | Authenticated raw `application/octet-stream` GLB import (100 MiB). Returns 201 `{id, shareId, sharePath, name, visibility}`. Creates a separate unlisted space; no migration required. |
-| `POST /api/spaces/:id/scans` | Owner uploads `multipart/form-data` with `file` (`.glb`), `name`, `transform` (JSON array of 16 numbers), optional `visibility` (`private`, `unlisted` or `public`) and `metadata` (JSON object). Returns 201 `{scan}`. Limit: 100 MiB GLB. |
+| `POST /api/scans?format=glb&visibility=unlisted&name=Hallway` | Authenticated raw `application/octet-stream` GLB import (400 MiB). Returns 201 `{id, shareId, sharePath, name, visibility}`. Creates a separate unlisted space; no migration required. |
+| `POST /api/spaces/:id/scans` | Owner uploads `multipart/form-data` with `file` (`.glb`), `name`, `transform` (JSON array of 16 numbers), optional `visibility` (`private`, `unlisted` or `public`) and `metadata` (JSON object). Returns 201 `{scan}`. Limit: 400 MiB GLB. |
 | `GET /api/spaces/:id/scans` | `{scans: [...]}` of accessible scans. The space itself must be readable. |
 | `GET /api/scans/:id` | `{scan}` metadata for an authorized viewer. |
 | `GET /api/scans/:id/file` | Authorized GLB bytes, `model/gltf-binary`, with `Cache-Control: private, no-store`. |

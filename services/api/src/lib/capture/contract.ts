@@ -18,8 +18,8 @@ export const transform = affineTransform(0);
 // ARKit stores camera poses as floats. Retain the recorded w for checksum and provenance checks.
 const cameraPose = affineTransform(1e-6);
 
-export const MAX_CAPTURE_FILE_BYTES = 100 * 1024 * 1024;
-export const MAX_CAPTURE_BYTES = 512 * 1024 * 1024;
+export const MAX_CAPTURE_FILE_BYTES = 400 * 1024 * 1024;
+export const MAX_CAPTURE_BYTES = 1024 * 1024 * 1024;
 export const MAX_CAPTURE_JSON_BYTES = 2 * 1024 * 1024;
 export const MAX_CAPTURE_FRAMES = 1000;
 export const REQUIRED_CAPTURE_FILES = ['source.glb', 'points.ply', 'frames.json', 'preview.jpg'] as const;
@@ -52,7 +52,7 @@ export const captureManifest = z.object({
     if (!paths.has(required)) ctx.addIssue({ code: 'custom', message: `Missing required file: ${required}` });
   }
   if (manifest.files.reduce((sum, file) => sum + file.byteSize, 0) > MAX_CAPTURE_BYTES) {
-    ctx.addIssue({ code: 'custom', message: 'Capture exceeds 256 MiB' });
+    ctx.addIssue({ code: 'custom', message: 'Capture exceeds 1024 MiB' });
   }
   const frames = manifest.files.find(file => file.path === 'frames.json');
   if (frames && frames.byteSize > MAX_CAPTURE_JSON_BYTES) {

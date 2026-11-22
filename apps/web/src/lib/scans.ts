@@ -17,8 +17,8 @@ export type { ScanFormat };
 export type Visibility = "public" | "unlisted" | "private";
 
 /** Largest scan the website, Sam's API and the mock accept (keep in step with services/api MAX_GLB_BYTES). */
-export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
-export const MAX_UPLOAD_LABEL = "100 MB";
+export const MAX_UPLOAD_BYTES = 400 * 1024 * 1024;
+export const MAX_UPLOAD_LABEL = "400 MB";
 
 /** Account IDs the mock accepts for viewers (and for X-Dev-User). */
 export const VIEWER_ID_PATTERN = /^[a-zA-Z0-9_.@-]{1,64}$/;

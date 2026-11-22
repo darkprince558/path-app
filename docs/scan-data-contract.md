@@ -14,7 +14,7 @@ do not reference sibling files, local paths, remote URLs or signed URLs. The ini
 viewer needs standard glTF materials and `KHR_materials_unlit`, which the PR #19
 exporter uses for photographed appearance. Preserve the loaded materials and scene
 hierarchy. Compression requiring extra Draco, Meshopt or KTX2 decoders is outside this
-demo contract. The existing API upload limit is **100 MiB**.
+demo contract. The existing API upload limit is **400 MiB**.
 
 Use PR #19's `mesh/hallway.glb` from a completed reconstruction run. Its
 `mesh/report.json` provides export sizes, triangle counts and provenance; retain the

@@ -18,7 +18,7 @@ export { transform };
 type Db = ReturnType<typeof connectDatabase>['db'];
 type Scan = typeof scans.$inferSelect;
 /** Largest model the API accepts or serves (manual uploads and processed scans). */
-export const MAX_GLB_BYTES = 100 * 1024 * 1024;
+export const MAX_GLB_BYTES = 400 * 1024 * 1024;
 const MAX_MULTIPART_BYTES = MAX_GLB_BYTES + 1024 * 1024;
 export const identityTransform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 export const scanVisibility = z.enum(['private', 'unlisted', 'public']);
