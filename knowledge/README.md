@@ -21,7 +21,7 @@ exercises the tolerated range and rejection cases with synthetic data.
 
 ## Direct iPhone map sharing
 
-A finished `scene.glb` can use Sam’s existing unlisted GLB upload endpoint directly from [Scan Review](../apps/capture/README.md#share-a-scan-directly-from-the-iphone). Anish’s Swift client sent the 16,856-byte [native fixture](../fixtures/lidar-native-capture/source.glb) through the real local API handlers with disposable PostgreSQL and a signed test identity. The owner recovered the same link after upload, anonymous discovery omitted it, and a signed-out read returned identical bytes. The production acceptance check requires a signed-in phone upload and a signed-out visitor opening that link.
+A finished `scene.glb` can use Sam’s existing unlisted GLB upload endpoint directly from [Scan Review](../apps/capture/README.md#share-a-scan-directly-from-the-iphone). Anish’s Swift client sent the 16,856-byte [native fixture](../fixtures/lidar-native-capture/source.glb) through the real local API handlers with disposable PostgreSQL and a signed test identity. The owner recovered the same link after upload, anonymous discovery omitted it, and a signed-out read returned identical bytes. On November 22, Anish signed in on a physical iPhone 16 Pro and uploaded a 10.6-second LiDAR scan (15.2 MB). A fresh signed-out, phone-sized Chrome session opened the returned production link, rendered the 3D canvas and reset its view. The real scan was absent from public discovery. The remaining field check is recognizing the turn on a second physical phone over cellular. [Implementation and verification](https://github.com/darkprince558/path-app/pull/56)
 
 ## iOS scanner account
 
