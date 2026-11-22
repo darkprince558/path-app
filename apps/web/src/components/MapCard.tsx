@@ -1,4 +1,4 @@
-import { Ellipsis, Globe, Link2, Lock } from "lucide-react";
+import { Ellipsis, Globe, Link2, Lock, UserRound } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -86,6 +86,12 @@ function formatDate(iso?: string) {
   if (!iso) return null;
   const date = new Date(iso.includes("T") ? iso : `${iso}T12:00:00`);
   return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/** Account names are often email addresses: show the part before the @ (the card's title has the rest). */
+function personName(name: string) {
+  const at = name.indexOf("@");
+  return at > 0 ? name.slice(0, at) : name;
 }
 
 export async function copyMapLink(map: MapSummary) {
@@ -215,17 +221,24 @@ export default function MapCard({
         <div className="overflow-hidden rounded-t-2xl">
           <MapPreview shareId={map.id} />
         </div>
-        <div className="grid gap-1.5 p-3">
+        <div className="grid gap-1 p-3">
           <h2 className="leading-snug font-bold">{map.name}</h2>
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-            <span className="inline-flex items-center gap-1">
-              <badge.Icon className="size-3.5" aria-hidden />
-              {badge.label}
-            </span>
-            {map.sharedBy ? <span>· Shared by {map.sharedBy}</span> : null}
-            {map.place ? <span>· {map.place}</span> : null}
-            {updated ? <span className="font-mono text-xs">· {updated}</span> : null}
+          {/* One short line (sharing, kind of place, date), then who shared it on its own line,
+              so nothing wraps into a stray "·" at the start of a line. */}
+          <p className="flex items-center gap-1.5 text-sm whitespace-nowrap text-muted">
+            <badge.Icon className="size-3.5 shrink-0" aria-hidden />
+            {badge.label}
+            {map.place ? <><span aria-hidden>·</span>{map.place}</> : null}
+            {updated ? <><span aria-hidden>·</span>{updated}</> : null}
           </p>
+          {map.sharedBy ? (
+            <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted" title={`Shared by ${map.sharedBy}`}>
+              <UserRound className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">
+                Shared by <span className="font-bold text-forest">{personName(map.sharedBy)}</span>
+              </span>
+            </p>
+          ) : null}
         </div>
       </Link>
       {showMenu ? <CardMenu map={map} onDelete={onDelete} /> : null}
