@@ -6,6 +6,7 @@ import Creators from "../landing/Creators";
 import Hero from "../landing/Hero";
 import Join from "../landing/Join";
 import LandingNav from "../landing/LandingNav";
+import Pipeline from "../landing/Pipeline";
 import Problem from "../landing/Problem";
 import WhoUses from "../landing/WhoUses";
 
@@ -20,6 +21,7 @@ export default function Home() {
         <Problem />
         <AppTour />
         <WhoUses />
+        <Pipeline />
         <Creators />
         <Join />
       </main>
