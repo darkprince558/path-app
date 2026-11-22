@@ -66,7 +66,10 @@ function validate(input: Triangles, agent: Agent) {
   for (let i = 0; i < p.length; i++) { const a = i % 3; min[a] = Math.min(min[a]!, p[i]!); max[a] = Math.max(max[a]!, p[i]!); }
   const x = Math.ceil((max[0]! - min[0]!) / CS), z = Math.ceil((max[2]! - min[2]!) / CS);
   const y = Math.max(1, Math.ceil((max[1]! - min[1]!) / CH));
-  if (!x || !z || x * z > 2_000_000 || x * y * z > 30_000_000 || y > 65_000) throw new Error("Geometry exceeds the demo voxel budget or has empty bounds.");
+  // Recast's heightfield is sparse: it allocates per horizontal cell and per occupied span,
+  // so cost follows the footprint and the triangle budget above, not the bounding volume.
+  // A volume cap rejected multi-storey scans (ACEB: 48 x 45 x 9.5 m, built in ~0.3 s).
+  if (!x || !z || x * z > 2_000_000 || y > 65_000) throw new Error("Geometry exceeds the demo voxel budget or has empty bounds.");
   const a = new Vector3(), b = new Vector3(), c = new Vector3();
   for (let i = 0; i < ix.length; i += 3) {
     a.fromArray(p, ix[i]! * 3); b.fromArray(p, ix[i + 1]! * 3); c.fromArray(p, ix[i + 2]! * 3);
