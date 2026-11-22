@@ -66,6 +66,23 @@ For the first integration, upload the sample PLY as **Unlisted**, open the retur
 
 The local API provides fixture bytes and exercises sharing rules. Replace its test page with the website’s guest route during integration. [Local API commands](../../services/api/README.md) · [Capture format and viewer notes](../../docs/scan-formats.md)
 
+## Filling holes before upload
+
+`tools/scan_fill_holes.py` patches small holes in a phone scan GLB and removes floating
+fragments, then writes a new GLB the website shows like any Path Capture scan. It rebuilds
+the surface with screened Poisson reconstruction and keeps only new surface within
+`--max-gap` metres (default 0.12) of the real scan, so doorways and open ends are not
+walled over. Needs `pip install open3d numpy` (Python 3.10–3.12).
+
+```
+python tools/scan_fill_holes.py hallway.glb hallway-filled.glb
+python tools/scan_fill_holes.py hallway.glb hallway-filled.glb --max-gap 0.2 --max-triangles 800000
+```
+
+On a 1.37M-triangle, 37 MB hallway scan it took about 3 minutes on a laptop CPU, cut open
+hole edges by 74% (70,304 to 18,128) and loose pieces from 2,048 to 76, at the same
+triangle count. Edges come out slightly rounder than the original.
+
 ## Run locally
 
 Requires Node 22+ and pnpm. Set `API_TARGET=http://127.0.0.1:8001` for the legacy mock.
