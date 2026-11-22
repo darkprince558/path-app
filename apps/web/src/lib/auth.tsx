@@ -45,7 +45,7 @@ export function AccountControls() {
   const location = useLocation();
   if (status === "loading") return <span role="status">Checking sign-in…</span>;
   if (status === "error") return <button onClick={() => void refresh()} className="underline">Retry sign-in check</button>;
-  return user ? <div className="flex flex-wrap items-center gap-3"><span>{user.displayName}</span><a className="underline" href="/auth/logout?returnTo=%2F">Sign out</a></div>
+  return user ? <div className="flex flex-wrap items-center gap-x-6 gap-y-1"><span>{user.displayName}</span><a className="inline-flex min-h-11 items-center underline underline-offset-4" href="/auth/logout?returnTo=%2F">Sign out</a></div>
     : <a className="underline" href={loginHref(location.pathname === "/" ? "/maps" : location.pathname + location.search + location.hash)}>Sign in</a>;
 }
 

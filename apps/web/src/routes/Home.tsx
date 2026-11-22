@@ -12,7 +12,7 @@ import WhoUses from "../landing/WhoUses";
 /** Landing page at /. Sections and motion follow apps/web/DESIGN.md. */
 export default function Home() {
   return (
-    <div className="relative min-h-dvh bg-paper">
+    <div className="relative min-h-dvh bg-paper bg-[linear-gradient(to_bottom,var(--color-night)_0,var(--color-night)_12rem,transparent_12rem)]">
       <SkipLink />
       <LandingNav />
       <main id="main" tabIndex={-1} className="overflow-x-clip focus:outline-none">
