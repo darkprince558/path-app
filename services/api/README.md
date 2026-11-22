@@ -113,6 +113,22 @@ with `TEST_DATABASE_URL` pointing to it, as described in the core API contract. 
 LiDAR schema test exercises retry uniqueness, ownership/space isolation, frame data,
 job constraints, approval completeness and preservation of an existing scan.
 
+## Browser GLB uploads
+
+`POST /api/scans?format=glb&visibility=unlisted&name=Hallway` accepts raw
+`application/octet-stream` GLB bytes under the authenticated browser session.
+Visibility defaults to private; names default to `Untitled map`. The body is limited
+to 32 MiB, including requests without Content-Length. PLY imports return 415.
+A successful upload returns 201 `{id, shareId, sharePath, name, visibility}`.
+
+Each browser import gets its own unlisted containing space. Its scan controls
+public discovery and private/unlisted/public reads. Unlisted maps open signed out
+from their opaque link and stay out of both scan and space discovery. Private
+maps require ownership or a viewer grant. Changing visibility through
+`PATCH /api/scans/:id` rechecks access on the next metadata and asset request.
+The returned `id` is used for edits; `shareId` is used for guest links.
+No database migration is needed; the existing visibility enum includes unlisted.
+
 ## Python integration mock
 
 Sam owns the durable backend. The team can integrate against the local reference API now with Python 3.9+ and Make. From the repo root, run `make dev-api` in one terminal, then upload the fixture from another.
