@@ -61,7 +61,8 @@ function Framing({ bounds, resetToken }: { bounds: Sphere; resetToken: number })
     const horizontal = 2 * Math.atan(Math.tan(vertical / 2) * (size.width / Math.max(size.height, 1)));
     const radius = Math.max(bounds.radius, 0.001);
     const distance = radius / Math.sin(Math.min(vertical, horizontal) / 2) * 1.1;
-    camera.position.copy(bounds.center).add(new Vector3(0, distance * 0.4, distance * 0.92));
+    // A dollhouse view: about 50° down from the entrance side (+Z), so corridors read from above.
+    camera.position.copy(bounds.center).add(new Vector3(0, distance * 0.77, distance * 0.64));
     camera.near = Math.max(radius / 1000, 0.00001);
     camera.far = Math.max(radius * 100, distance * 4);
     camera.updateProjectionMatrix();
@@ -192,13 +193,15 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
   if (error) return <p role="alert" className="p-6 text-paper">The model could not be opened: {error}</p>;
   if (loading) return <p role="status" className="p-6 text-paper">Building the 3D view…</p>;
   return <div className="relative h-full w-full"><ViewerBoundary onError={onError}>
-    <Canvas dpr={[1, 2]} camera={{ fov: 55 }} gl={{ antialias: true, powerPreference: "high-performance" }}
+    <Canvas flat dpr={[1, 2]} camera={{ fov: 55 }} gl={{ antialias: true, powerPreference: "high-performance" }}
       fallback={<p role="alert">This browser could not start WebGL. Try another browser or device.</p>}
       aria-label="Room model and navigation route. Drag to orbit; scroll or pinch to zoom.">
       <color attach="background" args={["#121C16"]} />
-      <ambientLight intensity={1.5} />
-      <hemisphereLight args={["#ffffff", "#A9C4AE", 1]} />
-      <directionalLight position={[3, 8, 5]} intensity={2} />
+      {/* No tone curve (flat): the camera already captured the room's lighting, so a scan
+          should show about 1x its colours. Floors get ~1.05x, walls ~0.85x: just enough
+          shading to read depth. Unlit (photo-textured) scans ignore these lights. */}
+      <ambientLight intensity={0.75} />
+      <directionalLight position={[2, 10, 3]} intensity={0.35} />
       {loaded.map((entry) => <primitive key={entry.id} object={entry.model.object} dispose={null}
         onDoubleClick={(event: ThreeEvent<MouseEvent>) => pick(event, entry)} />)}
       <Overlays nodes={nodes} edges={edges} route={enabled ? (autoState?.points ?? []).map((p, i) => ({ ...p, id: `auto-${i}` })) : route} showGraph={!enabled && showGraph} radius={bounds.radius} />
