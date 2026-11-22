@@ -40,12 +40,13 @@ export function useAuth() {
   return auth;
 }
 
-export function AccountControls() {
+/** `className` adds layout for where it sits, e.g. the sidebar spreads the name and Sign out apart. */
+export function AccountControls({ className = "" }: { className?: string } = {}) {
   const { status, user, refresh } = useAuth();
   const location = useLocation();
   if (status === "loading") return <span role="status">Checking sign-in…</span>;
   if (status === "error") return <button onClick={() => void refresh()} className="underline">Retry sign-in check</button>;
-  return user ? <div className="flex flex-wrap items-center gap-x-6 gap-y-1"><span>{user.displayName}</span><a className="inline-flex min-h-11 items-center underline underline-offset-4" href="/auth/logout?returnTo=%2F">Sign out</a></div>
+  return user ? <div className={`flex flex-wrap items-center gap-x-6 gap-y-1 ${className}`}><span className="min-w-0 truncate">{user.displayName}</span><a className="inline-flex min-h-11 shrink-0 items-center underline underline-offset-4" href="/auth/logout?returnTo=%2F">Sign out</a></div>
     : <a className="underline" href={loginHref(location.pathname === "/" ? "/maps" : location.pathname + location.search + location.hash)}>Sign in</a>;
 }
 

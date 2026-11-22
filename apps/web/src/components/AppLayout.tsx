@@ -55,8 +55,9 @@ export default function AppLayout() {
           <Plus className="size-5" aria-hidden />
           New map
         </Link>
-        <div className="mt-auto flex items-center gap-3 px-1">
-          <AccountControls />
+        <div className="mt-auto px-1">
+          {/* Name on the left, Sign out on the right edge of the sidebar. */}
+          <AccountControls className="w-full flex-nowrap justify-between" />
         </div>
       </aside>
 
