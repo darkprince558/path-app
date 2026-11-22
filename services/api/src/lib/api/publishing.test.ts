@@ -99,7 +99,7 @@ test('approval and sharing preserve revision integrity, privacy, transforms and 
     assert.equal('frames' in meta, false); assert.equal('objectKey' in meta, false);
     const glb = await sceneRoute(request(), context);
     assert.equal(glb.status, 200); assert.equal(glb.headers.get('content-type'), 'model/gltf-binary');
-    assert.equal(glb.headers.get('cache-control'), 'private, no-store');
+    assert.equal(glb.headers.get('cache-control'), 'private, no-cache'); assert.ok(glb.headers.get('etag'));
     assert.deepEqual(Buffer.from(await glb.arrayBuffer()), await lidarFixtureFile('source.glb'));
     assert.equal((await pointsRoute(request(), context)).status, 200);
     const frameContext = { params: Promise.resolve({ shareId: scan.shareId, frameId: 'junction-02' }) };

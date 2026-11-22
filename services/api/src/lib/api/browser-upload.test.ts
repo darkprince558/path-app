@@ -150,7 +150,7 @@ test('signed browser upload route returns a working signed-out model link', {
     const meta = await metadataResponse.json();
     const asset = await sceneRoute(new Request(`http://localhost${meta.assetPath}`), context);
     assert.equal(asset.status, 200);
-    assert.equal(asset.headers.get('Cache-Control'), 'private, no-store');
+    assert.equal(asset.headers.get('Cache-Control'), 'private, no-cache'); assert.ok(asset.headers.get('ETag'));
     assert.deepEqual(Buffer.from(await asset.arrayBuffer()), bytes);
   } finally {
     if (spaceId) {
