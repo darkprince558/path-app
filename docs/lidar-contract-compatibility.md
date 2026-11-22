@@ -27,7 +27,7 @@ camera dimensions to those pixels; older takes without calibration omit intrinsi
 New takes record the OS version, and older takes honestly emit `unknown (legacy scan)`.
 Pose matrices, frame numbering and the first normally tracked entrance pose are
 preserved; seconds are no longer rounded through integer milliseconds. Hashes are
-computed only after writing the final frame index. Export checks the 32 MiB file,
+computed only after writing the final frame index. Export checks the 100 MiB file,
 2 MiB frame-index, 256 MiB bundle and 1,000-frame limits.
 
 CPU intake uses those generated strict validators, permits the full backend frame-ID
