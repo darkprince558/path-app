@@ -7,6 +7,7 @@ import {
   cleanMapName,
   formatBytes,
   MAX_NAME_LENGTH,
+  mapEditId,
   uploadScan,
   UploadError,
   type ScanFormat,
@@ -116,7 +117,7 @@ export default function Upload() {
       {phase.step === "done" ? (
         <div className="mt-8">
           <SharePanel
-            mapId={phase.result.shareId}
+            mapId={mapEditId(phase.result)}
             sharePath={phase.result.sharePath}
             initialVisibility={phase.visibility}
             footer={

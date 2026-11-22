@@ -26,6 +26,7 @@ export const MAX_NAME_LENGTH = 80;
 export const DEFAULT_MAP_NAME = "Untitled map";
 
 export interface UploadResult {
+  id?: string;
   shareId: string;
   sharePath: string;
   name: string;
@@ -192,6 +193,7 @@ export function uploadScan(options: {
           const body = JSON.parse(xhr.responseText) as Partial<UploadResult>;
           if (typeof body.shareId === "string" && typeof body.sharePath === "string") {
             return resolve({
+              ...(typeof body.id === "string" ? { id: body.id } : {}),
               shareId: body.shareId,
               sharePath: body.sharePath,
               name: typeof body.name === "string" ? body.name : (name ?? DEFAULT_MAP_NAME),
