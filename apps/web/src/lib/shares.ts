@@ -37,10 +37,10 @@ export class ShareError extends Error {
   }
 }
 
-async function request(url: string, signal: AbortSignal): Promise<Response> {
+async function request(url: string, signal: AbortSignal, cache: RequestCache = "no-store"): Promise<Response> {
   let response: Response;
   try {
-    response = await apiFetch(url, { signal, credentials: "same-origin" });
+    response = await apiFetch(url, { signal, credentials: "same-origin", cache });
   } catch (error) {
     if (signal.aborted) throw error;
     throw new ShareError("network", "Couldn't reach the server.");
@@ -80,10 +80,14 @@ export async function fetchShare(shareId: string, signal: AbortSignal): Promise<
   return body;
 }
 
-/** Fetches the scan bytes. `assetPath` may be relative to this site or an absolute URL. */
+/**
+ * Fetches the scan bytes. `assetPath` may be relative to this site or an absolute URL.
+ * Reopening a map reuses the browser's copy once the server confirms it is current (ETag/304),
+ * instead of downloading the whole model again. Access is still checked on every open.
+ */
 export async function fetchAsset(assetPath: string, signal: AbortSignal): Promise<ArrayBuffer> {
   const url = new URL(assetPath, window.location.origin).toString();
-  const response = await request(url, signal);
+  const response = await request(url, signal, "no-cache");
   try {
     return await response.arrayBuffer();
   } catch (error) {

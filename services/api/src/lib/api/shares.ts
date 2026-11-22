@@ -11,6 +11,7 @@ import { digestBytes } from './captures';
 import { canReadScan, downloadScan, effectiveScanCalibration, transform } from './scans';
 import { revisionBytes, revisionFiles } from './revision-approval';
 import { conflict, notFound } from './http';
+import { cachedAsset, etagFor } from './http-cache';
 import { uuid } from './validation';
 
 type Db = ReturnType<typeof connectDatabase>['db'];
@@ -47,6 +48,28 @@ export async function sharePoints(db: Db, revisions: RevisionStorage, user: AppU
   if (!scan.sourceRevisionId) throw notFound();
   const [revision] = await db.select().from(scanRevisions).where(eq(scanRevisions.id, scan.sourceRevisionId));
   return revisionBytes(revisions, revision, 'scene.ply');
+}
+
+/**
+ * The share's model, cacheable by the browser. Access is checked first (readShare); a repeat
+ * open with the current ETag gets a 304 without reading or re-hashing the file. A scan's
+ * object key is unique to its bytes (new uploads and approvals write new keys).
+ */
+export async function shareSceneResponse(request: Request, db: Db, storage: ScanStorage, user: AppUser | null, shareId: string) {
+  const scan = await readShare(db, user, shareId);
+  const etag = etagFor('scene', scan.id, scan.objectKey, scan.byteSize, scan.sourceRevisionId);
+  return cachedAsset(request, etag, 'model/gltf-binary', async () => (await downloadScan(db, storage, user, scan.id)).bytes);
+}
+
+/** The approved revision's point cloud, cacheable like the model. Revision outputs never change. */
+export async function sharePointsResponse(request: Request, db: Db, revisions: RevisionStorage, user: AppUser | null, shareId: string) {
+  const scan = await readShare(db, user, shareId);
+  if (!scan.sourceRevisionId) throw notFound();
+  const [revision] = await db.select().from(scanRevisions).where(eq(scanRevisions.id, scan.sourceRevisionId));
+  const file = revision ? revisionFiles(revision).find(entry => entry.path === 'scene.ply') : undefined;
+  if (!revision || !file) throw notFound();
+  return cachedAsset(request, etagFor('points', revision.id, file.sha256, file.byteSize), 'application/ply',
+    () => revisionBytes(revisions, revision, 'scene.ply'));
 }
 
 export async function shareFrame(db: Db, storage: CaptureStorage, user: AppUser | null, shareId: string, frameId: string) {
