@@ -139,7 +139,7 @@ enum ModelPreview {
     cam.simdPosition = center + SIMD3(0.65, 0.5, 1) * span
     cam.look(at: SCNVector3(center))
     scene.rootNode.addChildNode(cam)
-    scene.background.contents = UIColor(red: 0.055, green: 0.087, blue: 0.073, alpha: 1)
+    scene.background.contents = UIColor(red: 0x12 / 255, green: 0x1C / 255, blue: 0x16 / 255, alpha: 1)
     return scene
   }
 }
@@ -156,8 +156,9 @@ struct ScanPreview: View {
           .accessibilityIdentifier("native-model-preview")
       } else if failed {
         ContentUnavailableView("Preview unavailable", systemImage: "viewfinder")
+          .foregroundStyle(Brand.paper)
       } else {
-        ProgressView("Opening scan")
+        ProgressView("Opening scan").tint(Brand.paper).foregroundStyle(Brand.sage)
       }
     }.task(id: url) {
       do { scene = try await Task.detached { try walk.map { try ModelPreview.walkPoints($0) } ?? ModelPreview.scene(url) }.value } catch {

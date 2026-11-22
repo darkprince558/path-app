@@ -236,11 +236,11 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
         return
       }
     }
+    // Walks have no length limit. While two earlier sections are still saving, the current
+    // section keeps recording and rolls over as soon as one of them finishes.
     if SectionBudget.shouldSave(seconds: take.seconds, points: pointCount, faces: faceCount) {
       if saving.count < 2 {
         rotateSection(prioritizeDepth: !saving.isEmpty)
-      } else if take.seconds >= 90 {
-        stop(reason: "Two sections are still writing to storage. Earlier sections remain on this phone.")
       } else {
         instruction = quality == .normal ? "Still recording while earlier sections save." : guide
       }

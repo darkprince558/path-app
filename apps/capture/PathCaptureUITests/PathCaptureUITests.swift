@@ -73,11 +73,15 @@ final class PathCaptureUITests: XCTestCase {
     XCTAssertTrue(app.descendants(matching:.any)["native-model-preview"].firstMatch.waitForExistence(timeout: 10))
     let section = app.buttons.containing(NSPredicate(format:"label CONTAINS %@", "Section 2")).firstMatch
     if !section.isHittable { app.swipeUp() }
+    // A tap while the scroll view is still decelerating only stops the scroll.
+    Thread.sleep(forTimeInterval: 1)
     section.tap()
     XCTAssertTrue(app.navigationBars["Scan review"].waitForExistence(timeout: 10))
     app.navigationBars["Scan review"].buttons["Done"].tap()
     let prepare = app.buttons["Prepare whole walk for Mac"]
     for _ in 0..<3 where !prepare.isHittable { app.swipeUp() }
+    // A tap while the scroll view is still decelerating only stops the scroll.
+    Thread.sleep(forTimeInterval: 1)
     prepare.tap()
     XCTAssertTrue(app.buttons["Share whole walk"].waitForExistence(timeout: 15))
   }
@@ -91,7 +95,7 @@ final class PathCaptureUITests: XCTestCase {
       XCTAssertTrue(app.buttons["Sign Up"].exists)
     }
     app.navigationBars.buttons.element(boundBy: 0).tap()
-    XCTAssertTrue(app.staticTexts["Scan a space"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Map a hallway"].waitForExistence(timeout: 5))
   }
 
   func testOfflineScanReview() throws {
@@ -120,6 +124,8 @@ final class PathCaptureUITests: XCTestCase {
     add(attachment)
     let prepare = app.buttons["Prepare LiDAR bundle"]
     for _ in 0..<4 where !prepare.isHittable { app.swipeUp() }
+    // A tap while the scroll view is still decelerating only stops the scroll.
+    Thread.sleep(forTimeInterval: 1)
     XCTAssertTrue(prepare.isEnabled)
     prepare.tap()
     XCTAssertTrue(app.buttons["Share LiDAR bundle"].waitForExistence(timeout: 15))

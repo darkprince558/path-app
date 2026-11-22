@@ -75,27 +75,113 @@ struct AccountView: View {
   @ObservedObject var account: CaptureAccount
 
   var body: some View {
-    List {
-      if let user = account.user {
-        Section("Profile") {
-          if let email = user.email { LabeledContent("Email", value: email) }
-          if let verified = user.emailVerified {
-            LabeledContent("Email verified", value: verified ? "Yes" : "No")
+    ScrollView {
+      VStack(alignment: .leading, spacing: 24) {
+        if let user = account.user {
+          VStack(spacing: 14) {
+            Avatar(url: user.picture, initial: (user.name ?? user.email ?? "?").prefix(1).uppercased())
+            VStack(spacing: 4) {
+              Text(user.name ?? user.nickname ?? "Signed in")
+                .font(.display(.title2)).foregroundStyle(Brand.text)
+              if let email = user.email {
+                Text(email).font(.subheadline).foregroundStyle(Brand.secondaryText)
+              }
+            }
+            .multilineTextAlignment(.center)
           }
-          if let name = user.name { LabeledContent("Name", value: name) }
-          if let nickname = user.nickname { LabeledContent("Nickname", value: nickname) }
-          if let picture = user.picture { LabeledContent("Picture", value: picture.absoluteString) }
-          LabeledContent("User ID", value: user.sub)
+          .frame(maxWidth: .infinity)
+          .padding(.top, 8)
+
+          VStack(alignment: .leading, spacing: 14) {
+            if let verified = user.emailVerified {
+              Row(label: "Email verified", value: verified ? "Yes" : "No")
+            }
+            if let nickname = user.nickname { Row(label: "Nickname", value: nickname) }
+            VStack(alignment: .leading, spacing: 4) {
+              Text("User ID").font(.footnote).foregroundStyle(Brand.secondaryText)
+              Text(user.sub).font(.data(.footnote)).foregroundStyle(Brand.text)
+                .textSelection(.enabled)
+            }
+          }
+          .card()
+
+          Button("Log Out") { Task { await account.logOut() } }
+            .buttonStyle(.quiet)
+        } else {
+          VStack(alignment: .leading, spacing: 12) {
+            ZStack {
+              Brand.nightPanel
+              PinZero().frame(width: 54, height: 54)
+            }
+            .frame(height: 130)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .accessibilityHidden(true)
+            Text("Share maps online").font(.display(.title)).foregroundStyle(Brand.text)
+            Text(
+              "Sign in to upload unlisted maps from this phone. Anyone you send the link to can open them, no app needed."
+            )
+            .font(.body).foregroundStyle(Brand.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+          }
+          VStack(spacing: 12) {
+            Button("Log In") { Task { await account.logIn() } }
+              .buttonStyle(.coral)
+            Button("Sign Up") { Task { await account.logIn(signUp: true) } }
+              .buttonStyle(.quiet)
+          }
+          Label("Scanning works without an account.", systemImage: "info.circle")
+            .font(.footnote).foregroundStyle(Brand.secondaryText)
         }
-        Button("Log Out") { Task { await account.logOut() } }
-      } else {
-        Button("Log In") { Task { await account.logIn() } }
-        Button("Sign Up") { Task { await account.logIn(signUp: true) } }
+        if account.busy {
+          HStack(spacing: 10) {
+            ProgressView()
+            Text("Connecting to your account").font(.footnote).foregroundStyle(Brand.secondaryText)
+          }
+        }
+        if let message = account.message {
+          Label(message, systemImage: "exclamationmark.circle")
+            .font(.footnote).foregroundStyle(Brand.accentText)
+        }
       }
-      if account.busy { ProgressView("Connecting to your account") }
-      if let message = account.message { Text(message).foregroundStyle(.red) }
+      .padding(.horizontal, 16)
+      .padding(.top, 8)
+      .padding(.bottom, 32)
     }
+    .background(Brand.page)
     .disabled(account.busy)
     .navigationTitle("Account")
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbarBackground(Brand.page, for: .navigationBar)
+  }
+
+  private struct Row: View {
+    let label: String
+    let value: String
+    var body: some View {
+      HStack {
+        Text(label).font(.subheadline).foregroundStyle(Brand.secondaryText)
+        Spacer()
+        Text(value).font(.subheadline.weight(.medium)).foregroundStyle(Brand.text)
+      }
+      .accessibilityElement(children: .combine)
+    }
+  }
+
+  private struct Avatar: View {
+    let url: URL?
+    let initial: String
+    var body: some View {
+      AsyncImage(url: url) { image in
+        image.resizable().scaledToFill()
+      } placeholder: {
+        Text(initial).font(.display(.title)).foregroundStyle(Brand.onPrimary)
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .background(Brand.primary)
+      }
+      .frame(width: 84, height: 84)
+      .clipShape(Circle())
+      .overlay(Circle().strokeBorder(Brand.coral, lineWidth: 3))
+      .accessibilityHidden(true)
+    }
   }
 }

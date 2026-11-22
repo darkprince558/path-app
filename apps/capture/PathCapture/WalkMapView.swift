@@ -45,7 +45,7 @@ struct WalkMapView: View {
     VStack(alignment: .leading, spacing: 5) {
       if style != .mini {
         HStack {
-          Text("Walk map").font(.headline)
+          Text("Walk map").font(.display(.headline))
           Spacer()
           if mode != .follow {
             Button { mode = .follow; freeCamera = nil } label: {
@@ -86,18 +86,19 @@ struct WalkMapView: View {
           }
       }
       .frame(height: style == .mini ? 124 : (verticalSize == .compact && style == .panel ? 86 : 190))
-      .background(Color(red: 0.06, green: 0.10, blue: 0.13), in: RoundedRectangle(cornerRadius: 9))
-      .clipShape(RoundedRectangle(cornerRadius: 9))
+      .background(Brand.night, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+      .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
       if style != .mini {
         HStack(spacing: 12) {
-          Label("Observed", systemImage: "square.fill").foregroundStyle(.mint)
-          Label("Walked", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
-          Text("Dark = unseen")
+          Label("Observed", systemImage: "square.fill").foregroundStyle(Brand.sage)
+          Label("Walked", systemImage: "point.topleft.down.to.point.bottomright.curvepath").foregroundStyle(Brand.coral)
+          Text("Dark = unseen").foregroundStyle(Brand.paper.opacity(0.7))
         }.font(.caption2)
       }
-    }.foregroundStyle(.white).tint(.mint).padding(style == .mini ? 4 : 8)
+    }.foregroundStyle(Brand.paper).tint(Brand.sage).padding(style == .mini ? 4 : 10)
       .frame(width: style == .mini ? 132 : nil)
-      .background(Color(red: 0.09, green: 0.14, blue: 0.17), in: RoundedRectangle(cornerRadius: 14))
+      .background(Brand.nightPanel.opacity(style == .review ? 1 : 0.92), in: RoundedRectangle(cornerRadius: style == .mini ? 16 : 20, style: .continuous))
+      .overlay(RoundedRectangle(cornerRadius: style == .mini ? 16 : 20, style: .continuous).strokeBorder(Brand.paper.opacity(0.1)))
   }
 
   private func draw(_ context: GraphicsContext, camera: MapCamera) {
@@ -123,11 +124,11 @@ struct WalkMapView: View {
         for p in track.dropFirst() { routes.addLine(to: camera.project(CGPoint(xz: p))) }
       }
     }
-    context.fill(hits, with: .color(.mint.opacity(0.65)))
-    context.stroke(routes, with: .color(.white), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+    context.fill(hits, with: .color(Brand.sage.opacity(0.6)))
+    context.stroke(routes, with: .color(Brand.coral), style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
     if let start = layers.lazy.compactMap({ $0.map.tracks.first?.first }).first {
       let point = camera.project(CGPoint(xz: start))
-      context.stroke(Path(ellipseIn: CGRect(x: point.x - 4, y: point.y - 4, width: 8, height: 8)), with: .color(.white))
+      context.stroke(Path(ellipseIn: CGRect(x: point.x - 5, y: point.y - 5, width: 10, height: 10)), with: .color(Brand.paper), lineWidth: 2)
     }
     if let latest, let location = latest.position {
       let point = camera.project(CGPoint(xz: location))
@@ -141,9 +142,10 @@ struct WalkMapView: View {
         arrow.addLine(to: CGPoint(x: 0, y: 3))
         arrow.addLine(to: CGPoint(x: -6, y: 6))
         arrow.closeSubpath()
-        marker.fill(arrow, with: .color(.yellow))
+        marker.fill(arrow, with: .color(Brand.paper))
+        marker.stroke(arrow, with: .color(Brand.ink), lineWidth: 1)
       } else {
-        context.fill(Path(ellipseIn: CGRect(x: point.x - 4, y: point.y - 4, width: 8, height: 8)), with: .color(.orange))
+        context.fill(Path(ellipseIn: CGRect(x: point.x - 4, y: point.y - 4, width: 8, height: 8)), with: .color(Brand.coral))
       }
     }
     let metres = max(1, Int(ceil(30 * camera.metresPerPoint)))

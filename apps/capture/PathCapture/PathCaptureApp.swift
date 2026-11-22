@@ -14,7 +14,7 @@ import SwiftUI
           Text("Could not load the requested walk replay.")
         }
       } else {
-        LibraryScreen()
+        LibraryScreen().tint(Brand.primary)
       }
     }
   }
