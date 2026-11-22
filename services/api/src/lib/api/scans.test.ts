@@ -10,7 +10,7 @@ import { eventMembers, events, eventSpaces, scans, scanViewers, spaces, users } 
 import { LocalScanStorage } from '../storage';
 import { POST as uploadRoute } from '../../app/api/spaces/[id]/scans/route';
 import { GET as downloadRoute } from '../../app/api/scans/[id]/file/route';
-import { boundedFormData, canReadScan, createScan, deleteScan, downloadScan, identityTransform,
+import { boundedFormData, MAX_GLB_BYTES, canReadScan, createScan, deleteScan, downloadScan, identityTransform,
   listScans, parseUpload, readScan, transform, updateScan, validateGlb } from './scans';
 
 function sampleGlb(extra: Record<string, unknown> = {}) {
@@ -54,7 +54,7 @@ test('GLB is self-contained and alignment cannot collapse geometry or add perspe
   calibrated[0] = calibrated[5] = calibrated[10] = 0.00001;
   calibrated[12] = 2;
   assert.deepEqual(transform.parse(calibrated), calibrated);
-  for (const [index, value] of [[0, 0], [3, 1], [7, 1], [11, 1], [15, 0], [12, Infinity]]) {
+  for (const [index, value] of [[0, 0], [3, 1], [7, 1], [11, 1], [15, 0], [15, 0.9999998], [12, Infinity]]) {
     const invalid = [...identityTransform]; invalid[index] = value;
     assert.equal(transform.safeParse(invalid).success, false);
   }
@@ -76,7 +76,7 @@ test('invalid bearer tokens cannot upload or download', async () => {
 test('multipart upload rejects an oversized request before parsing', async () => {
   const request = new Request('http://localhost/api/scans', {
     method: 'POST',
-    headers: { 'Content-Type': 'multipart/form-data; boundary=test', 'Content-Length': String(34 * 1024 * 1024) },
+    headers: { 'Content-Type': 'multipart/form-data; boundary=test', 'Content-Length': String(MAX_GLB_BYTES + 2 * 1024 * 1024) },
     body: 'small',
   });
   await assert.rejects(boundedFormData(request), { status: 413 });

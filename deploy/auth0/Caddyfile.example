@@ -1,0 +1,12 @@
+# Merge this site block with the inspected live configuration; do not replace other sites.
+not404.vodka {
+    @backend path /api /api/* /auth /auth/*
+    handle @backend {
+        reverse_proxy 127.0.0.1:3000
+    }
+    handle {
+        root * /srv/not404/current/apps/web/dist
+        try_files {path} /index.html
+        file_server
+    }
+}

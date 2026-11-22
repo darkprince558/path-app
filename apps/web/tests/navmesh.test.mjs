@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Group } from "three";
+import { Group, BufferGeometry, Float32BufferAttribute, Mesh } from "three";
 import { buildNavMesh, DEFAULT_AGENT, trianglesFromObject } from "../src/lib/navmesh.ts";
 import { createRoom, disposeRoom } from "../src/lib/navmesh-room.ts";
 
@@ -108,4 +108,121 @@ test("extraction preserves hierarchy, scan transform and winding under reflectio
     const route = nav.route(transform(start), transform(end));
     assert.equal(route.ok, true); assert.ok(route.distance > 10);
   } finally { nav.dispose(); disposeRoom(room); }
+});
+
+test("approved GLB routes through doorway at elevated height with transforms applied once", async () => {
+  const { roomGlb, approvedTransform, spacePoint } = await import("./helpers/room-glb.ts");
+  const { parseGlb } = await import("../src/lib/glb.ts");
+  for (const closed of [false, true]) {
+    const model = await parseGlb(roomGlb({ closed }), approvedTransform);
+    const nav = await buildNavMesh(trianglesFromObject(model.object));
+    try {
+      const route = nav.route(spacePoint(start), spacePoint(end));
+      assert.equal(route.ok, !closed);
+      if (route.ok) {
+        assert.ok(route.distance > 10 && route.distance < 13);
+        assert.ok(route.points.every(p => Math.abs(p.y - 7.5) < 0.15));
+        for (let i = 1; i < route.points.length; i++) {
+          const a = route.points[i - 1], b = route.points[i];
+          if ((a.x - 11) * (b.x - 11) <= 0 && a.x !== b.x) {
+            const z = a.z + (b.z - a.z) * ((11 - a.x) / (b.x - a.x));
+            assert.ok(z >= -3.7 && z <= -2.3, `route crossed wall at ${z}`);
+          }
+        }
+      }
+      assert.equal(nav.route(start, end).ok, false, "raw GLB coordinates must not reach translated floor");
+      assert.equal(nav.route({ ...spacePoint(start), y: 0 }, spacePoint(end)).ok, false);
+    } finally { nav.dispose(); model.dispose(); }
+  }
+});
+
+test("automatic routing requires calibrated and verified coordinate declarations", async () => {
+  const { automaticNavigationIssue } = await import("../src/lib/automatic-navigation.ts");
+  const { approvedMetadata, roomGlb, approvedTransform } = await import("./helpers/room-glb.ts");
+  const { parseGlb } = await import("../src/lib/glb.ts");
+  assert.equal(automaticNavigationIssue(approvedMetadata), undefined);
+  for (const metadata of [undefined, {}, { ...approvedMetadata, alignmentVerified: false },
+    { ...approvedMetadata, coordinateSystem: { units: "relative", upAxis: "Y" } },
+    { ...approvedMetadata, coordinateSystem: { units: "metres", upAxis: "Z", calibrated: true } }]) {
+    assert.match(automaticNavigationIssue(metadata), /requires/);
+  }
+  const model = await parseGlb(roomGlb({ noFloor: true }), approvedTransform);
+  try { await assert.rejects(buildNavMesh(trianglesFromObject(model.object)), /empty bounds|walkable|failed/); }
+  finally { model.dispose(); }
+});
+
+test("stacked floors at arbitrary heights remain independent without a traversable connector", async () => {
+  const group = new Group(), rooms = [createRoom(), createRoom()];
+  rooms[0].position.y = -3.25; rooms[1].position.y = 2.75;
+  for (const room of rooms) group.add(room);
+  const nav = await buildNavMesh(trianglesFromObject(group));
+  try {
+    for (const y of [-3.25, 2.75]) assert.equal(nav.route({ ...start, y }, { ...end, y }).ok, true);
+    const route = nav.route({ ...start, y: -3.25 }, { ...end, y: 2.75 });
+    assert.equal(route.ok, false); assert.match(route.message, /No complete route/);
+  } finally { nav.dispose(); for (const room of rooms) disposeRoom(room); }
+});
+
+test("viewer eligibility keeps metric calibration independent from alignment", async () => {
+  const { automaticNavigationIssue } = await import("../src/lib/automatic-navigation.ts");
+  const space = { boundary: { coordinateSystem: { units: "metres", upAxis: "Y", calibrated: true } } };
+  for (const metadata of [
+    { alignmentVerified: true, coordinateSystem: { units: "relative", upAxis: "Y", calibrated: false } },
+    { alignmentVerified: false, coordinateSystem: { units: "metres", upAxis: "Y", calibrated: true } },
+    { alignmentVerified: true, coordinateSystem: { units: "metres", upAxis: "Y", calibrated: false } },
+  ]) {
+    assert.match(automaticNavigationIssue(metadata), /requires/);
+  }
+  const automatic = { alignmentVerified: true, alignmentSource: "single-capture", coordinateSystem: space.boundary.coordinateSystem };
+  assert.equal(automaticNavigationIssue(automatic), undefined);
+});
+
+
+test("single GLB previews use glTF defaults without changing multi-scan calibration rules", async () => {
+  const { singleScanNavigation, automaticNavigationIssue } = await import("../src/lib/automatic-navigation.ts");
+  const { approvedMetadata } = await import("./helpers/room-glb.ts");
+  for (const metadata of [undefined, {}, { coordinateSystem: { units: "metres", upAxis: "Y", calibrated: false } }]) {
+    assert.deepEqual(singleScanNavigation(metadata), { unavailable: undefined, approximate: true });
+    assert.match(automaticNavigationIssue(metadata), /requires/);
+  }
+  assert.deepEqual(singleScanNavigation(approvedMetadata), { unavailable: undefined, approximate: false });
+  for (const frame of [{ units: "relative" }, { upAxis: "Z" }])
+    assert.match(singleScanNavigation({ coordinateSystem: frame }).unavailable, /Verify/);
+});
+
+test("dense scan extraction skips zero-area faces and retains blocking geometry", async () => {
+  const room = createRoom();
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(new Float32Array(200_001 * 9), 3));
+  const junk = new Mesh(geometry); room.add(junk);
+  try {
+    const triangles = trianglesFromObject(room);
+    const nav = await buildNavMesh(triangles);
+    try {
+      const route = nav.route(start, end);
+      assert.equal(route.ok, true);
+      assert.ok(route.distance > 10, "wall and doorway retained");
+    } finally { nav.dispose(); }
+  } finally { disposeRoom(room); }
+});
+
+test("route directions describe left/right turns, straight travel and arrival", async () => {
+  const { routeDirections } = await import("../src/lib/route-directions.ts");
+  assert.deepEqual(routeDirections([{x:0,y:0,z:0},{x:0,y:0,z:-2},{x:3,y:0,z:-2},{x:3,y:0,z:-4}]),
+    ["Start and go 2.0 m.", "Turn right and go 3.0 m.", "Turn left and go 2.0 m.", "Arrive at your destination."]);
+  assert.deepEqual(routeDirections([start, start]), ["Arrive at your destination."]);
+});
+
+test("navigation accepts a dense scan above the former 200k triangle ceiling", async () => {
+  const room = createRoom();
+  try {
+    const input = trianglesFromObject(room), source = [...input.indices];
+    while (input.indices.length <= 600_000) for (const index of source) input.indices.push(index);
+    const nav = await buildNavMesh(input);
+    try {
+      const route = nav.route(start, end);
+      assert.equal(route.ok, true);
+      assert.ok(route.distance > 10, "dense geometry must still route through the doorway");
+    } finally { nav.dispose(); }
+  } finally { disposeRoom(room); }
 });

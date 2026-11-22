@@ -1,3 +1,4 @@
+import { apiFetch } from "./http.ts";
 /**
  * Landmark cues ("Turn left at the purple mural."): Gemini drafts them from the scan's
  * photos, the map owner reviews them, and guests see only the approved ones.
@@ -14,7 +15,6 @@
  * only the owner may open.
  */
 
-import { ownerHeaders } from "./scans";
 
 /** `abstained`: Gemini found no clear landmark, so the owner can type one or leave it. */
 export type CueStatus = "draft" | "approved" | "rejected" | "abstained";
@@ -89,7 +89,7 @@ export function cleanInstruction(value: string): string | null {
 export async function fetchRevisionCues(revisionId: string, signal?: AbortSignal): Promise<Cue[]> {
   let response: Response;
   try {
-    response = await fetch(`/api/scan-revisions/${encodeURIComponent(revisionId)}/cues`, { headers: ownerHeaders(), signal });
+    response = await apiFetch(`/api/scan-revisions/${encodeURIComponent(revisionId)}/cues`, { signal });
   } catch (error) {
     if (signal?.aborted) throw error;
     throw new CueError("Couldn't reach the server.");
@@ -107,9 +107,9 @@ export async function updateCue(
 ): Promise<Cue> {
   let response: Response;
   try {
-    response = await fetch(`/api/cues/${encodeURIComponent(id)}`, {
+    response = await apiFetch(`/api/cues/${encodeURIComponent(id)}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", ...ownerHeaders() },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(change),
     });
   } catch {
@@ -128,7 +128,7 @@ export async function updateCue(
  */
 export async function fetchShareCues(shareId: string, signal?: AbortSignal): Promise<Cue[]> {
   try {
-    const response = await fetch(`/api/shares/${encodeURIComponent(shareId)}/cues`, { signal });
+    const response = await apiFetch(`/api/shares/${encodeURIComponent(shareId)}/cues`, { signal });
     if (!response.ok) return [];
     return (await readCues(response)).filter((cue) => cue.status === "approved");
   } catch {

@@ -10,9 +10,17 @@ CLI, installing its dependencies and processing one uploaded capture by job UUID
 The [publishing runbook](../../docs/lidar-publishing.md) covers revision approval,
 protected share assets and the complete Task 5 local workflow.
 
+## Metric scan calibration
+
+Validated native CPU captures preserve metre calibration through approval. A sole
+scan in an empty calibrated metric space needs no manual alignment checkbox.
+Owners can repair older approvals with `POST /api/scans/:id/calibration` (`{}`),
+or use separate measured-scale/alignment confirmations for imports and mocks.
+See [calibration policy, provenance trace and local tests](../../docs/scan-calibration.md).
+
 ## Auth0 login shell
 
-The Next.js App Router shell and official Auth0 SDK live in this package. Copy `.env.local.example` to `.env.local` here, then fill in `AUTH0_CLIENT_SECRET` from the Auth0 application and generate `AUTH0_SECRET` locally with `openssl rand -hex 32`. The domain, client ID and base URL in the example match the configured Regular Web Application. Keep `APP_BASE_URL=http://localhost:3000`; the registered callback is `http://localhost:3000/auth/callback` and logout URL is `http://localhost:3000/`. Do not commit `.env.local` or put secrets in `NEXT_PUBLIC_` variables.
+The Next.js App Router shell and official Auth0 SDK live in this package. Copy `.env.local.example` to `.env.local` here, then fill in `AUTH0_CLIENT_SECRET` from the Auth0 application and generate `AUTH0_SECRET` locally with `openssl rand -hex 32`. The domain, client ID and base URL in the example match the configured Regular Web Application. For API-only development use `APP_BASE_URL=http://localhost:3000`; the registered callback is `http://localhost:3000/auth/callback` and logout URL is `http://localhost:3000/`. Do not commit `.env.local` or put secrets in `NEXT_PUBLIC_` variables.
 
 ```sh
 cd services/api
@@ -105,6 +113,23 @@ with `TEST_DATABASE_URL` pointing to it, as described in the core API contract. 
 LiDAR schema test exercises retry uniqueness, ownership/space isolation, frame data,
 job constraints, approval completeness and preservation of an existing scan.
 
+## Browser GLB uploads
+
+`POST /api/scans?format=glb&visibility=unlisted&name=Hallway` accepts raw
+`application/octet-stream` GLB bytes under the authenticated browser session.
+Visibility defaults to private; names default to `Untitled map`. The body is limited
+to 400 MiB, including requests without Content-Length. Next.js proxy buffering is
+set to 34 MiB so the default 10 MB buffer does not truncate valid uploads. PLY imports return 415.
+A successful upload returns 201 `{id, shareId, sharePath, name, visibility}`.
+
+Each browser import gets its own unlisted containing space. Its scan controls
+public discovery and private/unlisted/public reads. Unlisted maps open signed out
+from their opaque link and stay out of both scan and space discovery. Private
+maps require ownership or a viewer grant. Changing visibility through
+`PATCH /api/scans/:id` rechecks access on the next metadata and asset request.
+The returned `id` is used for edits; `shareId` is used for guest links.
+No database migration is needed; the existing visibility enum includes unlisted.
+
 ## Python integration mock
 
 Sam owns the durable backend. The team can integrate against the local reference API now with Python 3.9+ and Make. From the repo root, run `make dev-api` in one terminal, then upload the fixture from another.
@@ -134,4 +159,8 @@ Names are 1–80 characters after trimming and collapsing spaces, with no contro
 
 To grant private access, send `{"visibility":"private","viewerIds":["teammate"]}` as the owner. Repeat with an empty list to revoke access. To rename, send `{"name":"Library study rooms"}`. The smoke test covers these changes, partial changes, the owner and shared lists, deletion, the raw asset URL, and unauthenticated discovery.
 
-The mock binds to loopback, uses `X-Dev-User` to simulate an account, checks file headers, limits uploads to 32 MiB, and discards data on exit. On the hosted API derive identity from a verified session, validate the uploaded model, persist grants, and enforce visibility on every read. Use the deployed site’s origin for portable share URLs. [Architecture and data model](../../docs/architecture.md)
+The mock binds to loopback, uses `X-Dev-User` to simulate an account, checks file headers, limits uploads to 400 MiB, and discards data on exit. On the hosted API derive identity from a verified session, validate the uploaded model, persist grants, and enforce visibility on every read. Use the deployed site’s origin for portable share URLs. [Architecture and data model](../../docs/architecture.md)
+
+## React authentication and production
+
+The React website uses this backend’s `/api/users/me` session and `/auth/*` routes. For Vite use `APP_BASE_URL=http://localhost:5173`; production uses `https://not404.vodka`. See the [Auth0 production runbook](../../docs/auth0-production.md) for Dashboard settings, verified results, deployment approval gates and outstanding VM inspection. `npm start` binds to `127.0.0.1:3000`.

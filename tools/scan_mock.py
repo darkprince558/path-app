@@ -15,7 +15,7 @@ from tempfile import TemporaryDirectory
 from urllib.parse import parse_qs, urlsplit
 
 
-MAX_UPLOAD_BYTES = 32 * 1024 * 1024
+MAX_UPLOAD_BYTES = 400 * 1024 * 1024
 SHARE_ID = r"[a-f0-9]{32}"
 DEV_ID = r"[a-zA-Z0-9_.@-]{1,64}"
 VISIBILITIES = ("private", "unlisted", "public")

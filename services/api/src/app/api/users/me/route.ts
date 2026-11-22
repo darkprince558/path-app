@@ -10,10 +10,10 @@ export async function GET(request: Request) {
       displayName: user.displayName,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-    } });
+    } }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
-      return Response.json({ error: { code: error.code, message: error.message } }, { status: error.status });
+      return Response.json({ error: { code: error.code, message: error.message } }, { status: error.status, headers: { "Cache-Control": "no-store" } });
     }
     throw error;
   }

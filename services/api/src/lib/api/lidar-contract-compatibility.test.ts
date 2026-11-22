@@ -7,7 +7,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { captureManifest, captureFrameIndex, validateFrameReferences, canonicalJson } from '../capture/contract';
+import { captureManifest, captureFrameIndex, validateFrameReferences, canonicalJson, MAX_CAPTURE_FILE_BYTES } from '../capture/contract';
 import { captureManifest as cpuManifest, captureFrameIndex as cpuFrames } from '../../../../../apps/capture/processor/contract.mjs';
 
 const exec = promisify(execFile);
@@ -54,6 +54,25 @@ test('native shared fixture passes backend validation and real CPU processing wi
   }
 });
 
+test('entrance and frame poses accept float32 roundoff in w and preserve the recorded values', async () => {
+  const manifest = await readJson(fixture, 'manifest.json');
+  const index = await readJson(fixture, 'frames.json');
+  for (const [manifestSchema, frameSchema] of [[captureManifest, captureFrameIndex], [cpuManifest, cpuFrames]] as const) {
+    for (const w of [0.999999, 0.9999998, 1, 1.000001]) {
+      const pose = [...manifest.entrancePose.slice(0, 15), w];
+      const frame = { ...index.frames[0], cameraPose: pose };
+      assert.deepEqual(manifestSchema.parse({ ...manifest, entrancePose: pose }).entrancePose, pose);
+      assert.deepEqual(frameSchema.parse({ ...index, frames: [frame] }).frames[0].cameraPose, pose);
+    }
+    for (const [offset, value] of [[15, 0.9999989], [15, 1.0000011], [3, 1e-8], [7, -1e-8], [11, 1e-8]]) {
+      const pose = [...manifest.entrancePose];
+      pose[offset] = value;
+      assert.equal(manifestSchema.safeParse({ ...manifest, entrancePose: pose }).success, false);
+      assert.equal(frameSchema.safeParse({ ...index, frames: [{ ...index.frames[0], cameraPose: pose }] }).success, false);
+    }
+  }
+});
+
 test('exporter/CPU contract rejects old fields, unsafe paths, invalid poses and bounds identically', async () => {
   const manifest = await readJson(fixture, 'manifest.json'), frames = await readJson(fixture, 'frames.json');
   const badManifests = [
@@ -62,7 +81,7 @@ test('exporter/CPU contract rejects old fields, unsafe paths, invalid poses and 
     { ...manifest, coordinateSystem: { ...manifest.coordinateSystem, units: 'meters' } },
     { ...manifest, files: manifest.files.map((f: object) => ({ ...f, type: 'mesh' })) },
     { ...manifest, files: manifest.files.map((f: object, i: number) => i ? f : { ...f, path: '../source.glb' }) },
-    { ...manifest, files: manifest.files.map((f: object, i: number) => i ? f : { ...f, byteSize: 32 * 1024 * 1024 + 1 }) },
+    { ...manifest, files: manifest.files.map((f: object, i: number) => i ? f : { ...f, byteSize: MAX_CAPTURE_FILE_BYTES + 1 }) },
     { ...manifest, entrancePose: Array(16).fill(0) },
   ];
   for (const invalid of badManifests) {

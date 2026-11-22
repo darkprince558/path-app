@@ -44,7 +44,7 @@ Zod rejects unknown fields and enforces:
 | `files` | Unique `{path,byteSize,sha256}` entries for every file except the manifest. Positive integer sizes and lowercase 64-character SHA-256. |
 
 Required entries: `source.glb`, `points.ply`, `frames.json`, `preview.jpg`, and at
-least one `frames/<id>.jpg`. Limits are 32 MiB per file, 256 MiB total, 2 MiB for
+least one `frames/<id>.jpg`. Limits are 400 MiB per file, 1 GiB total, 2 MiB for
 `frames.json`, and 1,000 frame images. Revisit these conservative development limits
 with measured real exports before larger uploads.
 
@@ -77,7 +77,10 @@ The index is `{version:1,captureId,frames:[...]}`. Example frame:
 The capture ID must match the manifest. IDs are unique; imagePath must equal
 `frames/<id>.jpg`. Every manifest frame image has exactly one reference and every
 reference has an inventory entry. Camera poses follow the declared convention and
-the same matrix validation as entrance poses. Timestamps are finite/nonnegative;
+the same matrix validation as entrance poses. In the column-major bottom row, indices
+3, 7 and 11 must be zero. Index 15 accepts values from 0.999999 through 1.000001
+inclusive to handle iPhone float rounding. Registration and processing preserve the
+submitted values for checksum verification and retries. Timestamps are finite/nonnegative;
 dimensions are positive integers. Optional intrinsics contain finite fx/fy/cx/cy
 with positive focal lengths. Unknown fields are rejected. The API validates JSON
 and references on upload and finalization, then inserts stable `capture_frames` rows.

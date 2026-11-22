@@ -2,6 +2,25 @@
 
 Arielle owns the website: the signed-in home, upload and sharing, and the guest 3D viewer. Build the website here. Start with an upload control, the three visibility choices, a copy-link action and a guest route at `/s/<shareId>`. Display upload, loading and processing failures where they occur.
 
+## Authentication
+
+The existing Next.js backend owns Auth0. React uses `AuthProvider` / `useAuth` and `/api/users/me`, with full-page Sign in / Sign out links. My maps and owner pages require a verified session; Community and authorized guest views work signed out. API requests use same-origin cookies and clear account state on 401. No frontend SDK, tokens or secrets are needed. Run `npm run test:auth:browser` for synthetic browser coverage. See the [production setup and real-login checklist](../../docs/auth0-production.md).
+
+## Automatic routes from approved scans
+
+After a GLB upload, choose **Plan a route**. Shared GLB viewers build a walkable
+floor automatically: double-click or double-tap a start and destination to draw a
+route, then expand **Step-by-step directions** for relative turns and distances.
+Single uploads use glTF's metre/+Y convention and label unverified scale; explicitly
+relative models still need calibration. Multi-scan spaces retain verified alignment
+requirements and opt-in automatic routing. Manual graph and saved routes remain
+available when the mode is off. See the [full workflow and tests](../../docs/scan-automatic-routing.md).
+
+Calibration follows validated native capture provenance. To repair an old approved
+scan, use **Owner tools → Upload and align scans → Restore validated LiDAR calibration**.
+Scale and alignment confirmations are separate for imports and mocks. See the
+[calibration runbook](../../docs/scan-calibration.md).
+
 ## Automatic navigation demo
 
 Task 6 adds `/navmesh-demo`: Recast NavMesh generation from a synthetic room,
@@ -47,6 +66,23 @@ For the first integration, upload the sample PLY as **Unlisted**, open the retur
 
 The local API provides fixture bytes and exercises sharing rules. Replace its test page with the website’s guest route during integration. [Local API commands](../../services/api/README.md) · [Capture format and viewer notes](../../docs/scan-formats.md)
 
+## Filling holes before upload
+
+`tools/scan_fill_holes.py` patches small holes in a phone scan GLB and removes floating
+fragments, then writes a new GLB the website shows like any Path Capture scan. It rebuilds
+the surface with screened Poisson reconstruction and keeps only new surface within
+`--max-gap` metres (default 0.12) of the real scan, so doorways and open ends are not
+walled over. Needs `pip install open3d numpy` (Python 3.10–3.12).
+
+```
+python tools/scan_fill_holes.py hallway.glb hallway-filled.glb
+python tools/scan_fill_holes.py hallway.glb hallway-filled.glb --max-gap 0.2 --max-triangles 800000
+```
+
+On a 1.37M-triangle, 37 MB hallway scan it took about 3 minutes on a laptop CPU, cut open
+hole edges by 74% (70,304 to 18,128) and loose pieces from 2,048 to 76, at the same
+triangle count. Edges come out slightly rounder than the original.
+
 ## Run locally
 
 Requires Node 22+ and pnpm. Set `API_TARGET=http://127.0.0.1:8001` for the legacy mock.
@@ -56,9 +92,9 @@ py -3 -B tools/scan_mock.py --port 8001        # from the repo root (or: make de
 cd apps/web && pnpm install && API_TARGET=http://127.0.0.1:8001 pnpm dev
 ```
 
-To try the landmark direction screens without Sam's backend, start the mock with `--demo-cues`. Every upload then gets two draft directions to review on Manage map; approved ones appear under **Directions** on the guest map.
+The mock with `--demo-cues` still supplies synthetic directions through fixture HTTP calls. Interactive owner screens now require the Next.js Auth0 session.
 
-Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), choose `fixtures/venue/scene.ply`, pick a visibility and upload. The page shows the guest link, a copy button and a QR code, and lets you change visibility or private viewers afterwards. You can also upload with the curl command in the [API README](../../services/api/README.md). Then open `http://localhost:5173/s/<shareId>`. The guest page sends no `X-Dev-User` header, so it is a signed-out guest. Owner calls (upload, sharing) send `X-Dev-User: demo-owner` in development only (override with `VITE_DEV_USER`). A production build sends none, because the hosted API reads the signed-in session. `pnpm build` type-checks and writes static files to `dist/`. `pnpm preview` serves them with the same proxy on port 4173. The host must serve `index.html` for `/s/<shareId>`.
+With the real authenticated backend, open `http://localhost:5173/maps` (Your maps). The legacy upload form at **New map** (`/maps/new`) lets you choose `fixtures/venue/scene.ply`, pick a visibility and upload. The page shows the guest link, a copy button and a QR code, and lets you change visibility or private viewers afterwards. You can also upload with the curl command in the [API README](../../services/api/README.md). Then open `http://localhost:5173/s/<shareId>`. The website uses the backend session in every build and sends no `X-Dev-User` header. The Python mock supports fixture HTTP tests; its stand-in accounts no longer sign the React app in. `pnpm build` type-checks and writes static files to `dist/`. `pnpm preview` serves them with the same proxy on port 4173. The host must serve `index.html` for `/s/<shareId>`.
 
 | Path | What it does |
 | --- | --- |
@@ -73,15 +109,16 @@ Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), c
 | `src/lib/cues.ts` | Cue client for Sam's proposed endpoints: `GET /api/scan-revisions/<id>/cues` (owner), `PATCH /api/cues/<id>` with `{instruction?, status?}`, and `GET /api/shares/<id>/cues` (guests, approved only; any failure just hides directions). |
 | `src/components/ConfirmDialog.tsx` | Modal confirmation on `<dialog>`: focus starts on Cancel, Escape cancels, focus returns afterward. |
 | `src/routes/Community.tsx` | `/community`: public maps from `GET /api/scans/public` with their names, and loading placeholders, empty and error states. |
-| `src/lib/session.ts` | Stand-in signed-in account for development (`VITE_DEV_USER`, `VITE_DEV_NAME`) until real sign-in exists. |
+| `src/lib/auth.tsx` | Shared backend session context, account controls and protected map routes; loading, retry and signed-out states. |
 | `src/lib/preferences.tsx` | Settings kept on the device (no account needed): text size, motion, and the "Avoid stairs" default. `useTripAvoidStairs` gives each map a per-trip switch that starts from the default and doesn't change it. |
 | `src/routes/Settings.tsx` | `/settings`: Text size (Default, Large, Extra large), Motion (Match my device, Reduce, Allow), Avoid stairs by default. |
-| `src/routes/Upload.tsx` | `/maps/new` (`/upload` redirects here): an optional name (suggested from the file name), choose a PLY or GLB (checked for type, size and header before sending), pick Public, Unlisted or Private, upload with progress and cancel. Uses the mock's `POST /api/scans`; the Next.js API receives scans from the iPhone app instead. |
+| `src/routes/Upload.tsx` | `/maps/new` (`/upload` redirects here): an optional name (suggested from the file name), choose a PLY or GLB (checked for type, size and header before sending), pick Public, Unlisted or Private, upload with progress and cancel. Uses `POST /api/scans` for authenticated GLB imports on the Next.js API. Production imports accept GLB up to 400 MiB; the fixture mock also accepts PLY. |
 | `src/components/SharePanel.tsx` | After upload: guest link, copy, QR code, preview, and visibility changes through `PATCH /api/scans/<id>` (the scan's `id` from `/mine` on the Next.js API, the share ID on the mock). People already added to a private map are listed read-only; adding and removing people waits for a people picker. If the Next.js API refuses Public because the map's space is private, it says "To make this map public, its parent space must also be public." Warns when the link is `localhost`, which a phone can't open. |
 | `src/lib/scans.ts` | Owner API client (upload, sharing) with readable messages for 400, 401, 413, 415 and network failures. |
 | `src/routes/GuestView.tsx` | `/s/:shareId`: PLY point clouds (`ScanViewer`) or GLB models (`SpaceViewer`, with the share's saved transform), with loading, not-found/denied, download and parse-failure states. When the owner approved landmark directions, a **Directions** button opens them above the map controls, each marked "Approved by the map owner". |
 | `src/routes/SpaceView.tsx` | Accessible Next.js scans and graph, route selection, owner upload/alignment and graph tools. |
 | `src/components/SpaceViewer.tsx` | GLTFLoader meshes/materials, combined transformed bounds, graph/route overlays and orbit controls. |
+| `src/lib/scan-surfaces.ts` | Makes phone scans easier to read without changing their geometry: hides ceilings (ARKit-labelled ceiling faces, or on unlabelled phone scans the downward-facing surfaces in the upper half; a **Show ceiling** button brings them back and clicks pass through hidden ones), turns on the GPU's best anisotropic filtering for photo textures, and converts Path Capture vertex colours from camera sRGB to linear so they no longer look washed out. Test room: `fixtures/venue/classified-room.glb` from `tools/make_classified_room.py`. |
 | `src/routes/Home.tsx`, `src/landing/` | The landing page at `/`, described below. |
 
 ## Landing page

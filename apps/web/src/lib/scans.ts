@@ -1,3 +1,4 @@
+import { apiFetch, reportUnauthorized } from "./http.ts";
 /**
  * Owner-side calls (upload, sharing) from services/api/README.md.
  *
@@ -7,19 +8,17 @@
  *   PATCH  /api/scans/<shareId>  any of { name, visibility, viewerIds } -> SharingState
  *   DELETE /api/scans/<shareId>  -> 204
  *
- * Identity: the local mock reads an `X-Dev-User` header. In development we send one
- * (VITE_DEV_USER, default "demo-owner"). A production build sends none, because the
- * hosted API derives identity from the signed-in session instead.
+ * Identity comes from the backend session cookie.
  */
 
-import { currentUser } from "./session";
 import type { ScanFormat } from "./shares";
 
 export type { ScanFormat };
 export type Visibility = "public" | "unlisted" | "private";
 
-/** Matches the mock's upload limit. */
-export const MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
+/** Largest scan the website, Sam's API and the mock accept (keep in step with services/api MAX_GLB_BYTES). */
+export const MAX_UPLOAD_BYTES = 400 * 1024 * 1024;
+export const MAX_UPLOAD_LABEL = "400 MB";
 
 /** Account IDs the mock accepts for viewers (and for X-Dev-User). */
 export const VIEWER_ID_PATTERN = /^[a-zA-Z0-9_.@-]{1,64}$/;
@@ -28,6 +27,7 @@ export const MAX_NAME_LENGTH = 80;
 export const DEFAULT_MAP_NAME = "Untitled map";
 
 export interface UploadResult {
+  id?: string;
   shareId: string;
   sharePath: string;
   name: string;
@@ -94,11 +94,6 @@ export class UploadError extends Error {
   }
 }
 
-export function ownerHeaders(): Record<string, string> {
-  if (!import.meta.env.DEV) return {};
-  return { "X-Dev-User": currentUser().id };
-}
-
 /** Builds the link a guest opens. Uses this site's origin so links stay on the website. */
 export function shareUrl(sharePath: string): string {
   return new URL(sharePath, window.location.origin).toString();
@@ -120,7 +115,7 @@ export async function checkFile(file: File): Promise<{ format: ScanFormat } | { 
   if (!format) return { problem: "Choose a .ply point cloud or a .glb model." };
   if (file.size === 0) return { problem: "This file is empty." };
   if (file.size > MAX_UPLOAD_BYTES) {
-    return { problem: `This scan is ${formatBytes(file.size)}. The limit is 32 MB, so crop or downsample it first.` };
+    return { problem: `This scan is ${formatBytes(file.size)}. The limit is ${MAX_UPLOAD_LABEL}, so crop or downsample it first.` };
   }
   const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
   const magic = String.fromCharCode(...head);
@@ -150,7 +145,7 @@ function messageFor(status: number, serverError: string | undefined, format: Sca
     case 401:
       return "Sign in to upload scans.";
     case 413:
-      return "This scan is over the 32 MB limit. Crop or downsample it and try again.";
+      return `This scan is over the ${MAX_UPLOAD_LABEL} limit. Crop or downsample it and try again.`;
     case 415:
       return "The server expected raw scan bytes. This is a bug in the website, not your file.";
     default:
@@ -188,17 +183,18 @@ export function uploadScan(options: {
     const query = new URLSearchParams({ format, visibility, ...(name ? { name } : {}) });
     xhr.open("POST", `/api/scans?${query}`);
     xhr.setRequestHeader("Content-Type", "application/octet-stream");
-    for (const [name, value] of Object.entries(ownerHeaders())) xhr.setRequestHeader(name, value);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total);
     };
     xhr.onload = () => {
+      reportUnauthorized(xhr.status);
       if (xhr.status === 201) {
         try {
           const body = JSON.parse(xhr.responseText) as Partial<UploadResult>;
           if (typeof body.shareId === "string" && typeof body.sharePath === "string") {
             return resolve({
+              ...(typeof body.id === "string" ? { id: body.id } : {}),
               shareId: body.shareId,
               sharePath: body.sharePath,
               name: typeof body.name === "string" ? body.name : (name ?? DEFAULT_MAP_NAME),
@@ -231,9 +227,9 @@ export async function updateMap(
   const what = "name" in change && Object.keys(change).length === 1 ? "name" : "sharing setting";
   let response: Response;
   try {
-    response = await fetch(`/api/scans/${encodeURIComponent(mapId)}`, {
+    response = await apiFetch(`/api/scans/${encodeURIComponent(mapId)}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", ...ownerHeaders() },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(change),
     });
   } catch {
@@ -270,7 +266,7 @@ export function updateSharing(mapId: string, visibility: Visibility) {
 export async function deleteMap(mapId: string): Promise<void> {
   let response: Response;
   try {
-    response = await fetch(`/api/scans/${encodeURIComponent(mapId)}`, { method: "DELETE", headers: ownerHeaders() });
+    response = await apiFetch(`/api/scans/${encodeURIComponent(mapId)}`, { method: "DELETE" });
   } catch {
     throw new UploadError("Couldn't reach the server. The map wasn't deleted.");
   }
@@ -286,7 +282,7 @@ export class ListUnavailableError extends Error {}
 async function fetchList<T>(path: string, signal?: AbortSignal): Promise<T[]> {
   let response: Response;
   try {
-    response = await fetch(path, { headers: ownerHeaders(), signal });
+    response = await apiFetch(path, { signal });
   } catch (error) {
     if (signal?.aborted) throw error;
     throw new UploadError("Couldn't reach the server.");

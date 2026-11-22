@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { AccountControls } from "../lib/auth";
 import { Wordmark } from "../components/Logo";
 
 const SECTIONS = [
@@ -38,12 +39,7 @@ export default function LandingNav() {
             </a>
           ))}
         </nav>
-        <Link
-          to="/maps"
-          className="inline-flex min-h-11 items-center justify-self-end rounded-full bg-paper/8 px-5 font-bold text-paper ring-1 ring-paper/20 transition-colors hover:bg-paper/15"
-        >
-          Log in
-        </Link>
+        <div className="inline-flex min-h-11 items-center justify-self-end rounded-full bg-paper/8 px-5 font-bold"><AccountControls /></div>
       </div>
     </header>
   );

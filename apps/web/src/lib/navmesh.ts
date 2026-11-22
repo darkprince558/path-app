@@ -6,6 +6,7 @@ export interface Point { x: number; y: number; z: number }
 export interface Triangles { positions: number[]; indices: number[] }
 export interface Agent { radius: number; height: number; slope: number; step: number }
 export const DEFAULT_AGENT: Agent = { radius: 0.3, height: 1.8, slope: 40, step: 0.2 };
+export const MAX_NAV_VERTICES = 2_000_000, MAX_NAV_TRIANGLES = 2_000_000;
 const CS = 0.1, CH = 0.05;
 // The SDK checks completed initialization, not an in-flight initialization.
 // React StrictMode and concurrent callers must share one WASM module instance.
@@ -26,17 +27,24 @@ export function trianglesFromObject(root: Object3D): Triangles {
     const geometry = object.geometry, attribute = geometry.getAttribute("position");
     if (!attribute) throw new Error("Mesh has no triangle positions.");
     const offset = positions.length / 3;
-    if (offset + attribute.count > 600_000) throw new Error("Geometry exceeds the demo vertex budget.");
+    if (offset + attribute.count > MAX_NAV_VERTICES) throw new Error("Geometry exceeds the demo vertex budget.");
+    const count = geometry.index?.count ?? attribute.count;
+    if (indices.length + count > MAX_NAV_TRIANGLES * 3) throw new Error("Geometry exceeds the navigation triangle budget.");
     for (let i = 0; i < attribute.count; i++) {
       const p = new Vector3().fromBufferAttribute(attribute, i).applyMatrix4(object.matrixWorld);
       positions.push(p.x, p.y, p.z);
     }
-    const count = geometry.index?.count ?? attribute.count;
     if (count % 3) throw new Error("Geometry must contain complete triangles.");
     const reflected = object.matrixWorld.determinant() < 0;
+    const a = new Vector3(), b = new Vector3(), c = new Vector3();
     for (let i = 0; i < count; i += 3) {
       const index = (j: number) => offset + (geometry.index?.getX(j) ?? j);
-      indices.push(index(i), index(i + (reflected ? 2 : 1)), index(i + (reflected ? 1 : 2)));
+      const ia = index(i), ib = index(i + (reflected ? 2 : 1)), ic = index(i + (reflected ? 1 : 2));
+      a.fromArray(positions, ia * 3); b.fromArray(positions, ib * 3); c.fromArray(positions, ic * 3);
+      // Depth fusion can emit zero-area faces. They occupy no surface and must not
+      // disable navigation over the rest of the scan. Keep all nondegenerate walls.
+      if (b.sub(a).cross(c.sub(a)).lengthSq() < 1e-16) continue;
+      indices.push(ia, ib, ic);
     }
   });
   return { positions, indices };
@@ -50,7 +58,7 @@ function validate(input: Triangles, agent: Agent) {
     throw new Error("Invalid agent dimensions or clearance settings.");
   }
   const { positions: p, indices: ix } = input;
-  if (!p.length || p.length % 3 || p.length > 1_800_000 || !ix.length || ix.length % 3 || ix.length > 600_000 ||
+  if (!p.length || p.length % 3 || p.length > MAX_NAV_VERTICES * 3 || !ix.length || ix.length % 3 || ix.length > MAX_NAV_TRIANGLES * 3 ||
       !p.every(Number.isFinite) || ix.some(i => !Number.isInteger(i) || i < 0 || i >= p.length / 3)) {
     throw new Error("Invalid or oversized triangle geometry.");
   }

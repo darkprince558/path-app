@@ -1,0 +1,11 @@
+[Unit]
+Description=Not 404: deploy the newest main (website and API)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/not404-deploy
+TimeoutStartSec=20min
+Environment=COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+Environment=NEXT_TELEMETRY_DISABLED=1

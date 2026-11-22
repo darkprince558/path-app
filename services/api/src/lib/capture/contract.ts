@@ -1,8 +1,25 @@
 import { z } from 'zod';
-import { transform } from '../api/scans';
 
-export const MAX_CAPTURE_FILE_BYTES = 32 * 1024 * 1024;
-export const MAX_CAPTURE_BYTES = 256 * 1024 * 1024;
+function affineTransform(wTolerance: number) {
+  return z.array(z.number().finite()).length(16).refine(matrix => {
+    if (matrix.length !== 16 || matrix[3] !== 0 || matrix[7] !== 0 || matrix[11] !== 0 ||
+      matrix[15] < 1 - wTolerance || matrix[15] > 1 + wTolerance) return false;
+    // Normalize before testing the determinant so valid small-unit reconstructions remain usable.
+    const scale = Math.max(...[0, 1, 2, 4, 5, 6, 8, 9, 10].map(i => Math.abs(matrix[i])));
+    if (!scale) return false;
+    const m = matrix.map(value => value / scale);
+    const determinant = m[0] * (m[5] * m[10] - m[9] * m[6])
+      - m[4] * (m[1] * m[10] - m[9] * m[2]) + m[8] * (m[1] * m[6] - m[5] * m[2]);
+    return Number.isFinite(determinant) && Math.abs(determinant) > Number.EPSILON;
+  }, 'Transform must be a nonsingular affine column-major matrix');
+}
+
+export const transform = affineTransform(0);
+// ARKit stores camera poses as floats. Retain the recorded w for checksum and provenance checks.
+const cameraPose = affineTransform(1e-6);
+
+export const MAX_CAPTURE_FILE_BYTES = 400 * 1024 * 1024;
+export const MAX_CAPTURE_BYTES = 1024 * 1024 * 1024;
 export const MAX_CAPTURE_JSON_BYTES = 2 * 1024 * 1024;
 export const MAX_CAPTURE_FRAMES = 1000;
 export const REQUIRED_CAPTURE_FILES = ['source.glb', 'points.ply', 'frames.json', 'preview.jpg'] as const;
@@ -24,7 +41,7 @@ export const captureManifest = z.object({
     units: z.literal('metres'), upAxis: z.literal('Y'), handedness: z.literal('right'),
     matrixLayout: z.literal('column-major'), poseConvention: z.literal('camera-to-capture'),
   }).strict(),
-  entrancePose: transform,
+  entrancePose: cameraPose,
   capturedAt: z.iso.datetime({ offset: true }).optional(),
   trackingWarnings: z.array(z.string().min(1).max(1000)).max(100).default([]),
   files: z.array(fileDigest.extend({ path: capturePath }).strict()).min(5).max(MAX_CAPTURE_FRAMES + 4),
@@ -35,7 +52,7 @@ export const captureManifest = z.object({
     if (!paths.has(required)) ctx.addIssue({ code: 'custom', message: `Missing required file: ${required}` });
   }
   if (manifest.files.reduce((sum, file) => sum + file.byteSize, 0) > MAX_CAPTURE_BYTES) {
-    ctx.addIssue({ code: 'custom', message: 'Capture exceeds 256 MiB' });
+    ctx.addIssue({ code: 'custom', message: 'Capture exceeds 1024 MiB' });
   }
   const frames = manifest.files.find(file => file.path === 'frames.json');
   if (frames && frames.byteSize > MAX_CAPTURE_JSON_BYTES) {
@@ -50,7 +67,7 @@ export type FileDigest = z.infer<typeof fileDigest>;
 export const captureFrameIndex = z.object({
   version: z.literal(1), captureId: z.uuid(),
   frames: z.array(z.object({
-    id: frameId, imagePath: capturePath, cameraPose: transform,
+    id: frameId, imagePath: capturePath, cameraPose,
     timestampSeconds: z.number().finite().nonnegative(),
     width: z.number().int().positive().max(32768), height: z.number().int().positive().max(32768),
     intrinsics: z.object({

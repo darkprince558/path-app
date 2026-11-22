@@ -31,9 +31,16 @@ Endpoint queries require a polygon directly under the point and at most 0.15 m v
 
 Empty geometry, nonfinite coordinates, invalid indices, incomplete or degenerate triangles, invalid settings, excessive rasterization bounds, and no walkable output produce errors. The current small-room budget is 600k vertices, 200k triangles, two million horizontal cells, 30 million bounding-volume voxels, and 2048 corridor polygons/route points. Generation is synchronous after initialization and bounded for this fixture. Larger venues need a cancellable Web Worker and tiled generation; this task does not claim large-scan performance. Static mesh extraction rejects skinning, instancing and morph targets until baked. Triangle coverage (including all mesh geometry) determines potential walkability: disconnected wall/box tops can appear green, but cannot be reached from the floor. Unknown or missing geometry must not be treated as surveyed empty space in a real deployment.
 
+## Integrated scan routing
+
+The existing space and shared-GLB viewers now implement this integration. Follow
+[Automatic routes in the scan viewer](scan-automatic-routing.md) for the current
+workflow, tests and limits. The notes below record the Task 6 adapter requirements
+that the integration preserves.
+
 ## Real LiDAR revision integration point
 
-The adapter is reusable with existing approved GLBs, but automatic routing is intentionally opt-in in `/navmesh-demo` for Task 6. It neither publishes a graph nor changes existing space navigation. Follow these steps when adding real-revision review:
+The adapter is reusable with existing approved GLBs, and automatic routing is now opt-in in the existing viewers as well as `/navmesh-demo`. It does not publish a graph or overwrite existing manual routes. Follow these steps when adding real-revision review:
 
 1. Resolve the approved `scan.sourceRevisionId` and authorized GLB through the current scan file/share scene endpoints. Keep the Task 5 server ownership, visibility and approval checks; never fetch storage paths supplied by the browser. A visible approved scene does not imply owner-approved navigation.
 2. Require verified alignment and metre/+Y-up coordinate declarations from the existing scan/space contract. Parse with `parseGlb(bytes, scan.transform)`. Pass its wrapper `model.object` to `trianglesFromObject` while it is detached from any presentation-only scene transform. Extraction updates world matrices and bakes the glTF node hierarchy plus scan-to-space transform exactly once, with winding corrected for reflected transforms. Do not recenter the geometry, apply the scan transform again, or relabel relative units as metres. The fixture tests include translation, hierarchy and reflection.

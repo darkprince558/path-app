@@ -9,7 +9,7 @@ type Space = typeof spaces.$inferSelect;
 type Path = typeof paths.$inferSelect;
 
 export async function canReadSpace(db: Db, user: AppUser | null, space: Space) {
-  if (space.visibility === 'public' || space.ownerId === user?.id) return true;
+  if (space.visibility === 'public' || space.visibility === 'unlisted' || space.ownerId === user?.id) return true;
   if (!user) return false;
   const [grant] = await db.select({ id: eventSpaces.eventId }).from(eventSpaces)
     .innerJoin(events, and(eq(events.id, eventSpaces.eventId), eq(events.ownerId, space.ownerId)))
