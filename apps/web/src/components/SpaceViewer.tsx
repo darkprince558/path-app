@@ -1,11 +1,11 @@
 import { Html, Line, OrbitControls } from "@react-three/drei";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Canvas, useThree, type RootState, type ThreeEvent } from "@react-three/fiber";
-import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Box3, DoubleSide, BufferGeometry, Float32BufferAttribute, MathUtils, Mesh, MOUSE, PerspectiveCamera, Sphere, TOUCH, Vector2, Vector3, type Object3D } from "three";
 import { encodeThumbnail, THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from "../lib/thumbnails";
 import { parseGlb, type GlbModel } from "../lib/glb";
-import { prepareScanSurfaces, type ScanSurfaces } from "../lib/scan-surfaces";
+import { prepareScanSurfaces, type ScanSurfaces, type WallCut } from "../lib/scan-surfaces";
 import type { AutomaticState } from "./ScanNavigation";
 const ScanNavigation = lazy(() => import("./ScanNavigation"));
 import type { NavigationMesh } from "../lib/navmesh";
@@ -234,11 +234,11 @@ function PlacePins({ places, loaded, radius, highlightId, onSelect }: {
 }
 
 /**
- * Scan readability (lib/scan-surfaces.ts): hides ARKit ceiling faces and sharpens photo
- * textures at a slant. Geometry is untouched, so route finding is unaffected.
+ * Scan readability (lib/scan-surfaces.ts): the wall cutaway and sharp photo textures at a
+ * slant. Geometry is untouched, so route finding is unaffected.
  */
-function ScanLook({ objects, ceilingHidden, onCeiling }: {
-  objects: Object3D[]; ceilingHidden: boolean; onCeiling: (hasCeiling: boolean) => void;
+function ScanLook({ objects, cut, onCuts }: {
+  objects: Object3D[]; cut: WallCut | null; onCuts: (cuts: WallCut[], defaultCut: WallCut) => void;
 }) {
   const gl = useThree((state) => state.gl);
   const invalidate = useThree((state) => state.invalidate);
@@ -246,11 +246,29 @@ function ScanLook({ objects, ceilingHidden, onCeiling }: {
   useEffect(() => {
     const prepared = prepareScanSurfaces(objects, gl.capabilities.getMaxAnisotropy());
     setSurfaces(prepared);
-    onCeiling(prepared.hasCeiling);
+    onCuts(prepared.cuts, prepared.defaultCut);
+    invalidate();
     return () => { prepared.dispose(); setSurfaces(null); };
-  }, [objects, gl, onCeiling]);
-  useEffect(() => { surfaces?.setCeilingHidden(ceilingHidden); invalidate(); }, [surfaces, ceilingHidden, invalidate]);
+  }, [objects, gl, onCuts, invalidate]);
+  useEffect(() => { if (surfaces && cut) { surfaces.setCut(cut); invalidate(); } }, [surfaces, cut, invalidate]);
   return null;
+}
+
+const CUT_LABELS: Record<WallCut, { label: string; hint: string }> = {
+  low: { label: "Low walls", hint: "Walls cut at chest height, like a floor plan" },
+  ceiling: { label: "No ceiling", hint: "Full-height walls, ceiling removed" },
+  full: { label: "Everything", hint: "The whole scan, nothing cut" },
+};
+
+/** Three-way choice of how much of the walls to show. */
+function WallCutChoice({ cuts, cut, onChange }: { cuts: WallCut[]; cut: WallCut; onChange: (cut: WallCut) => void }) {
+  return <div role="group" aria-label="Wall height" className="flex rounded-full bg-night/85 p-1 text-paper ring-1 ring-sage/50 backdrop-blur-sm">
+    {cuts.map((option) => <button key={option} type="button" aria-pressed={cut === option} title={CUT_LABELS[option].hint}
+      onClick={() => onChange(option)}
+      className={`min-h-9 rounded-full px-3 text-sm font-bold transition-colors ${cut === option ? "bg-paper text-ink" : "hover:bg-paper/10"}`}>
+      {CUT_LABELS[option].label}
+    </button>)}
+  </div>;
 }
 
 class ViewerBoundary extends Component<{ children: ReactNode; onError?: (message: string) => void }, { error: string | null }> {
@@ -311,7 +329,10 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
     return sphere;
   }, [loaded]);
   const objects = useMemo(() => loaded.map(entry => entry.model.object), [loaded]);
-  const [hasCeiling, setHasCeiling] = useState(false);
+  // Wall cutaway: the choices this scan supports, and the one shown (lib/scan-surfaces.ts).
+  const [cuts, setCuts] = useState<WallCut[]>([]);
+  const [cut, setCut] = useState<WallCut | null>(null);
+  const onCuts = useCallback((options: WallCut[], start: WallCut) => { setCuts(options); setCut(start); }, []);
   const [three, setThree] = useState<RootState | null>(null);
   const snapshotCallback = useRef(onSnapshot);
   snapshotCallback.current = onSnapshot;
@@ -327,7 +348,6 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
     }, 600);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [wantsSnapshot, three, loaded]);
-  const [ceilingHidden, setCeilingHidden] = useState(true);
   function pick(event: ThreeEvent<MouseEvent>, entry: LoadedModel) {
     if (enabled) { event.stopPropagation(); autoState?.pick(event.point); return; }
     if (!onPick) return;
@@ -359,10 +379,10 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
         touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
         mouseButtons={{ LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }} />
       <Framing bounds={bounds} resetToken={resetToken} />
-      <ScanLook objects={objects} ceilingHidden={ceilingHidden} onCeiling={setHasCeiling} />
+      <ScanLook objects={objects} cut={cut} onCuts={onCuts} />
     </Canvas>
   </ViewerBoundary>
-    {(hasCeiling || automaticNavigation) && <div className="absolute left-3 top-24 z-10 flex w-[min(19rem,calc(100%-1.5rem))] flex-col items-start gap-2 xl-text:top-32">
+    {(cuts.length > 0 || automaticNavigation) && <div className="absolute left-3 top-24 z-10 flex w-[min(19rem,calc(100%-1.5rem))] flex-col items-start gap-2 xl-text:top-32">
       {automaticNavigation && <div className="max-h-[50dvh] w-full overflow-auto rounded-2xl bg-night/90 px-3 py-2 text-paper shadow-lg ring-1 ring-sage/40 backdrop-blur-sm">
         <div className="flex min-h-11 items-center gap-2">
           <label className="flex flex-1 items-center gap-2 text-sm font-bold">
@@ -385,10 +405,7 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
           </div>
         </Suspense>}
       </div>}
-      {hasCeiling && <button type="button" aria-pressed={!ceilingHidden} onClick={() => setCeilingHidden(hidden => !hidden)}
-        className="min-h-11 rounded-full bg-night/80 px-4 text-sm font-bold text-paper ring-1 ring-sage/50">
-        {ceilingHidden ? "Show ceiling" : "Hide ceiling"}
-      </button>}
+      {cuts.length > 0 && cut && <WallCutChoice cuts={cuts} cut={cut} onChange={setCut} />}
     </div>}
   </div>;
 }

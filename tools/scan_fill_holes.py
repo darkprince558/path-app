@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-"""Fill small holes in a phone scan before uploading it to Not 404.
+"""Make a phone scan look its best before uploading it to Not 404.
 
-Rebuilds the surface with screened Poisson reconstruction (Open3D), then keeps only
-new surface that lies close to the original scan. Small gaps (missed patches of wall
-or floor, cracks between depth frames) get filled, but doorways, open ends and big
-unscanned areas are NOT bridged with invented walls. Colours are carried over from the
-nearest scanned points.
+By default, in order:
+  1. Fill small holes: screened Poisson reconstruction (Open3D), keeping only new surface
+     within --max-gap of the real scan, so doorways and open ends are NOT walled over.
+     Skip with --no-fill to keep the scan's own surface.
+  2. Remove floating junk: separate pieces smaller than --min-area square metres or
+     --min-piece triangles (dust, reflections, stray depth, bits of people walking by).
+  3. Simplify to --max-triangles if given (default: keep the triangle count).
+  4. Bake soft shadows into the colours (ambient occlusion): corners, crevices and the
+     ground under furniture get darker, so the 3D shape reads even on a phone with flat
+     lighting. --ao 0 turns it off.
+  5. Optionally stretch dull camera colours to the full range (--levels).
 
-    python tools/scan_fill_holes.py hallway.glb hallway-filled.glb
+    python tools/scan_fill_holes.py hallway.glb hallway-best.glb
+    python tools/scan_fill_holes.py hallway.glb hallway-clean.glb --no-fill --levels
     python tools/scan_fill_holes.py hallway.glb hallway-filled.glb --max-gap 0.15 --depth 10
 
-Input: a GLB from Path Capture (POSITION, optional NORMAL and COLOR_0; metres, +Y up).
-Output: one mesh with POSITION, NORMAL and COLOR_0 (camera sRGB bytes, like Path
-Capture), generator "Path Capture (hole-filled)", so the website treats it like the
-original scan. Needs: pip install open3d numpy
+Input: a GLB from Path Capture (POSITION, optional NORMAL and COLOR_0; metres, +Y up), not
+compressed. Output: one mesh with POSITION, NORMAL and COLOR_0 (camera sRGB bytes, like Path
+Capture), generator "Path Capture (...)", so the website treats it like the original scan.
+Compress afterwards (see apps/web/README.md). Needs: pip install open3d numpy
 """
 
 import argparse
@@ -155,14 +162,41 @@ def nearest(reference, queries):
     return found.numpy()[:, 0].astype(np.int64), np.sqrt(squared.numpy()[:, 0])
 
 
-def drop_small_pieces(mesh, min_triangles):
-    """Removes floating fragments (dust, reflections, stray depth) smaller than min_triangles."""
-    clusters, counts, _ = mesh.cluster_connected_triangles()
-    clusters, counts = np.asarray(clusters), np.asarray(counts)
-    small = counts[clusters] < min_triangles
+def drop_small_pieces(mesh, min_triangles, min_area):
+    """Removes floating fragments with fewer than min_triangles or less than min_area m²."""
+    clusters, counts, areas = mesh.cluster_connected_triangles()
+    clusters, counts, areas = np.asarray(clusters), np.asarray(counts), np.asarray(areas)
+    small_cluster = (counts < min_triangles) | (areas < min_area)
+    small = small_cluster[clusters]
     mesh.remove_triangles_by_mask(small)
     mesh.remove_unreferenced_vertices()
-    return int(small.sum()), int((counts < min_triangles).sum())
+    return int(small.sum()), int(small_cluster.sum()), len(counts)
+
+
+def bake_ambient_occlusion(points, normals, triangles, rays, radius, strength):
+    """Per-vertex brightness: 1 (open) down to 1-strength (fully enclosed within radius metres).
+    Casts `rays` cosine-weighted rays from each vertex into the side its normal faces."""
+    import open3d as o3d
+    mesh = o3d.t.geometry.TriangleMesh()
+    mesh.vertex.positions = o3d.core.Tensor(points.astype(np.float32))
+    mesh.triangle.indices = o3d.core.Tensor(triangles.astype(np.int32))
+    scene = o3d.t.geometry.RaycastingScene()
+    scene.add_triangles(mesh)
+    rng = np.random.default_rng(7)
+    blocked = np.zeros(len(points))
+    chunk = 250_000
+    for start in range(0, len(points), chunk):
+        p = points[start:start + chunk]
+        n = normals[start:start + chunk]
+        origins = p + n * 0.01
+        for _ in range(rays):
+            d = rng.normal(size=p.shape)
+            d /= np.linalg.norm(d, axis=1, keepdims=True)
+            d = d + n  # cosine-weighted around the normal
+            d /= np.maximum(np.linalg.norm(d, axis=1, keepdims=True), 1e-9)
+            hit = scene.cast_rays(o3d.core.Tensor(np.hstack([origins, d]).astype(np.float32)))["t_hit"].numpy()
+            blocked[start:start + chunk] += hit < radius
+    return 1.0 - strength * (blocked / rays)
 
 
 def main():
@@ -175,8 +209,19 @@ def main():
                         help="Poisson detail level, 9-11 (default 10, about 1-2 cm cells for a 10-20 m scan)")
     parser.add_argument("--max-triangles", type=int, default=0,
                         help="simplify the result to at most this many triangles (default: the input's count)")
+    parser.add_argument("--no-fill", action="store_true",
+                        help="skip hole filling; only clean up, shade and recolour the scan's own surface")
     parser.add_argument("--min-piece", type=int, default=500,
                         help="remove floating pieces smaller than this many triangles (default 500; 0 keeps all)")
+    parser.add_argument("--min-area", type=float, default=0.25,
+                        help="remove floating pieces smaller than this many square metres (default 0.25; 0 keeps all)")
+    parser.add_argument("--ao", type=float, default=0.55,
+                        help="soft-shadow strength, 0-1 (default 0.55; 0 turns it off)")
+    parser.add_argument("--ao-radius", type=float, default=0.8,
+                        help="how far, in metres, nearby surfaces cast soft shadows (default 0.8)")
+    parser.add_argument("--ao-rays", type=int, default=24, help="rays per point for soft shadows (default 24)")
+    parser.add_argument("--levels", action="store_true",
+                        help="stretch the colours so the darkest 1%% become black and the brightest 1%% white")
     args = parser.parse_args()
 
     import open3d as o3d
@@ -195,20 +240,28 @@ def main():
     if colours is not None:
         cloud.colors = o3d.utility.Vector3dVector(colours)
 
-    print(f"Poisson reconstruction (depth {args.depth})...")
-    filled, _densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(cloud, depth=args.depth, scale=1.05, linear_fit=False)
-    print(f"  {len(filled.vertices):,} vertices, {len(filled.triangles):,} triangles before trimming")
-
-    # Keep only surface near the real scan: fills cracks and small holes, never invents
-    # walls across doorways or open ends.
-    _, distance = nearest(positions, np.asarray(filled.vertices))
-    filled.remove_vertices_by_mask(distance > args.max_gap)
-    filled.remove_degenerate_triangles()
-    filled.remove_unreferenced_vertices()
-    print(f"  {len(filled.triangles):,} triangles after trimming to {args.max_gap} m from the scan")
-    if args.min_piece:
-        removed, pieces = drop_small_pieces(filled, args.min_piece)
-        print(f"  removed {pieces:,} floating pieces ({removed:,} triangles) under {args.min_piece} triangles")
+    if args.no_fill:
+        # Depth fusion writes each block's vertices separately; weld them so connected
+        # surface counts as one piece.
+        filled = o3d.geometry.TriangleMesh(scan)
+        filled.merge_close_vertices(1e-5)
+        filled.remove_degenerate_triangles()
+        filled.remove_unreferenced_vertices()
+    else:
+        print(f"Poisson reconstruction (depth {args.depth})...")
+        filled, _densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(cloud, depth=args.depth, scale=1.05, linear_fit=False)
+        print(f"  {len(filled.vertices):,} vertices, {len(filled.triangles):,} triangles before trimming")
+        # Keep only surface near the real scan: fills cracks and small holes, never invents
+        # walls across doorways or open ends.
+        _, distance = nearest(positions, np.asarray(filled.vertices))
+        filled.remove_vertices_by_mask(distance > args.max_gap)
+        filled.remove_degenerate_triangles()
+        filled.remove_unreferenced_vertices()
+        print(f"  {len(filled.triangles):,} triangles after trimming to {args.max_gap} m from the scan")
+    if args.min_piece or args.min_area:
+        removed, pieces, total = drop_small_pieces(filled, args.min_piece, args.min_area)
+        print(f"Removed {pieces:,} of {total:,} separate pieces ({removed:,} triangles): "
+              f"under {args.min_piece} triangles or {args.min_area} m2")
 
     target = args.max_triangles or len(triangles)
     if len(filled.triangles) > target:
@@ -227,8 +280,24 @@ def main():
         out_normals = -out_normals
         filled.triangles = o3d.utility.Vector3iVector(np.asarray(filled.triangles)[:, ::-1])
 
+    if args.levels and colours is not None:
+        low, high = np.percentile(out_colours, [1, 99])
+        if high - low > 0.05:
+            out_colours = np.clip((out_colours - low) / (high - low), 0, 1)
+            print(f"Stretched colours from {low:.2f}-{high:.2f} to the full range")
+    if args.ao > 0:
+        print(f"Baking soft shadows ({args.ao_rays} rays per point, {args.ao_radius} m)...")
+        shade = bake_ambient_occlusion(out_points, out_normals, np.asarray(filled.triangles),
+                                       args.ao_rays, args.ao_radius, min(args.ao, 1.0))
+        # Darken in linear light, then back to the camera's sRGB.
+        linear = np.where(out_colours <= 0.04045, out_colours / 12.92, ((out_colours + 0.055) / 1.055) ** 2.4)
+        linear *= shade[:, None]
+        out_colours = np.where(linear <= 0.0031308, linear * 12.92, 1.055 * np.power(linear, 1 / 2.4) - 0.055)
+        print(f"  average brightness kept: {shade.mean():.0%}")
+
+    steps = ["cleaned" if args.no_fill else "hole-filled"] + (["shaded"] if args.ao > 0 else [])
     write_glb(args.output, out_points, out_normals, out_colours, np.asarray(filled.triangles),
-              "Path Capture (hole-filled with tools/scan_fill_holes.py)")
+              f"Path Capture ({', '.join(steps)} with tools/scan_fill_holes.py)")
     size = args.output.stat().st_size / 1024 / 1024
     print(f"Wrote {args.output.name}: {len(out_points):,} vertices, {len(filled.triangles):,} triangles, "
           f"{size:.1f} MB in {time.time() - started:.0f} s")

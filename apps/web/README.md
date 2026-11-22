@@ -75,22 +75,30 @@ renders one 480 × 288 JPEG from its own steep, floor-plan-like camera fitted to
 points. The user's view isn't touched. Cards without a picture keep the stylized dot preview.
 Locally: run the mock with `--signed-in-as <name>` so the website counts as signed in.
 
-## Filling holes before upload
+## Making a scan look its best before upload
 
-`tools/scan_fill_holes.py` patches small holes in a phone scan GLB and removes floating
-fragments, then writes a new GLB the website shows like any Path Capture scan. It rebuilds
-the surface with screened Poisson reconstruction and keeps only new surface within
-`--max-gap` metres (default 0.12) of the real scan, so doorways and open ends are not
-walled over. Needs `pip install open3d numpy` (Python 3.10–3.12).
+`tools/scan_fill_holes.py` prepares a phone scan GLB and writes a new one the website shows
+like any Path Capture scan. By default it:
+
+1. fills small holes (screened Poisson reconstruction, keeping only new surface within
+   `--max-gap` metres of the real scan, so doorways and open ends aren't walled over;
+   `--no-fill` skips this and keeps the scan's own surface);
+2. removes floating junk: separate pieces under `--min-area` m² (0.25) or `--min-piece`
+   triangles (500): dust, reflections, stray depth, people walking by;
+3. bakes soft shadows into the colours (ambient occlusion, `--ao 0.55`): corners and the
+   floor around furniture darken a little, so the shape reads on phones with flat lighting;
+4. with `--levels`, stretches dull camera colours to the full range.
+
+Needs `pip install open3d numpy` (Python 3.10–3.12).
 
 ```
-python tools/scan_fill_holes.py hallway.glb hallway-filled.glb
-python tools/scan_fill_holes.py hallway.glb hallway-filled.glb --max-gap 0.2 --max-triangles 800000
+python tools/scan_fill_holes.py hallway.glb hallway-best.glb --levels
+python tools/scan_fill_holes.py hallway.glb hallway-clean.glb --no-fill --levels   # 10 s, no hole filling
 ```
 
-On a 1.37M-triangle, 37 MB hallway scan it took about 3 minutes on a laptop CPU, cut open
-hole edges by 74% (70,304 to 18,128) and loose pieces from 2,048 to 76, at the same
-triangle count. Edges come out slightly rounder than the original.
+On a 1.37M-triangle, 37 MB two-storey hallway scan: cleanup only took 10 s and removed 2,014
+of 2,049 separate pieces; the full run took 73 s on a laptop CPU, also cut open hole edges by
+about 74%, at the same triangle count. Filled edges come out slightly rounder than the original.
 
 ### Making scans smaller
 
@@ -149,7 +157,7 @@ With the real authenticated backend, open `http://localhost:5173/maps` (Your map
 | `src/routes/GuestView.tsx` | `/s/:shareId`: PLY point clouds (`ScanViewer`) or GLB models (`SpaceViewer`, with the share's saved transform), with loading, not-found/denied, download and parse-failure states. When the owner approved landmark directions, a **Directions** button opens them above the map controls, each marked "Approved by the map owner". |
 | `src/routes/SpaceView.tsx` | Accessible Next.js scans and graph, route selection, owner upload/alignment and graph tools. |
 | `src/components/SpaceViewer.tsx` | GLTFLoader meshes/materials, combined transformed bounds, graph/route overlays and orbit controls. |
-| `src/lib/scan-surfaces.ts` | Makes phone scans easier to read without changing their geometry: hides ceilings (ARKit-labelled ceiling faces, or on unlabelled phone scans the downward-facing surfaces in the upper half; a **Show ceiling** button brings them back and clicks pass through hidden ones), turns on the GPU's best anisotropic filtering for photo textures, and converts Path Capture vertex colours from camera sRGB to linear so they no longer look washed out. Test room: `fixtures/venue/classified-room.glb` from `tools/make_classified_room.py`. |
+| `src/lib/scan-surfaces.ts` | Makes phone scans easier to read without changing their geometry: measures the main floor and the ceiling over it (ARKit labels, or the most common height of up- and down-facing surfaces) and offers a **Wall height** choice: **Low walls** (cut at floor + 1.3 m, like a floor plan; the start indoors), **No ceiling**, **Everything**. Cut faces are discarded and clicks pass through them; the backs of cut walls draw in a flat dark colour so walls read as outlines. It also turns on the GPU's best anisotropic filtering for photo textures, and converts Path Capture vertex colours from camera sRGB to linear so they no longer look washed out. Test room: `fixtures/venue/classified-room.glb` from `tools/make_classified_room.py`. |
 | `src/routes/Home.tsx`, `src/landing/` | The landing page at `/`, described below. |
 
 ## Landing page
