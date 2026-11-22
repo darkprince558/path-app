@@ -104,7 +104,7 @@ The worker's empty output directory is retained: the CLI first writes to a fresh
 Output validation rejects unsupported/missing files, symlinks, empty/oversized
 assets, invalid self-contained GLB containers, malformed JSON reports and invalid
 JPEG/PLY headers. Container/header checks do not establish renderability or mesh
-correctness. Limits are 32 MiB per output and 2 MiB for the report.
+correctness. Limits are 100 MiB per output and 2 MiB for the report.
 
 Private outputs use fresh revision UUIDs, 0600 files, synced writes and atomic
 directory promotion. The revision records the scene checksum/key, full output

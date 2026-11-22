@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { alignmentControls, alignmentMatrix, calibrationScale, IDENTITY } from "../lib/alignment";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "../lib/scans";
 import { coordinates, nodeLabel, request, scanAligned, send, type Graph, type NavNode, type Position, type SavedPath, type Scan, type Space } from "../lib/space-api";
 
 export interface PickedPoint { scanId: string; point: Position; localPoint: Position }
@@ -68,7 +69,7 @@ export default function SpaceEditor({ space, scans, graph, paths, picked, onChan
     event.preventDefault(); const form = new FormData(event.currentTarget);
     await perform(async () => {
       const file = form.get("file");
-      if (!(file instanceof File) || !file.size || file.size > 32 * 1024 * 1024) throw new Error("Choose a GLB file no larger than 32 MiB.");
+      if (!(file instanceof File) || !file.size || file.size > MAX_UPLOAD_BYTES) throw new Error(`Choose a GLB file no larger than ${MAX_UPLOAD_LABEL}.`);
       form.set("transform", JSON.stringify(transform())); form.set("metadata", JSON.stringify(metadata()));
       await request(`/api/spaces/${space.id}/scans`, { method: "POST", body: form });
     });

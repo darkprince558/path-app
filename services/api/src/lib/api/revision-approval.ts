@@ -10,7 +10,7 @@ import { canonicalJson, captureManifest } from '../capture/contract';
 import { metricCoordinates, metricSpace, preservesMetricFrame, validatedMetricCapture } from '../processing/calibration';
 import { badRequest, conflict, notFound } from './http';
 import { name, uuid, visibility } from './validation';
-import { effectiveScanCalibration, scanResponse, transform, validateGlb } from './scans';
+import { effectiveScanCalibration, MAX_GLB_BYTES, scanResponse, transform, validateGlb } from './scans';
 
 const coordinateSystem = z.object({ units: z.enum(['metres', 'relative']), upAxis: z.literal('Y'), calibrated: z.boolean() }).strict();
 export const approvalInput = z.object({ name, visibility: visibility.default('private'),
@@ -18,7 +18,7 @@ export const approvalInput = z.object({ name, visibility: visibility.default('pr
   alignmentVerified: z.boolean().optional(),
 }).strict();
 const outputFile = z.object({ path: z.enum(['master.glb', 'scene.glb', 'scene.ply', 'preview.jpg', 'report.json']),
-  objectKey: z.string(), byteSize: z.number().int().positive().max(32 * 1024 * 1024),
+  objectKey: z.string(), byteSize: z.number().int().positive().max(MAX_GLB_BYTES),
   sha256: z.string().length(64).regex(/^[0-9a-f]{64}$/),
 }).strict();
 

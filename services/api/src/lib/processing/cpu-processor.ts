@@ -4,6 +4,7 @@ import { lstat, readFile, readdir, rename, realpath, rmdir } from 'node:fs/promi
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { canonicalJson, captureManifest, validateFrameReferences } from '../capture/contract';
+import { MAX_GLB_BYTES } from '../api/scans';
 import { ProcessingFailure, type CaptureProcessor } from './processor';
 import { CPU_PROCESSOR, processorTimeout } from './selection';
 import { CAPTURE_CPU_LOCK } from './locks';
@@ -60,7 +61,7 @@ export class CpuCaptureProcessor implements CaptureProcessor {
           !report.assets || typeof report.assets !== 'object' || Array.isArray(report.assets) ||
           Object.keys(report.assets).length !== names.length - 1) throw new Error('Invalid provenance');
       for (const name of names.filter(name => name !== 'report.json')) {
-        const bytes = await boundedBytes(destination, name, 32 * 1024 * 1024);
+        const bytes = await boundedBytes(destination, name, MAX_GLB_BYTES);
         const entry = report.assets[name];
         if (!entry || entry.byteSize !== bytes.length || entry.sha256 !== sha(bytes)) throw new Error('Invalid output checksum');
       }

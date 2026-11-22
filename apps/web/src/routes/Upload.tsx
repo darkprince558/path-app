@@ -7,6 +7,7 @@ import {
   cleanMapName,
   formatBytes,
   MAX_NAME_LENGTH,
+  MAX_UPLOAD_LABEL,
   mapEditId,
   uploadScan,
   UploadError,
@@ -178,7 +179,7 @@ export default function Upload() {
               ) : (
                 <>
                   <span className="font-bold">Tap to choose a file</span>
-                  <span className="text-sm text-muted">PLY point cloud or GLB model, up to 32 MB</span>
+                  <span className="text-sm text-muted">PLY point cloud or GLB model, up to {MAX_UPLOAD_LABEL}</span>
                 </>
               )}
             </label>
