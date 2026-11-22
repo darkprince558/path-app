@@ -132,3 +132,67 @@ test("GLB upload preserves the scan edit ID for immediate sharing changes", asyn
   await expect.poll(() => patched).toBe(true);
   await expect(page.getByText("Saved. This map is now Private.", { exact: false })).toBeVisible();
 });
+
+test("owners add and remove shared users on a private map by email", async ({ page }) => {
+  await session(page);
+  const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+  const map = { id: "scan-uuid", shareId: "private-map", sharePath: "/s/private-map", name: "Library",
+    format: "ply", visibility: "private", viewerIds: [], viewers: [], updatedAt: new Date().toISOString() };
+  await page.route("**/api/scans/mine", route => route.fulfill({ json: { scans: [map] } }));
+  const arielle = { id: "arielle-uuid", displayName: "Arielle", email: "arielle@example.com" };
+  let viewers: typeof arielle[] = [];
+  const posted: unknown[] = [];
+  await page.route("**/api/scans/scan-uuid/viewers**", async route => {
+    const request = route.request(), path = new URL(request.url()).pathname;
+    if (request.method() === "POST") {
+      posted.push(request.postDataJSON());
+      if (request.postDataJSON().email === "nobody@example.com") return route.fulfill({ status: 404,
+        json: { error: { code: "USER_NOT_FOUND", message: "No account uses that email yet. Ask them to sign in to Not 404 once, then add them again." } } });
+      viewers = [arielle];
+    } else if (request.method() === "DELETE") {
+      expect(path).toBe("/api/scans/scan-uuid/viewers/arielle-uuid");
+      viewers = [];
+    }
+    return route.fulfill({ json: { viewers } });
+  });
+
+  await page.goto("/maps/private-map");
+  const shared = page.getByRole("region", { name: "Shared users" });
+  await expect(shared.getByText(/Just you/)).toBeVisible();
+
+  await shared.getByLabel("Add by email").fill("nobody@example.com");
+  await shared.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(shared.getByRole("alert")).toContainText("No account uses that email yet");
+
+  await shared.getByLabel("Add by email").fill("  Arielle@Example.com ");
+  await shared.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(shared.getByRole("status")).toContainText("Added Arielle");
+  const list = shared.getByRole("list", { name: "People who can open this map" });
+  await expect(list).toContainText("arielle@example.com");
+  await expect(shared.getByLabel("Add by email")).toHaveValue("");
+  expect(posted).toEqual([{ email: "nobody@example.com" }, { email: "Arielle@Example.com" }]);
+
+  await shared.getByRole("button", { name: "Remove Arielle" }).click();
+  await expect(shared.getByRole("status")).toContainText("Removed Arielle");
+  await expect(list).toHaveCount(0);
+
+  // Not private: the section is hidden. Back to private: it returns.
+  await page.getByRole("radio", { name: /Unlisted/ }).check();
+  await expect(shared).toHaveCount(0);
+  await page.getByRole("radio", { name: /Private/ }).check();
+  await expect(page.getByRole("region", { name: "Shared users" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("a server without viewer routes shows shared users read-only", async ({ page }) => {
+  await session(page);
+  await page.route("**/api/scans/mine", route => route.fulfill({ json: { scans: [{
+    shareId: "mock-map", sharePath: "/s/mock-map", name: "Mock map", format: "ply", visibility: "private",
+    viewerIds: ["teammate"], updatedAt: new Date().toISOString() }] } }));
+  await page.route("**/api/scans/mock-map/viewers", route => route.fulfill({ status: 404, json: { error: "Not found" } }));
+  await page.goto("/maps/mock-map");
+  const shared = page.getByRole("region", { name: "Shared users" });
+  await expect(shared).toContainText("teammate");
+  await expect(shared).toContainText("This server can't add or remove people.");
+  await expect(shared.getByLabel("Add by email")).toHaveCount(0);
+});

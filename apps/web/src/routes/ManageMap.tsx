@@ -196,6 +196,7 @@ function ManageReady({
         initialVisibility={map.visibility}
         viewers={viewerNames(map)}
         heading="Link and QR code"
+        manageViewers
         lockedReason={map.format === "glb" ? sharingLockReason(placeCount) : null}
       />
 

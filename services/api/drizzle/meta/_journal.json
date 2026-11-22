@@ -50,6 +50,13 @@
       "when": 1795327779621,
       "tag": "0006_scan_places",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795331089146,
+      "tag": "0007_user_email",
+      "breakpoints": true
     }
   ]
 }
