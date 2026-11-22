@@ -7,6 +7,7 @@ import VisionKit
   var body: some SwiftUI.Scene { WindowGroup { CaptureScreen() } }
 }
 private struct CaptureScreen: View {
+  @StateObject private var account = CaptureAccount()
   @StateObject private var scanner = CaptureController()
   @Environment(\.scenePhase) var phase
   @State private var pairing = false
@@ -73,6 +74,11 @@ private struct CaptureScreen: View {
               }
             }
             Section {
+              NavigationLink {
+                AccountView(account: account)
+              } label: {
+                Label("Account", systemImage: "person.crop.circle")
+              }
               Button {
                 pairing = true
               } label: {
@@ -83,9 +89,9 @@ private struct CaptureScreen: View {
         }
       }.navigationTitle(scanner.phase == .recording ? "Scanning" : "Path Capture")
         .navigationBarTitleDisplayMode(.inline)
-    }.onChange(of: phase) { _, p in if p == .background { scanner.stop(interrupted: true) } }.sheet(
+    }.task { await account.restore() }.onChange(of: phase) { _, p in if p == .background { scanner.stop(interrupted: true) } }.sheet(
       item: $scanner.selected, onDismiss: { scanner.reload() }
-    ) { record in ScanDetail(record: record, mac: $paired) }.sheet(isPresented: $pairing) {
+    ) { record in ScanDetail(record: record, mac: $paired, account: account) }.sheet(isPresented: $pairing) {
       PairMac(mac: $paired)
     }
   }
@@ -110,6 +116,7 @@ private struct CameraPreview: UIViewRepresentable {
 private struct ScanDetail: View {
   @State var record: ScanRecord
   @Binding var mac: MacAddress?
+  @ObservedObject var account: CaptureAccount
   @Environment(\.dismiss) var dismiss
   @State private var pairing = false
   @State private var busy = false
@@ -118,12 +125,38 @@ private struct ScanDetail: View {
   @State private var bundleError = ""
   @State private var retryVideo = false
   @State private var status = ""
+  @State private var hostedStatus = ""
+  @State private var hostedNeedsLogin = false
   var model: URL { record.folder.appendingPathComponent("scene.glb") }
   var body: some View {
     NavigationStack {
       List {
         if FileManager.default.fileExists(atPath: model.path) {
           Section { ScanPreview(url: model).frame(height: 245).listRowInsets(EdgeInsets()) }
+        }
+        if FileManager.default.fileExists(atPath: model.path) {
+          Section("Share online") {
+            if let subject = account.user?.sub, let url = record.hostedLinks?[subject] {
+              ShareLink("Share map link", item: url)
+              Link("Open map", destination: url)
+            } else if let subject = account.user?.sub, !hostedNeedsLogin {
+              let pending = record.pendingHostedUploads?.contains(subject) == true
+              Button(pending ? "Check previous upload" : "Upload unlisted map") {
+                publishHosted(subject: subject, recovering: pending)
+              }.disabled(busy || account.busy)
+              Text("Anyone with the link can open this model and its embedded textures.")
+                .font(.footnote)
+            } else {
+              Button("Sign in to upload") {
+                Task {
+                  await account.logIn()
+                  hostedNeedsLogin = false
+                  hostedStatus = account.message ?? ""
+                }
+              }.disabled(account.busy || busy)
+            }
+            if !hostedStatus.isEmpty { Text(hostedStatus).font(.footnote) }
+          }
         }
         Section("Capture") {
           LabeledContent("Mode", value: record.mode)
@@ -140,7 +173,7 @@ private struct ScanDetail: View {
             LabeledContent("Measured points", value: record.pointCount.formatted())
           }
         }
-        Section("Second-phone viewer") {
+        Section("Mac reconstruction and sharing") {
           if let u = record.guestURL {
             ShareLink("Share native scan link", item: u)
             Link("Open native scan", destination: u)
@@ -218,6 +251,50 @@ private struct ScanDetail: View {
       }.sheet(isPresented: $pairing) { PairMac(mac: $mac) }
     }.interactiveDismissDisabled(busy)
   }
+  private func publishHosted(subject: String, recovering: Bool) {
+    guard !busy else { return }
+    busy = true
+    hostedStatus = recovering ? "Looking for this scan in your maps…" : "Uploading the 3D model…"
+    Task { @MainActor in
+      defer { busy = false }
+      do {
+        let api = HostedScanAPI()
+        let token: String
+        do { token = try await account.uploadToken() }
+        catch { throw HostedScanAPI.Failure.login }
+        let link: URL?
+        if recovering {
+          link = try await api.previousUpload(named: record.hostedMapName, token: token)
+        } else {
+          try HostedScanAPI.checkSize(of: model)
+          // Save the attempt first so reopening this screen can recover a lost response.
+          record.pendingHostedUploads = (record.pendingHostedUploads ?? []).union([subject])
+          try record.persist()
+          link = try await api.upload(file: model, name: record.hostedMapName, token: token)
+        }
+        if let link {
+          var links = record.hostedLinks ?? [:]
+          links[subject] = link
+          record.hostedLinks = links
+          hostedStatus = "Your map link is ready."
+        } else {
+          hostedStatus = "No matching map was found in your account. You can upload again."
+        }
+        record.pendingHostedUploads?.remove(subject)
+        try record.persist()
+      } catch HostedScanAPI.Failure.login {
+        if !recovering {
+          record.pendingHostedUploads?.remove(subject)
+          try? record.persist()
+        }
+        hostedNeedsLogin = true
+        hostedStatus = "Sign in again to authorize this upload."
+      } catch {
+        hostedStatus = error.localizedDescription
+      }
+    }
+  }
+
   private func run(_ video: Bool) {
     guard let mac, !busy else { return }
     busy = true

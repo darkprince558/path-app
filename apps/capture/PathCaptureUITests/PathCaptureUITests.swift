@@ -1,6 +1,19 @@
 import XCTest
 
 final class PathCaptureUITests: XCTestCase {
+  func testAccountIsAccessibleFromScanner() throws {
+    let app = XCUIApplication()
+    app.launch()
+    app.buttons["Account"].tap()
+    XCTAssertTrue(app.navigationBars["Account"].waitForExistence(timeout: 5))
+    if !app.buttons["Log Out"].exists {
+      XCTAssertTrue(app.buttons["Log In"].waitForExistence(timeout: 5))
+      XCTAssertTrue(app.buttons["Sign Up"].exists)
+    }
+    app.navigationBars.buttons.element(boundBy: 0).tap()
+    XCTAssertTrue(app.staticTexts["Scan a space"].waitForExistence(timeout: 5))
+  }
+
   func testOfflineScanReview() throws {
     let app = XCUIApplication()
     app.launch()
@@ -13,6 +26,8 @@ final class PathCaptureUITests: XCTestCase {
     fixture.tap()
     XCTAssertTrue(app.navigationBars["Scan review"].waitForExistence(timeout: 10))
     XCTAssertTrue(app.staticTexts["Surface triangles"].exists)
+    XCTAssertTrue(app.buttons["Sign in to upload"].exists || app.buttons["Upload unlisted map"].exists
+      || app.buttons["Share map link"].exists || app.buttons["Check previous upload"].exists)
     let preview = app.descendants(matching: .any)["native-model-preview"].firstMatch
     XCTAssertTrue(preview.waitForExistence(timeout: 10))
     let from = preview.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.5))

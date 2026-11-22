@@ -17,8 +17,10 @@ for name in ['scene.glb','sparse.glb']:validate_native_model(Path(sys.argv[1])/n
 PY
 args=(-project apps/capture/PathCapture.xcodeproj -scheme PathCapture -destination "platform=iOS Simulator,id=$1" -derivedDataPath "$check_dir/build")
 xcodebuild -quiet "${args[@]}" build
-xcrun simctl install "$1" "$check_dir/build/Build/Products/Debug-iphonesimulator/PathCapture.app"
-container=$(xcrun simctl get_app_container "$1" com.pathapp.demo.capture data)
+app="$check_dir/build/Build/Products/Debug-iphonesimulator/PathCapture.app"
+bundle=$(plutil -extract CFBundleIdentifier raw "$app/Info.plist")
+xcrun simctl install "$1" "$app"
+container=$(xcrun simctl get_app_container "$1" "$bundle" data)
 python3 - "$container" "$check_dir/fixture" <<'PY'
 from pathlib import Path
 import shutil,sys
@@ -29,7 +31,7 @@ PY
 xcodebuild -quiet "${args[@]}" -parallel-testing-enabled NO -resultBundlePath "$check_dir/review.xcresult" test
 printf 'Simulator review evidence: %s\n' "$check_dir/review.xcresult"
 if [[ -n ${2:-} ]]; then
-  container=$(xcrun simctl get_app_container "$1" com.pathapp.demo.capture data)
+  container=$(xcrun simctl get_app_container "$1" "$bundle" data)
   python3 - "$container/tmp" "$check_dir/unpacked" <<'PY'
 from pathlib import Path
 from zipfile import ZipFile
