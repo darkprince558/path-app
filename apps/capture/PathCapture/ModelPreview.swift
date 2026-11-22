@@ -82,6 +82,52 @@ enum ModelPreview {
       geometry.materials = [m]
       model.addChildNode(SCNNode(geometry: geometry))
     }
+    return frame(model, in: scene)
+  }
+
+  static func walkPoints(_ records: [ScanRecord]) throws -> SCNScene {
+    let scene = SCNScene()
+    let model = SCNNode()
+    scene.rootNode.addChildNode(model)
+    let available = records.filter { $0.pointCount > 0 }
+    let perSection = max(1, 160_000 / max(1, available.count))
+    for record in available {
+      let data = try Data(contentsOf: record.folder.appendingPathComponent("points.ply"), options: .mappedIfSafe)
+      let header = Data("end_header\n".utf8)
+      guard let end = data.range(of: header, in: 0..<min(1000,data.count))?.upperBound,
+        (data.count - end) / 15 == record.pointCount else { throw ScanFailure.empty }
+      let stride = max(1, (record.pointCount + perSection - 1) / perSection)
+      var vertices = [Float](), colors = [Float]()
+      data.withUnsafeBytes { raw in
+        for i in Swift.stride(from: 0, to: record.pointCount, by: stride) {
+          let pos = end + i*15
+          for k in 0..<3 {
+            let bits = raw.loadUnaligned(fromByteOffset: pos+k*4, as: UInt32.self)
+            vertices.append(Float(bitPattern: UInt32(littleEndian: bits)))
+            colors.append(Float(raw[pos+12+k])/255)
+          }
+        }
+      }
+      let count = vertices.count/3
+      func source(_ values: [Float], _ type: SCNGeometrySource.Semantic) -> SCNGeometrySource {
+        SCNGeometrySource(data: values.withUnsafeBytes { Data($0) }, semantic: type, vectorCount: count,
+          usesFloatComponents: true, componentsPerVector: 3, bytesPerComponent: 4, dataOffset: 0, dataStride: 12)
+      }
+      let element = SCNGeometryElement(data: nil, primitiveType: .point, primitiveCount: count, bytesPerIndex: 0)
+      element.pointSize = 0.045
+      element.minimumPointScreenSpaceRadius = 1
+      element.maximumPointScreenSpaceRadius = 5
+      let geom = SCNGeometry(sources: [source(vertices,.vertex),source(colors,.color)], elements:[element])
+      let material = SCNMaterial()
+      material.lightingModel = .constant
+      geom.materials = [material]
+      model.addChildNode(SCNNode(geometry: geom))
+    }
+    guard !model.childNodes.isEmpty else { throw ScanFailure.empty }
+    return frame(model, in: scene)
+  }
+
+  private static func frame(_ model: SCNNode, in scene: SCNScene) -> SCNScene {
     let bounds = model.boundingBox
     let lo = SIMD3<Float>(bounds.min)
     let hi = SIMD3<Float>(bounds.max)
@@ -93,12 +139,13 @@ enum ModelPreview {
     cam.simdPosition = center + SIMD3(0.65, 0.5, 1) * span
     cam.look(at: SCNVector3(center))
     scene.rootNode.addChildNode(cam)
-    scene.background.contents = UIColor(red: 0.055, green: 0.087, blue: 0.073, alpha: 1)
+    scene.background.contents = UIColor(red: 0x12 / 255, green: 0x1C / 255, blue: 0x16 / 255, alpha: 1)
     return scene
   }
 }
 struct ScanPreview: View {
   let url: URL
+  var walk: [ScanRecord]? = nil
   @State private var scene: SCNScene?
   @State private var failed = false
   var body: some View {
@@ -109,11 +156,12 @@ struct ScanPreview: View {
           .accessibilityIdentifier("native-model-preview")
       } else if failed {
         ContentUnavailableView("Preview unavailable", systemImage: "viewfinder")
+          .foregroundStyle(Brand.paper)
       } else {
-        ProgressView("Opening scan")
+        ProgressView("Opening scan").tint(Brand.paper).foregroundStyle(Brand.sage)
       }
     }.task(id: url) {
-      do { scene = try await Task.detached { try ModelPreview.scene(url) }.value } catch {
+      do { scene = try await Task.detached { try walk.map { try ModelPreview.walkPoints($0) } ?? ModelPreview.scene(url) }.value } catch {
         failed = true
       }
     }

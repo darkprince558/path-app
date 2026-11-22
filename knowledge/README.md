@@ -19,6 +19,14 @@ worker completed 32 sections with 313 photo poses from a saved iPhone walk. All 
 uploaded files matched their checksums. The [contract regression test](../services/api/src/lib/api/lidar-contract-compatibility.test.ts)
 exercises the tolerated range and rejection cases with synthetic data.
 
+## Direct iPhone map sharing
+
+A finished `scene.glb` can use Sam’s existing unlisted GLB upload endpoint directly from [Scan Review](../apps/capture/README.md#share-a-scan-directly-from-the-iphone). Anish’s Swift client sent the 16,856-byte [native fixture](../fixtures/lidar-native-capture/source.glb) through the real local API handlers with disposable PostgreSQL and a signed test identity. The owner recovered the same link after upload, anonymous discovery omitted it, and a signed-out read returned identical bytes. On November 22, Anish signed in on a physical iPhone 16 Pro and uploaded a 10.6-second LiDAR scan (15.2 MB). A fresh signed-out, phone-sized Chrome session opened the returned production link, rendered the 3D canvas and reset its view. The real scan was absent from public discovery. The remaining field check is recognizing the turn on a second physical phone over cellular. [Implementation and verification](https://github.com/darkprince558/path-app/pull/56)
+
+## iOS scanner account
+
+The [scanner sign-in instructions](../apps/capture/README.md#ios-scanner-sign-in) give Anish and Krishna the native application's callback and logout URI. The iPhone 16 Pro simulator running iOS 18.6 reached the hosted login form and returned signed out after cancellation. The [scanner check](../scripts/check-ios-scanner.sh) exercises account navigation and local review of a synthetic scan. Use a test account to verify the return with a profile, restoration after relaunch and logout.
+
 ## Calibration handoff
 
 The [calibration trace and repair](../docs/scan-calibration.md) records why capture
@@ -68,6 +76,9 @@ child-owned lifetime lock, process cancellation and targeted local workflow.
 The [publishing runbook](../docs/lidar-publishing.md) records Task 5's approved
 revision-to-scan link, owner-only frames and verified synthetic viewer handoff.
 
+[Which phone sensors the scanner uses](scanner-sensors.md) records why the barometer, GPS, compass and gyro
+each have one narrow job, and the device checks still needed.
+
 Create a short Markdown file here such as `capture-export.md` for a finding worth reusing. Use the real device, command or example that produced it. Link to the implementation PR or issue and add a link to the note here. If the result changes the first supported format or another team decision, update the linked architecture or plan as part of the same PR.
 
 ```markdown
@@ -81,6 +92,9 @@ What the next teammate should do:
 
 After pulling a note, run `entire brain refresh` in the repo, then try `entire brain query "scan visibility" --source doc --limit 3`. Keep raw scans, credentials and full transcripts in their approved storage. A reference to the evidence is enough here.
 
+- **Continuous hallway capture.** A real iPhone take crossed the previous 220,000-face stop after about 15 seconds. Hallway mode now checkpoints sections in one AR session. When processing a walk, use the ordered sections in its complete archive. Each raw LiDAR depth frame needs its recorded intrinsics, world pose and confidence map when available. See the [capture and Mac fusion guide](../apps/capture/README.md#map-a-hallway) and [two-section reconstruction check](../apps/capture/walk/test_reconstruct.py).
+
+- **Live side guidance.** Four saved iPhone walks supplied 910 depth frames for a chronological replay. On one walk the cue pointed right in both stretches where the finished scan showed weak right-side coverage. A route with little upright evidence on either side yielded one brief cue. For the next physical check, deliberately omit a known wall and note where the arrow appears and clears. The recordings had no independent labels for missed surfaces. [Scanner behavior](../apps/capture/README.md#map-a-hallway) · [Local depth replay](../apps/capture/native-tests/replay-side-guidance/main.swift)
 
 ### Single uploaded GLB routing (2026-11-22)
 
