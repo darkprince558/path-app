@@ -54,6 +54,25 @@ test('native shared fixture passes backend validation and real CPU processing wi
   }
 });
 
+test('entrance and frame poses accept float32 roundoff in w and preserve the recorded values', async () => {
+  const manifest = await readJson(fixture, 'manifest.json');
+  const index = await readJson(fixture, 'frames.json');
+  for (const [manifestSchema, frameSchema] of [[captureManifest, captureFrameIndex], [cpuManifest, cpuFrames]] as const) {
+    for (const w of [0.999999, 0.9999998, 1, 1.000001]) {
+      const pose = [...manifest.entrancePose.slice(0, 15), w];
+      const frame = { ...index.frames[0], cameraPose: pose };
+      assert.deepEqual(manifestSchema.parse({ ...manifest, entrancePose: pose }).entrancePose, pose);
+      assert.deepEqual(frameSchema.parse({ ...index, frames: [frame] }).frames[0].cameraPose, pose);
+    }
+    for (const [offset, value] of [[15, 0.9999989], [15, 1.0000011], [3, 1e-8], [7, -1e-8], [11, 1e-8]]) {
+      const pose = [...manifest.entrancePose];
+      pose[offset] = value;
+      assert.equal(manifestSchema.safeParse({ ...manifest, entrancePose: pose }).success, false);
+      assert.equal(frameSchema.safeParse({ ...index, frames: [{ ...index.frames[0], cameraPose: pose }] }).success, false);
+    }
+  }
+});
+
 test('exporter/CPU contract rejects old fields, unsafe paths, invalid poses and bounds identically', async () => {
   const manifest = await readJson(fixture, 'manifest.json'), frames = await readJson(fixture, 'frames.json');
   const badManifests = [
