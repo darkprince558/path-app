@@ -16,8 +16,8 @@ struct LibraryScreen: View {
     NavigationStack {
       Group {
         if scanner.phase == .recording {
-          ScanScreen(scanner: scanner) {
-            CameraPreview(session: scanner.session, mesh: scanner.supportsMesh)
+          ScanScreen(scanner: scanner) { overlay in
+            CameraPreview(session: scanner.session, mesh: scanner.supportsMesh, overlay: overlay)
           }
         } else {
           List {

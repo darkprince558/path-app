@@ -5,9 +5,25 @@ final class PathCaptureUITests: XCTestCase {
     let app = XCUIApplication()
     app.launchArguments = ["-PathCaptureReplay", "hallway"]
     app.launch()
-    XCTAssertTrue(app.staticTexts["Walk map"].waitForExistence(timeout: 10))
+    XCTAssertTrue(app.buttons["scan-layout-toggle"].waitForExistence(timeout: 10))
+    if app.buttons["Collapse map"].exists { app.buttons["Collapse map"].tap() }
+    if !app.buttons["scan-map"].exists { app.buttons["scan-layout-toggle"].tap() }
+    XCTAssertTrue(app.buttons["scan-map"].waitForExistence(timeout: 10))
     XCTAssertTrue(app.descendants(matching: .any)["scan-tracking"].firstMatch.exists)
     XCTAssertTrue(app.staticTexts["scan-distance"].exists)
+    app.buttons["scan-map"].tap()
+    XCTAssertTrue(app.buttons["Collapse map"].waitForExistence(timeout: 5))
+    app.buttons["Collapse map"].tap()
+    app.buttons["scan-layout-toggle"].tap()
+    XCTAssertFalse(app.buttons["scan-map"].exists)
+    app.buttons["scan-overlay-toggle"].tap()
+    app.launchArguments = ["-PathCaptureReplay", "hallway"]
+    app.terminate()
+    app.launch()
+    XCTAssertTrue(app.buttons["scan-layout-toggle"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["scan-map"].exists)
+    app.buttons["scan-layout-toggle"].tap()
+    XCTAssertTrue(app.buttons["scan-map"].exists)
     app.buttons["Finish walk"].tap()
     XCTAssertTrue(app.navigationBars["Walk review"].waitForExistence(timeout: 10))
     XCTAssertTrue(app.staticTexts["Tracked distance"].exists)

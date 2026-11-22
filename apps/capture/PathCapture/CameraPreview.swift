@@ -5,17 +5,19 @@ import SwiftUI
 struct CameraPreview: UIViewRepresentable {
   let session: ARSession
   let mesh: Bool
+  let overlay: Bool
+
   func makeUIView(context: Context) -> ARView {
-    let v = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: false)
+    let view = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: false)
     let scanDelegate = session.delegate
-    v.session = session
+    view.session = session
     session.delegate = scanDelegate
-    if mesh {
-      v.debugOptions.insert(.showSceneUnderstanding)
-    } else {
-      v.debugOptions.insert(.showFeaturePoints)
-    }
-    return v
+    updateUIView(view, context: context)
+    return view
   }
-  func updateUIView(_ view: ARView, context: Context) {}
+
+  func updateUIView(_ view: ARView, context: Context) {
+    let option: ARView.DebugOptions = mesh ? .showSceneUnderstanding : .showFeaturePoints
+    if overlay { view.debugOptions.insert(option) } else { view.debugOptions.remove(option) }
+  }
 }

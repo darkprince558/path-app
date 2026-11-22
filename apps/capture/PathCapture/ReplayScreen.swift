@@ -11,7 +11,7 @@ struct ReplayScreen: View {
   var body: some View {
     NavigationStack {
       if source.phase == .recording {
-        ScanScreen(scanner: source) { Color(white: 0.08) }
+        ScanScreen(scanner: source) { _ in Color(white: 0.08) }
           .navigationTitle("Scanning").navigationBarTitleDisplayMode(.inline)
           .task {
             let started = ProcessInfo.processInfo.systemUptime

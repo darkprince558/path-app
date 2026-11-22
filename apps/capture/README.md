@@ -37,3 +37,5 @@ Krishna and Anish own the physical trial. Walk a measured hallway with two turns
 ### Try a walk in the simulator
 
 Add `-PathCaptureReplay hallway` to the Xcode scheme's launch arguments to open the scan screen with a synthetic three-minute hallway at four times walking speed. Tap **Finish walk** to review the map you just saw. Remove the argument to return to the saved-scan library or record on a compatible phone.
+
+During a walk, the map button hides or restores the mini map. Tap the mini map to expand it, then use **Collapse map** to return. The layers button toggles the camera surface overlay. Your map layout and overlay setting carry over to the next walk. Swipe up on the recording strip, or tap the section count, to see the recording details.
