@@ -4,7 +4,7 @@ Human owner: Sam. Frontend reviewer: Arielle. Scope: `apps/web`, the existing AP
 
 ## Implementation and branch
 
-`feature/auth0-frontend-integration` starts at `d1bcf19`, the fetched tip of `origin/feature/integrate-lidar` containing Arielle’s branded website and Sam’s API/CPU integration (PR #36). The original worktree and branches were preserved. This branch is deliberately based on that integrated stack rather than older `main`.
+`feature/auth0-frontend-integration` starts at `d1bcf19`, the fetched tip of `origin/feature/integrate-lidar` containing Arielle’s branded website and Sam’s API/CPU integration (PR #36). The original worktree and branches were preserved. After the integrated LiDAR commit reached `main` through PR #41, this branch merged `origin/main` at `d093d5b` with a normal merge. The merge also preserves the viewer polish, branding and Gemini changes from main.
 
 The installed server SDK is `@auth0/nextjs-auth0` **4.33.0**. `src/proxy.ts` delegates to it; its routes are `/auth/login`, `/auth/logout`, `/auth/callback`, `/auth/profile`. The browser access-token endpoint is disabled. The React app installs no Auth0 SDK and stores no tokens. Sign-in/out use full-page links, with a local `returnTo` after login and `/` after logout.
 
@@ -93,7 +93,7 @@ npm run build
 
 The browser suite starts Vite on 127.0.0.1:5190 with synthetic account/API responses. It checks owner route guards and return destinations, cookies/identity across reload, backend logout link and simulated cookie removal, owner 401 invalidation, retry, public discovery and loading controls. It does **not** test real Auth0 credentials, callback exchange or real database-backed scan lists.
 
-Local results on 2026-11-21: both typechecks/builds passed; 22 frontend unit tests passed; 7 auth browser tests passed; API 22 passed / 12 database tests skipped because no disposable database was configured. `make check` passed public/unlisted/private, grants/revocation and raw assets using the synthetic venue fixture. Existing large frontend chunk warnings remain.
+After merging `origin/main` at `d093d5b`, local verification on 2026-11-21 (Toronto): both typechecks/builds passed; 25 frontend unit tests passed; 7 auth browser tests passed; API 28 passed / 13 database tests skipped because no disposable database was configured. `make check` passed public/unlisted/private, grants/revocation and raw assets using the synthetic venue fixture. Existing large frontend chunk warnings remain.
 
 A separately started production API build on local port 5191, with public production origin and synthetic secrets/unreachable database, returned anonymous 401 for `/api/users/me`, `/api/scans/mine`, `/api/scans/shared`, `/auth/profile`. `/auth/login?returnTo=%2Fmaps` returned 307 to the existing Auth0 tenant with the exact production callback and audience; transaction cookie flags were Secure, HttpOnly, SameSite=Lax. Logout returned 307 to Auth0 OIDC logout and expired the local session cookie. No authorization code was exchanged and no production database was contacted.
 

@@ -86,6 +86,7 @@ class LandmarkService:
             route_segment_id=request.route_segment_id,
             approach_direction_id=request.approach_direction_id,
             maneuver=request.verified_movement.maneuver,
+            side=request.verified_movement.side,
             frame_ids=[f.frame_id for f in frames],
             category=category,
             candidates=list(parsed.candidates),

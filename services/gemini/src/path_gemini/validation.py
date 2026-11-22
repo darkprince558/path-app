@@ -7,7 +7,7 @@ bytes or model-generated prose.
 import hashlib
 import json
 import re
-from typing import Iterable, List, Sequence, Set
+from typing import Iterable, List, Optional, Sequence, Set
 
 from pydantic import ValidationError
 
@@ -20,11 +20,13 @@ from .errors import (
 )
 from .models import (
     FRAME_ROLE_ORDER,
+    STAIRS_MANEUVERS,
     FrameInput,
     LandmarkCandidate,
     LandmarkRequest,
     LandmarkResponse,
     Maneuver,
+    Side,
 )
 from .prompt import (
     MAX_CANDIDATES,
@@ -86,11 +88,15 @@ def validate_request(request: LandmarkRequest, max_image_bytes: int) -> List[Fra
     _check_id(request.route_segment_id, "routeSegmentId", problems)
     _check_id(request.approach_direction_id, "approachDirectionId", problems)
     wp = request.waypoints
-    _check_id(wp.approach_waypoint_id, "waypoints.approachWaypointId", problems)
-    _check_id(wp.junction_waypoint_id, "waypoints.junctionWaypointId", problems)
-    _check_id(wp.exit_waypoint_id, "waypoints.exitWaypointId", problems)
-    if len({wp.approach_waypoint_id, wp.junction_waypoint_id, wp.exit_waypoint_id}) != 3:
-        problems.append("approach, junction, and exit waypoint IDs must differ")
+    if wp is not None:
+        _check_id(wp.approach_waypoint_id, "waypoints.approachWaypointId", problems)
+        _check_id(wp.junction_waypoint_id, "waypoints.junctionWaypointId", problems)
+        _check_id(wp.exit_waypoint_id, "waypoints.exitWaypointId", problems)
+        if len({wp.approach_waypoint_id, wp.junction_waypoint_id, wp.exit_waypoint_id}) != 3:
+            problems.append("approach, junction, and exit waypoint IDs must differ")
+    movement = request.verified_movement
+    if movement.side is not None and movement.maneuver not in STAIRS_MANEUVERS:
+        problems.append("verifiedMovement.side is only allowed for stairs_up or stairs_down")
     if request.verified_movement.instruction is not None:
         text = request.verified_movement.instruction
         if not text.strip() or len(text) > MAX_INSTRUCTION_CHARS or _URL_RE.search(text):
@@ -141,6 +147,7 @@ def fingerprint_fields(request: LandmarkRequest, model: str, prompt_version: str
         "routeSegmentId": request.route_segment_id,
         "approachDirectionId": request.approach_direction_id,
         "maneuver": request.verified_movement.maneuver.value,
+        "side": request.verified_movement.side.value if request.verified_movement.side else None,
         "frameIds": [f.frame_id for f in ordered_frames(request)],
         "promptVersion": prompt_version,
         "model": model,
@@ -159,7 +166,12 @@ def compute_fingerprint(request: LandmarkRequest, model: str, prompt_version: st
 
 # Phrase families detected in a guest instruction. Slight/U-turn families are
 # matched and removed first so "bear left" is not also counted as a plain left.
+_STAIRS = r"(?:stairs|steps|staircase|stairway)"
 _FAMILY_PATTERNS = (
+    ("stairs_up", re.compile(r"\b(?:take|go|walk|head|climb)\s+(?:up\s+)?(?:the\s+)?" + _STAIRS + r"\s+up\b"
+                             r"|\b(?:go|walk|head|climb)\s+up\s+(?:the\s+)?" + _STAIRS + r"\b|\bupstairs\b")),
+    ("stairs_down", re.compile(r"\b(?:take|go|walk|head)\s+(?:the\s+)?" + _STAIRS + r"\s+down\b"
+                               r"|\b(?:go|walk|head)\s+down\s+(?:the\s+)?" + _STAIRS + r"\b|\bdownstairs\b")),
     ("slight_left", re.compile(r"\b(?:bear|veer|keep|slight|slightly)\s+(?:to\s+(?:the|your)\s+)?left\b|\bslight\s+left\b")),
     ("slight_right", re.compile(r"\b(?:bear|veer|keep|slight|slightly)\s+(?:to\s+(?:the|your)\s+)?right\b|\bslight\s+right\b")),
     ("u_turn", re.compile(r"\bu[\s-]?turn\b|\bturn\s+(?:around|back)\b|\bgo\s+back\b|\bdouble\s+back\b")),
@@ -179,6 +191,9 @@ ALLOWED_FAMILIES = {
     Maneuver.SLIGHT_RIGHT: {"slight_right"},
     Maneuver.U_TURN: {"u_turn"},
     Maneuver.ARRIVE: {"arrive", "left", "right"},
+    # A side word is allowed only when the verified side says so (see below).
+    Maneuver.STAIRS_UP: {"stairs_up"},
+    Maneuver.STAIRS_DOWN: {"stairs_down"},
 }
 REQUIRED_FAMILY = {
     Maneuver.LEFT: "left",
@@ -188,6 +203,8 @@ REQUIRED_FAMILY = {
     Maneuver.SLIGHT_RIGHT: "slight_right",
     Maneuver.U_TURN: "u_turn",
     Maneuver.ARRIVE: "arrive",
+    Maneuver.STAIRS_UP: "stairs_up",
+    Maneuver.STAIRS_DOWN: "stairs_down",
 }
 
 
@@ -201,9 +218,12 @@ def detect_maneuver_families(instruction: str) -> Set[str]:
     return found
 
 
-def check_instruction_maneuver(instruction: str, maneuver: Maneuver) -> None:
+def check_instruction_maneuver(instruction: str, maneuver: Maneuver, side: Optional[Side] = None) -> None:
     found = detect_maneuver_families(instruction)
-    conflicts = found - ALLOWED_FAMILIES[maneuver]
+    allowed = set(ALLOWED_FAMILIES[maneuver])
+    if maneuver in STAIRS_MANEUVERS and side is not None:
+        allowed.add(side.value)
+    conflicts = found - allowed
     if conflicts:
         raise ConflictingDirectionError(
             details=("instruction mentions {} but verified maneuver is {}".format(
@@ -290,10 +310,8 @@ def validate_model_output(response: LandmarkResponse, request: LandmarkRequest) 
     """
     frame_ids = [f.frame_id for f in request.frames]
     wp = request.waypoints
-    forbidden_ids = [
-        wp.approach_waypoint_id,
-        wp.junction_waypoint_id,
-        wp.exit_waypoint_id,
+    waypoint_ids = [] if wp is None else [wp.approach_waypoint_id, wp.junction_waypoint_id, wp.exit_waypoint_id]
+    forbidden_ids = waypoint_ids + [
         request.route_segment_id,
         request.scan_revision_id,
         request.approach_direction_id,
@@ -323,6 +341,7 @@ def validate_model_output(response: LandmarkResponse, request: LandmarkRequest) 
         raise InvalidModelOutputError(details=tuple(problems))
 
     maneuver = request.verified_movement.maneuver
+    side = request.verified_movement.side
     for cand in response.candidates:
-        check_instruction_maneuver(cand.instruction, maneuver)
+        check_instruction_maneuver(cand.instruction, maneuver, side)
     return response

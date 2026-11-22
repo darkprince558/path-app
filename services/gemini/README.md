@@ -4,6 +4,8 @@ Krishna owns this package. It asks Gemini for a short, visible landmark cue for 
 
 Gemini is not the route planner. This package never changes the maneuver, edits waypoints, reads GLB/PLY geometry, fetches URLs, stores anything or publishes content. Those are Sam's backend and Arielle's review UI. The brief is [docs/gemini-agent-handoff.md](../../docs/gemini-agent-handoff.md).
 
+**Connecting it to the app:** see [INTEGRATION.md](INTEGRATION.md). It covers the internal HTTP service Sam's TypeScript backend calls (`python -m path_gemini.server`, plus a Dockerfile). It also covers turn detection from NavMesh path corners (`path_gemini.turns`, with a TypeScript twin in `clients/typescript/turns.ts`), photo picking from Anish's camera poses, and how the viewer shows approved cues.
+
 ## Install and test
 
 The package needs Python 3.11+, because the current `google-genai` SDK requires it. From `services/gemini/`:
@@ -88,7 +90,7 @@ else:
 | `abstained`, `abstentionReason` | Explicit abstention. |
 | `requiresReview` | Always `true`. |
 | `requestId`, `scanRevisionId`, `routeSegmentId`, `approachDirectionId`, `maneuver`, `frameIds` | Echo of the verified inputs. `frameIds` is in walking order. |
-| `provider`, `model`, `modelVersion`, `promptVersion` | Provenance (`promptVersion` is `landmark-v1`). |
+| `provider`, `model`, `modelVersion`, `promptVersion` | Provenance (`promptVersion` is `landmark-v2`). |
 | `elapsedMs`, `attempts`, `usage` | Timing, retry count and token usage when the SDK reports it. |
 | `fingerprint` | `sha256:` over the scan revision, segment, approach, maneuver, ordered frame IDs, prompt version and model. `fingerprint_fields()` returns the inputs. |
 | `rawResponseText` | The provider's JSON text, for a restricted audit column. It is hidden from `repr`. Never send it to a guest. |
@@ -115,7 +117,11 @@ Image bytes never appear in the result, its `repr`, logs or errors.
 
 ## Behavior
 
-- **Prompt `landmark-v1`** (`prompt.py`): a system instruction covering the 12 handoff rules. The text gives the verified maneuver, the required phrase, the ordered waypoint IDs and the approach direction. Each image comes right after its `frameId`/`role` label, ordered approach → junction → exit. Any wording or schema change needs a new `PROMPT_VERSION`.
+- **Prompt `landmark-v2`** (`prompt.py`): a system instruction covering the 12 handoff rules. The text gives the verified maneuver, the required phrase, the ordered waypoint IDs (when the route has them) and the approach direction. Each image comes right after its `frameId`/`role` label, ordered approach → junction → exit. Any wording or schema change needs a new `PROMPT_VERSION`.
+  - v2 changes from v1:
+    - `stairs_up`/`stairs_down`, with an optional `side` ("turn left and take the stairs down").
+    - A required `landmarkType` per candidate: sign, door, artwork, window, stairs, elevator, furniture, fixture, room_entrance, architecture or other.
+    - Optional `waypoints`, so NavMesh corners don't need named points.
 - **One request per call**, using the JSON schema (`response_json_schema`, with `sourceFrameIds` restricted to this request's frame IDs). Tools, search, URL context and automatic function calling are off. SDK retries are off because the service owns retries.
 - **Maneuver wording.** Each instruction must use its maneuver's phrase family and no other direction:
 
@@ -126,6 +132,7 @@ Image bytes never appear in the result, its `repr`, logs or errors.
   | `straight` | "straight", "continue/go ahead" | |
   | `u_turn` | "U-turn", "turn around", "go back" | |
   | `arrive` | "arrive", "destination" | May also say "on your left/right" |
+  | `stairs_up` / `stairs_down` | "take the stairs up/down", "upstairs/downstairs" | With `side`, must also say that side and no other |
 
   The check is deliberately strict. "Turn left at the door on your right" is rejected. Rejection is safer than shipping an ambiguous cue.
 - **Limits:** instruction ≤ 140 characters, landmark ≤ 80, visibleText ≤ 60, reason ≤ 300, at most 3 candidates.
@@ -137,10 +144,12 @@ Image bytes never appear in the result, its `repr`, logs or errors.
 
 It reads three folder layouts:
 - Anish's native recorder output (`keyframes.json` with `photo-N.jpg`).
-- The handoff's `frames.json`.
-- A plain folder of JPEG/PNG photos.
+- `frames.json`, from Anish's bundle export (`frameId`) or Sam's capture API (`id`).
+- A plain folder of JPEG, PNG or iPhone HEIC photos.
 
-With Pillow installed (`pip install -e ".[tools]"`), photos are re-encoded first. That drops EXIF and GPS metadata, applies orientation, and caps the longest side at 1280 px. Export iPhone HEIC photos as JPEG first.
+For stairs, pass `--maneuver stairs_down --side left`.
+
+With Pillow installed (`pip install -e ".[tools]"`), photos are re-encoded first. That drops EXIF and GPS metadata, applies orientation, and caps the longest side at 1280 px. iPhone HEIC photos are converted to JPEG automatically. The `[tools]` extra includes `pillow-heif` for this.
 
 From `services/gemini/` (Windows paths shown):
 
@@ -187,6 +196,14 @@ See **Verification notes** below. They are updated after each live run.
 
 ### Verification notes
 
+- **Prompt v2, turns, photo picking and HTTP service (2026-11-21):**
+  - 240 Python tests pass offline.
+  - The TypeScript twin passes 17 Node tests, including all 12 shared turn cases in `fixtures/turn_cases.json`.
+  - Live with `gemini-3.6-flash` on Krishna's real Stair C4 photos (HEIC from an iPhone, GPS stripped):
+    - Way 1 as `stairs_down` + `side: left` gave 3 drafts, tagged door, sign and window, e.g. "At the black door, turn left and take the stairs down." (9.6 s).
+    - Way 2 as `right` gave 3 drafts, including "At the Stair C sign, turn right." with visible text "C4 Stair C Level 4" (11.2 s).
+  - The HTTP service was exercised end to end with the real key over a local socket (`/v1/turns`, then `/v1/landmarks` with base64 photos): HTTP 200 and 3 drafts.
+  - Not verified: the Docker image build (Docker isn't installed on the dev machine), `tsc` type-checking of the TS files, and calls from Sam's real backend.
 - **Trial runner:** 14 offline tests cover the three folder layouts, EXIF/GPS stripping, runs, failures, decisions, summary counts, HTML escaping and the tracked-output guard. Live on 2026-11-21 with `gemini-3.6-flash`: the synthetic purple-panel turn gave 2 drafts in 13.3 s (1 attempt). The plain corridor abstained in 7.9 s. Both synthetic runs were then deleted so real evidence counts start at zero.
 - **Mocked and offline:** 143 unit, response-validation, mocked-service and SDK-adapter tests pass (adapter with `generate_content` stubbed). No network or key is needed.
 - **Live, synthetic fixture only, 2026-11-21, `google-genai` 3.6.1, prompt `landmark-v1`.** Each request sent three generated 320×240 PNGs, about 3,850 prompt tokens.

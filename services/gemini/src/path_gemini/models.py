@@ -35,6 +35,32 @@ class Maneuver(str, Enum):
     SLIGHT_RIGHT = "slight_right"
     U_TURN = "u_turn"
     ARRIVE = "arrive"
+    STAIRS_UP = "stairs_up"
+    STAIRS_DOWN = "stairs_down"
+
+
+STAIRS_MANEUVERS = (Maneuver.STAIRS_UP, Maneuver.STAIRS_DOWN)
+
+
+class Side(str, Enum):
+    """Which way the walker turns into the stairs (stairs maneuvers only)."""
+
+    LEFT = "left"
+    RIGHT = "right"
+
+
+class LandmarkType(str, Enum):
+    SIGN = "sign"
+    DOOR = "door"
+    ARTWORK = "artwork"
+    WINDOW = "window"
+    STAIRS = "stairs"
+    ELEVATOR = "elevator"
+    FURNITURE = "furniture"
+    FIXTURE = "fixture"
+    ROOM_ENTRANCE = "room_entrance"
+    ARCHITECTURE = "architecture"
+    OTHER = "other"
 
 
 class FrameRole(str, Enum):
@@ -82,6 +108,8 @@ class Waypoints(_Base):
 
 class VerifiedMovement(_Base):
     maneuver: Maneuver
+    # Stairs only: the walker turns left/right into the stairs. None = straight on.
+    side: Optional[Side] = None
     # Optional backend wording, e.g. "Turn left at the junction". Trusted text.
     instruction: Optional[str] = None
 
@@ -91,7 +119,9 @@ class LandmarkRequest(_Base):
     scan_revision_id: str
     route_segment_id: str
     approach_direction_id: str
-    waypoints: Waypoints
+    # Named graph waypoints, when the route has them. NavMesh routes have only
+    # corners, so this is optional; the turn is then identified by segment ID.
+    waypoints: Optional[Waypoints] = None
     verified_movement: VerifiedMovement
     frames: List[FrameInput]
 
@@ -101,6 +131,7 @@ class LandmarkRequest(_Base):
 
 class LandmarkCandidate(_Base):
     landmark: str
+    landmark_type: LandmarkType
     visible_text: Optional[str] = None
     source_frame_ids: List[str]
     instruction: str
@@ -139,6 +170,7 @@ class LandmarkGenerationResult(_Base):
     route_segment_id: str
     approach_direction_id: str
     maneuver: Maneuver
+    side: Optional[Side] = None
     frame_ids: List[str]
     category: ResultCategory
     candidates: List[LandmarkCandidate]

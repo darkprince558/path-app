@@ -65,6 +65,8 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("folder", type=Path, help="capture folder (keyframes.json, frames.json, or images)")
     run.add_argument("--maneuver", required=True, choices=[m.value for m in Maneuver],
                      help="the verified turn (Gemini never changes it)")
+    run.add_argument("--side", choices=["left", "right"],
+                     help="stairs only: which way you turn into the stairs")
     run.add_argument("--approach", help="frame ID or file name seen while approaching")
     run.add_argument("--junction", help="frame ID or file name at the turn")
     run.add_argument("--exit", dest="exit_", help="frame ID or file name just after the turn")
@@ -135,7 +137,7 @@ def _cmd_run(args, out, service_factory: Callable[[], LandmarkService]) -> int:
             print("note: {} had tracking state {!r}".format(frame.frame_id, frame.tracking), file=out)
 
     write_json(run_dir / "run.json", {
-        "label": label, "maneuver": args.maneuver, "layout": layout, "sourceFolder": args.folder.name,
+        "label": label, "maneuver": args.maneuver, "side": args.side, "layout": layout, "sourceFolder": args.folder.name,
         "approachDirectionId": args.approach_direction, "scanRevisionId": args.scan_revision,
         "routeSegmentId": args.segment, "model": service.config.model, "promptVersion": PROMPT_VERSION,
         "frames": frame_records,
@@ -147,7 +149,7 @@ def _cmd_run(args, out, service_factory: Callable[[], LandmarkService]) -> int:
         "approachDirectionId": args.approach_direction,
         "waypoints": {"approachWaypointId": "wp-approach", "junctionWaypointId": "wp-junction",
                       "exitWaypointId": "wp-exit"},
-        "verifiedMovement": {"maneuver": args.maneuver},
+        "verifiedMovement": {"maneuver": args.maneuver, **({"side": args.side} if args.side else {})},
         "frames": request_frames,
     })
 

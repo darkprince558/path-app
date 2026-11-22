@@ -68,6 +68,7 @@ def make_request(frame_count: int = 3, maneuver: str = "left", **overrides) -> L
 def candidate(instruction="Turn left after the purple mural.", frames=("frame-000138", "frame-000142"), **kw):
     c = {
         "landmark": "purple mural",
+        "landmarkType": "artwork",
         "visibleText": None,
         "sourceFrameIds": list(frames),
         "instruction": instruction,

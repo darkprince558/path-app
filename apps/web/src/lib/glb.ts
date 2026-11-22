@@ -110,6 +110,9 @@ export async function parseGlb(buffer: ArrayBuffer, transform: readonly number[]
   });
   const gltf = await new GLTFLoader(manager).parseAsync(buffer, "");
   const object = new Group();
+  // Which tool wrote the file: lib/scan-surfaces.ts treats Path Capture scans' vertex colours as camera sRGB.
+  const generator = (gltf.asset as { generator?: unknown } | undefined)?.generator;
+  object.userData.generator = typeof generator === "string" ? generator : "";
   object.matrixAutoUpdate = false;
   object.matrix.copy(matrix);
   object.add(gltf.scene);
