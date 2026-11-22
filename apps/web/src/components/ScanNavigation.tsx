@@ -106,7 +106,7 @@ export default function ScanNavigation({ objects, avoidStairs, approximate = fal
     <details className="text-xs text-sage">
       <summary className="cursor-pointer py-1">Route options</summary>
       <div className="space-y-1.5 pt-1">
-        <p>Preview from scan geometry · 0.30 m radius, 1.80 m height. Verify the route against the room.</p>
+        <p>Preview from scan geometry · 0.30 m radius, 1.80 m height{navigation && navigation.cellSize > 0.1 ? ` · ${Math.round(navigation.cellSize * 100)} cm grid for this large scan` : ""}. Verify the route against the room.</p>
         {children}
       </div>
     </details>
