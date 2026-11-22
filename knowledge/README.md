@@ -25,6 +25,27 @@ integration and elevated doorway GLB checks. Arielle can use the existing floor
 picks; Sam need not add navigation APIs or database fields. Anish/Krishna still need
 to validate geometry coverage and measured clearance on a real approved capture.
 
+## Browser upload and missing model files
+
+On 2026-11-22, the deployed React form sent `POST /api/scans?format=glb`,
+but the backend had only space-scoped multipart uploads. The browser import
+contract and its checks are now described in [Scan API](../docs/scan-api.md).
+Sam owns the API/storage repair; Arielle consumes `{id, shareId, sharePath, name}`
+and must use `id` when changing a newly uploaded map's sharing.
+
+A successful signed-in `GET /api/scans/:id` followed by a 404 from its `/file`
+route means the authorized row exists but its storage object is missing. This was
+observed for the existing `sample triangle` test model. Keep database records and
+model bytes on the same deployment: use persistent absolute `SCAN_STORAGE_DIR`,
+`CAPTURE_STORAGE_DIR` and `REVISION_STORAGE_DIR` paths across release swaps.
+Do not make a private scan public to fix missing bytes. Locate and verify its
+original file before restoring it. The two reported synthetic files were recovered
+into `/var/lib/not404/scans/scans/` with private ownership and permissions; the
+LiDAR file matched its approved revision SHA-256. The live API already had absolute
+storage paths configured, but the scan directory and both objects were absent. The local upload regression uses a real hallway
+GLB with disposable PostgreSQL and verifies a byte-identical signed-out download;
+production recovery was checked separately through the live download service.
+
 ## Add a finding
 
 [LiDAR ingestion contract and exporter handoff](lidar-ingestion.md) records the

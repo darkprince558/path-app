@@ -8,11 +8,6 @@ import { apiFetch, reportUnauthorized } from "./http.ts";
  *   PATCH  /api/scans/<shareId>  any of { name, visibility, viewerIds } -> SharingState
  *   DELETE /api/scans/<shareId>  -> 204
  *
- * Uploads: Sam's Next.js API (the live site) keeps every map in a space, so New map creates
- * a space with the map's name and visibility, then sends the GLB to
- * POST /api/spaces/<id>/scans (multipart: file, name, visibility, transform). The local
- * mock has no spaces and still takes POST /api/scans with raw bytes.
- *
  * Identity comes from the backend session cookie.
  */
 
@@ -32,7 +27,6 @@ export const MAX_NAME_LENGTH = 80;
 export const DEFAULT_MAP_NAME = "Untitled map";
 
 export interface UploadResult {
-  /** The scan's own ID for edits (Next.js API only; the mock has just the share ID). */
   id?: string;
   shareId: string;
   sharePath: string;
@@ -174,107 +168,51 @@ function readError(text: string): string | undefined {
 /** The Next.js API keeps a public map inside a public space and refuses otherwise. */
 const PUBLIC_SPACE_RULE = /public scan requires a public space/i;
 
-interface UploadOptions {
+/** Uploads with XMLHttpRequest because fetch can't report upload progress. */
+export function uploadScan(options: {
   file: File;
   format: ScanFormat;
   visibility: Visibility;
   name?: string;
   onProgress?: (fraction: number) => void;
   signal?: AbortSignal;
-}
-
-/** Sends a body with XMLHttpRequest, because fetch can't report upload progress. Resolves with the 201 body. */
-function sendWithProgress(url: string, body: XMLHttpRequestBodyInit, options: UploadOptions, contentType?: string): Promise<string> {
-  const { format, onProgress, signal } = options;
+}): Promise<UploadResult> {
+  const { file, format, visibility, name, onProgress, signal } = options;
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", url);
-    if (contentType) xhr.setRequestHeader("Content-Type", contentType);
+    const query = new URLSearchParams({ format, visibility, ...(name ? { name } : {}) });
+    xhr.open("POST", `/api/scans?${query}`);
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total);
     };
     xhr.onload = () => {
       reportUnauthorized(xhr.status);
-      if (xhr.status === 201) return resolve(xhr.responseText);
+      if (xhr.status === 201) {
+        try {
+          const body = JSON.parse(xhr.responseText) as Partial<UploadResult>;
+          if (typeof body.shareId === "string" && typeof body.sharePath === "string") {
+            return resolve({
+              ...(typeof body.id === "string" ? { id: body.id } : {}),
+              shareId: body.shareId,
+              sharePath: body.sharePath,
+              name: typeof body.name === "string" ? body.name : (name ?? DEFAULT_MAP_NAME),
+            });
+          }
+        } catch {
+          // fall through
+        }
+        return reject(new UploadError("The upload finished but the server's reply was missing the link.", 201));
+      }
       reject(new UploadError(messageFor(xhr.status, readError(xhr.responseText), format), xhr.status));
     };
     xhr.onerror = () => reject(new UploadError(messageFor(0, undefined, format)));
     xhr.onabort = () => reject(new DOMException("Upload cancelled", "AbortError"));
     signal?.addEventListener("abort", () => xhr.abort(), { once: true });
-    xhr.send(body);
+
+    xhr.send(file);
   });
-}
-
-/** The local mock: raw bytes to POST /api/scans. */
-async function uploadToMock(options: UploadOptions): Promise<UploadResult> {
-  const { file, format, visibility, name } = options;
-  const query = new URLSearchParams({ format, visibility, ...(name ? { name } : {}) });
-  const text = await sendWithProgress(`/api/scans?${query}`, file, options, "application/octet-stream");
-  try {
-    const body = JSON.parse(text) as Partial<UploadResult>;
-    if (typeof body.shareId === "string" && typeof body.sharePath === "string") {
-      return { shareId: body.shareId, sharePath: body.sharePath, name: typeof body.name === "string" ? body.name : (name ?? DEFAULT_MAP_NAME) };
-    }
-  } catch {
-    // fall through
-  }
-  throw new UploadError("The upload finished but the server's reply was missing the link.", 201);
-}
-
-const IDENTITY_TRANSFORM = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-
-/** The live site: a space for the map, then the GLB into it. An empty space is removed if the upload fails. */
-async function uploadToSpace(options: UploadOptions): Promise<UploadResult> {
-  const { file, format, visibility, signal } = options;
-  if (format !== "glb") {
-    throw new UploadError("The live site takes 3D models (.glb). PLY point clouds only work with the local test server.", 415);
-  }
-  if (visibility === "unlisted") {
-    throw new UploadError("Unlisted links aren't available on the live site yet. Choose Public or Private.", 400);
-  }
-  const name = options.name ?? DEFAULT_MAP_NAME;
-  const created = await apiFetch("/api/spaces", {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, visibility }), signal,
-  });
-  if (!created.ok) {
-    const error = readError(await created.text());
-    throw new UploadError(
-      created.status === 401 ? "Sign in to upload scans." : `Couldn't create a space for this map${error ? `: ${error}` : ` (${created.status})`}.`,
-      created.status,
-    );
-  }
-  const spaceId = ((await created.json()) as { space?: { id?: unknown } }).space?.id;
-  if (typeof spaceId !== "string") throw new UploadError("The server's reply was missing the new space.");
-  const form = new FormData();
-  form.set("file", file);
-  form.set("name", name);
-  form.set("visibility", visibility);
-  form.set("transform", JSON.stringify(IDENTITY_TRANSFORM));
-  try {
-    const text = await sendWithProgress(`/api/spaces/${encodeURIComponent(spaceId)}/scans`, form, options);
-    const scan = (JSON.parse(text) as { scan?: { id?: unknown; shareId?: unknown; name?: unknown } }).scan;
-    if (typeof scan?.id !== "string" || typeof scan.shareId !== "string") {
-      throw new UploadError("The upload finished but the server's reply was missing the link.", 201);
-    }
-    return { id: scan.id, shareId: scan.shareId, sharePath: `/s/${scan.shareId}`, name: typeof scan.name === "string" ? scan.name : name };
-  } catch (error) {
-    void apiFetch(`/api/spaces/${encodeURIComponent(spaceId)}`, { method: "DELETE" }).catch(() => {});
-    throw error;
-  }
-}
-
-/** Sam's Next.js API has /api/spaces; the local mock answers 404 there. */
-async function hasSpaces(signal?: AbortSignal): Promise<boolean> {
-  try {
-    return (await fetch("/api/spaces", { credentials: "same-origin", cache: "no-store", signal })).status !== 404;
-  } catch {
-    return false;
-  }
-}
-
-/** Uploads a scan to whichever server the site is talking to, reporting progress. */
-export async function uploadScan(options: UploadOptions): Promise<UploadResult> {
-  return (await hasSpaces(options.signal)) ? uploadToSpace(options) : uploadToMock(options);
 }
 
 /**

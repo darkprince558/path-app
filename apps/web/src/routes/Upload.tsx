@@ -8,6 +8,7 @@ import {
   formatBytes,
   MAX_NAME_LENGTH,
   MAX_UPLOAD_LABEL,
+  mapEditId,
   uploadScan,
   UploadError,
   type ScanFormat,
@@ -26,7 +27,7 @@ export default function Upload() {
   const abortRef = useRef<AbortController | null>(null);
   const [file, setFile] = useState<{ file: File; format: ScanFormat } | null>(null);
   const [fileProblem, setFileProblem] = useState<string | null>(null);
-  const [visibility, setVisibility] = useState<Visibility>("public");
+  const [visibility, setVisibility] = useState<Visibility>("unlisted");
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
   const nameId = useId();
@@ -117,7 +118,7 @@ export default function Upload() {
       {phase.step === "done" ? (
         <div className="mt-8">
           <SharePanel
-            mapId={phase.result.id ?? phase.result.shareId}
+            mapId={mapEditId(phase.result)}
             sharePath={phase.result.sharePath}
             initialVisibility={phase.visibility}
             footer={
