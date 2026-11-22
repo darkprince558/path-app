@@ -32,6 +32,8 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
   private var walkStart: Double?
   private var lastNewTile = -Double.infinity
   private var lastMapPublish = -Double.infinity
+  @Published private(set) var rescanSide: RescanSide?
+  private var sideGuidance = SideGuidance()
   private var depthHits = 0
   private var lastStorageCheck = -Double.infinity
   private var idleTimerBeforeWalk = false
@@ -62,6 +64,8 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
     }
     selected = nil
     walkID = UUID()
+    sideGuidance = SideGuidance()
+    rescanSide = nil
     walkStart = nil
     sectionNumber = 1
     savedSections = 0
@@ -139,7 +143,11 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
     if walkStart == nil { walkStart = frame.timestamp }
     take.frame(frame, tracking: quality.rawValue, usePhotos: supportsMesh)
     // A short tracking loss between display updates still breaks the route line.
-    if quality != .normal { sectionMap.tracked = false }
+    if quality != .normal {
+      sectionMap.tracked = false
+      sideGuidance = SideGuidance()
+      if rescanSide != nil { rescanSide = nil }
+    }
     guard frame.timestamp - lastSampleTime >= 0.20 else { return }
     lastSampleTime = frame.timestamp
     let camera = frame.camera.transform
@@ -147,12 +155,18 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
       forward: SIMD2(-camera.columns.2.x, -camera.columns.2.z), at: frame.timestamp, normal: quality == .normal)
     let before = sectionMap.tiles.count
     depthHits = 0
+    var sideFrame = SideObservation()
     if quality == .normal {
       if let d = frame.sceneDepth, let conf = d.confidenceMap {
-        sample(frame, depth: d.depthMap, confidence: conf)
+        sideFrame = sample(frame, depth: d.depthMap, confidence: conf)
       } else if let features = frame.rawFeaturePoints {
         sampleFeatures(frame, points: features.points)
       }
+    }
+    if quality == .normal && supportsDepth {
+      sideGuidance.update(position: SIMD3(camera.columns.3.x, camera.columns.3.y, camera.columns.3.z),
+                          at: frame.timestamp, frame: sideFrame)
+      if rescanSide != sideGuidance.cue { rescanSide = sideGuidance.cue }
     }
     pointCount = cloud.count
     faceCount = mesh.values.reduce(retiredFaces) { $0 + $1.geometry.faces.count }
@@ -222,6 +236,7 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
   func stop(reason: String? = nil) {
     if phase == .requestingCamera { phase = .ready; return }
     guard phase == .recording, let last = take else { return }
+    rescanSide = nil
     phase = .saving
     session.pause()
     UIApplication.shared.isIdleTimerDisabled = idleTimerBeforeWalk
@@ -386,17 +401,17 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
             == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange))
     }
   }
-  private func sample(_ frame: ARFrame, depth: CVPixelBuffer, confidence: CVPixelBuffer) {
+  private func sample(_ frame: ARFrame, depth: CVPixelBuffer, confidence: CVPixelBuffer) -> SideObservation {
     let image = frame.capturedImage
     let imageFormat = CVPixelBufferGetPixelFormatType(image)
     let fullRange = imageFormat == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
     guard fullRange || imageFormat == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
       CVPixelBufferLockBaseAddress(depth, .readOnly) == kCVReturnSuccess
-    else { return }
+    else { return SideObservation() }
     defer { CVPixelBufferUnlockBaseAddress(depth, .readOnly) }
-    guard CVPixelBufferLockBaseAddress(confidence, .readOnly) == kCVReturnSuccess else { return }
+    guard CVPixelBufferLockBaseAddress(confidence, .readOnly) == kCVReturnSuccess else { return SideObservation() }
     defer { CVPixelBufferUnlockBaseAddress(confidence, .readOnly) }
-    guard CVPixelBufferLockBaseAddress(image, .readOnly) == kCVReturnSuccess else { return }
+    guard CVPixelBufferLockBaseAddress(image, .readOnly) == kCVReturnSuccess else { return SideObservation() }
     defer { CVPixelBufferUnlockBaseAddress(image, .readOnly) }
 
     guard let depthBase = CVPixelBufferGetBaseAddress(depth)?.assumingMemoryBound(to: Float32.self),
@@ -404,14 +419,14 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
         to: UInt8.self),
       let luma = CVPixelBufferGetBaseAddressOfPlane(image, 0)?.assumingMemoryBound(to: UInt8.self),
       let chroma = CVPixelBufferGetBaseAddressOfPlane(image, 1)?.assumingMemoryBound(to: UInt8.self)
-    else { return }
+    else { return SideObservation() }
 
     let width = CVPixelBufferGetWidth(depth)
     let height = CVPixelBufferGetHeight(depth)
     guard CVPixelBufferGetWidth(confidence) == width,
       CVPixelBufferGetHeight(confidence) == height,
       CVPixelBufferGetPixelFormatType(depth) == kCVPixelFormatType_DepthFloat32
-    else { return }
+    else { return SideObservation() }
 
     let depthStride = CVPixelBufferGetBytesPerRow(depth) / MemoryLayout<Float32>.stride
     let confidenceStride = CVPixelBufferGetBytesPerRow(confidence)
@@ -455,6 +470,13 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
         cloud.add(position, color: color)
       }
     }
+    return SideObservation.sample(width: width, height: height,
+      focal: SIMD2(intrinsics.columns.0.x / scaleX, intrinsics.columns.1.y / scaleY),
+      center: SIMD2(intrinsics.columns.2.x / scaleX, intrinsics.columns.2.y / scaleY),
+      camera: cameraToWorld) { x, y in
+        let level = confidenceBase[y * confidenceStride + x]
+        return (minimumConfidence...2).contains(level) ? depthBase[y * depthStride + x] : nil
+      }
   }
 
   private static func rgb(_ luma: UInt8, _ cb: UInt8, _ cr: UInt8, fullRange: Bool) -> SIMD3<UInt8>

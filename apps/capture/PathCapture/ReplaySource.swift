@@ -9,6 +9,7 @@ struct ReplayScript: Decodable {
     let observationOffset: SIMD3<Float>?
     let quality: TrackingQuality?
     let faces: Int?
+    let uprightSides: [String]?
   }
   let version: Int
   let duration: Int
@@ -40,6 +41,9 @@ final class ReplaySource: ScanSource {
   private var velocity = SIMD2<Float>.zero
   private var observationOffset: SIMD3<Float>?
   private var faces = 0
+  private var sideGuidance = SideGuidance()
+  private var uprightSides = [String]()
+  var rescanSide: RescanSide? { sideGuidance.cue }
   private var completed = WalkMap()
   private var section = WalkMap()
 
@@ -62,12 +66,28 @@ final class ReplaySource: ScanSource {
         tracking = event.quality ?? tracking
         observationOffset = event.observationOffset ?? observationOffset
         faces = event.faces ?? faces
+        uprightSides = event.uprightSides ?? uprightSides
         nextEvent += 1
       }
       section.locate(location, forward: velocity, at: Double(time), normal: tracking == .normal)
       if section.tracked, let observationOffset {
         section.observe(SIMD3(location.x, 0, location.y) + observationOffset, cameraHeight: 1.5)
       }
+      if tracking == .normal, simd_length(velocity) > 0 {
+        let right = simd_normalize(SIMD2(-velocity.y, velocity.x))
+        var observation = SideObservation()
+        observation.validPixels = 30
+        for side in uprightSides {
+          let offset = right * (side == "right" ? 1.5 : -1.5)
+          for tile in -4...4 {
+            let p = location + offset + simd_normalize(velocity) * (Float(tile) * 0.25)
+            for y: Float in [0.75, 1.25] {
+              observation.upright.insert(SideObservation.cell(SIMD3(p.x, y, p.y)))
+            }
+          }
+        }
+        sideGuidance.update(position: SIMD3(location.x, 1.5, location.y), at: Double(time), frame: observation)
+      } else { sideGuidance = SideGuidance() }
       if time < script.duration,
         SectionBudget.shouldSave(seconds: Double(time - sectionStart), points: 0, faces: faces) {
         completed.include(section)

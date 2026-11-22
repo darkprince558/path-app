@@ -14,6 +14,7 @@ protocol ScanSource: ObservableObject {
   var mapLayers: [WalkLayer] { get }
   var tracking: TrackingQuality { get }
   var instruction: String { get }
+  var rescanSide: RescanSide? { get }
   var duration: Double { get }
   var sectionNumber: Int { get }
   var savedSections: Int { get }

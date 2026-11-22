@@ -249,3 +249,52 @@ adjacentTiles.tiles = [SIMD2(-2,3), SIMD2(-1,3), SIMD2(1,3)]
 let layer = WalkLayer(adjacentTiles)
 precondition(layer.rows[3]?.count == 2 && layer.rows[3]?.first?.width == 0.5)
 print("Map projection, pivot, zoom limits, rotated fit and tile runs passed.")
+
+// Viewed from a phone looking sideways, a flat depth image is a wall. The
+// same image looking down is floor. Direction must follow walking, not yaw.
+func guidanceFrame(_ at: SIMD3<Float>, facing: SIMD3<Float>, depth: Float = 1.5) -> SideObservation {
+  var transform = simd_float4x4(simd_quatf(from: SIMD3(0, 0, -1), to: facing))
+  transform.columns.3 = SIMD4(at, 1)
+  return SideObservation.sample(width: 96, height: 80, focal: SIMD2(72, 72),
+                                center: SIMD2(48, 40), camera: transform) { _,_ in depth }
+}
+let guideRight = SIMD3<Float>(1, 0, 0), guideFloor = SIMD3<Float>(0, -1, 0)
+precondition(guidanceFrame(.zero, facing: guideFloor).upright.isEmpty)
+precondition(!guidanceFrame(.zero, facing: guideRight).upright.isEmpty)
+
+for sign: Float in [-1, 1] {
+  var guide = SideGuidance()
+  var position = SIMD3<Float>.zero
+  for step in 0...12 {
+    position.z = sign * Float(step) * 0.25
+    guide.update(position: position, at: Double(step)*0.4, frame: guidanceFrame(position, facing: guideRight))
+  }
+  precondition(guide.cue == (sign < 0 ? .left : .right))
+  // Hold the phone in the same place and sweep onto the omitted surface.
+  for step in 13...15 {
+    guide.update(position: position, at: Double(step)*0.4, frame: guidanceFrame(position, facing: -guideRight))
+  }
+  precondition(guide.cue == nil)
+}
+var openGuide = SideGuidance(), floorGuide = SideGuidance(), stillGuide = SideGuidance()
+for step in 0...16 {
+  let position = SIMD3<Float>(0, 0, -Float(step)*0.25)
+  let time = Double(step)*0.4
+  let wallFrame = guidanceFrame(position, facing: guideRight)
+  let openFrame = guidanceFrame(position, facing: -guideRight, depth: 4.8)
+  var both = wallFrame
+  both.open.formUnion(openFrame.open)
+  precondition(!both.open.isEmpty)
+  openGuide.update(position: position, at: time, frame: both)
+  floorGuide.update(position: position, at: time, frame: guidanceFrame(position, facing: guideFloor))
+  stillGuide.update(position: .zero, at: time, frame: guidanceFrame(.zero, facing: guideRight))
+  precondition(openGuide.cue == nil && floorGuide.cue == nil && stillGuide.cue == nil)
+}
+let sidedReplay = ReplaySource(script: replayScript)
+sidedReplay.advance(to: 40)
+precondition(sidedReplay.rescanSide == .right && sidedReplay.sectionNumber > 1)
+sidedReplay.advance(to: 54)
+precondition(sidedReplay.rescanSide == nil)
+sidedReplay.advance(to: 76)
+precondition(sidedReplay.tracking == .limited && sidedReplay.rescanSide == nil)
+print("Side guidance passed direction, stationary recovery, open-side, floor-only and continuous-section checks.")

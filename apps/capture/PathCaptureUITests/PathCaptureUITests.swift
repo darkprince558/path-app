@@ -12,6 +12,18 @@ final class PathCaptureUITests: XCTestCase {
     XCTAssertTrue(app.navigationBars["Walk review"].waitForExistence(timeout: 5))
   }
 
+  func testRescanSideAppearsAndClears() throws {
+    let app = XCUIApplication()
+    app.launchArguments = ["-PathCaptureReplay", "hallway"]
+    app.launch()
+    let cue = app.descendants(matching: .any)["scan-rescan-side"].firstMatch
+    XCTAssertTrue(cue.waitForExistence(timeout: 8))
+    XCTAssertEqual(cue.label, "Scan your right side")
+    let cleared = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: cue)
+    XCTAssertEqual(XCTWaiter.wait(for: [cleared], timeout: 18), .completed)
+    XCTAssertTrue(app.buttons["Finish walk"].exists)
+  }
+
   func testScanScreenReplay() throws {
     let app = XCUIApplication()
     app.launchArguments = ["-PathCaptureReplay", "hallway"]

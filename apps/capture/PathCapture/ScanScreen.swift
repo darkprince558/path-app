@@ -48,7 +48,15 @@ struct ScanScreen<Source: ScanSource, Camera: View>: View {
           }
         }
         Spacer(minLength: 4)
-        if showInstruction || scanner.tracking != .normal || expandedHUD {
+        if let side = scanner.rescanSide, scanner.tracking == .normal {
+          Label(side == .left ? "Scan your left side" : "Scan your right side",
+                systemImage: side == .left ? "arrow.left" : "arrow.right")
+            .font(.headline).foregroundStyle(.black)
+            .padding(.horizontal, 14).padding(.vertical, 9)
+            .background(.yellow, in: Capsule())
+            .accessibilityIdentifier("scan-rescan-side")
+            .frame(maxWidth: .infinity, alignment: side == .left ? .leading : .trailing)
+        } else if showInstruction || scanner.tracking != .normal || expandedHUD {
           Text(scanner.instruction).font(.subheadline)
             .lineLimit(expandedHUD ? nil : 1)
             .padding(.horizontal, 12).padding(.vertical, 6)
