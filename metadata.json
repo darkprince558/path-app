@@ -1,0 +1,42 @@
+{
+  "cli_version": "0.13.4",
+  "checkpoint_id": "01M8171PXQ4P22XHGN6NX5VWEP",
+  "strategy": "manual-commit",
+  "branch": "feature/explore-model",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "apps/web/src/components/Walker.tsx",
+    "apps/web/src/lib/framing.ts",
+    "apps/web/src/lib/walk.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 134,
+    "cache_creation_tokens": 102768,
+    "cache_read_tokens": 30211690,
+    "output_tokens": 75783,
+    "api_call_count": 67
+  },
+  "redaction": {
+    "replacements": 24,
+    "layers": {
+      "betterleaks": 2,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 19,
+      "credentialed_uri": 0,
+      "entropy": 3,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
