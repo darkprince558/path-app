@@ -180,6 +180,7 @@ enums, and it is not applied automatically: review it, then apply it the same wa
 | `GET /api/scan-revisions/:revisionId/cues` | The revision's owner (owner of both the capture and the space, as for approval) gets every cue in route order: `{cues: [{id, routeSegmentId, sequence, landmark, instruction, confidence, status, sourceFrameIds}]}`. Others get 404, and signed-out callers get 401. |
 | `PATCH /api/cues/:id` | The owner sends `{instruction?, status?}`. `instruction` is 1–200 characters with whitespace collapsed. `status` is `draft`, `approved` or `rejected`. Returns `{cue}`. Approving needs text. Editing an `abstained` cue's text makes it a draft. Approved and rejected cues record who decided and when. |
 | `GET /api/shares/:shareId/cues` | Anyone who may open the share gets its approved cues in route order. Guests get `sourceFrameIds: []`, because frames stay owner-only. Manual uploads return `[]`. |
+| `POST /api/scan-revisions/:revisionId/cues/generate` | **The "Generate directions" button.** Owner only (same rule as review). Optional body `{regenerate?: boolean}`. For each of the owner's saved paths in the space, it finds the turns (left/right/stairs from the path points). It then picks photos near each turn from the scan's camera poses, asks Gemini for a direction, and saves it with `saveCueDrafts`. The same turn on several paths becomes one cue. Returns `{cues, summary: {turns, generated, abstained, skipped, noPhotos, failed, remaining}, turns: [{routeSegmentId, sequence, maneuver, outcome, code?}]}`. Errors: 409 `NO_SAVED_ROUTES` (save a route first), 409 `NO_PHOTOS` (scan has no camera photos), 503 `GEMINI_NOT_CONFIGURED`. |
 
 `status` is `draft`, `approved`, `rejected` or `abstained` (Gemini found no clear landmark). `sequence` is
 the turn's position along the route, so guests read cues in route order. The Gemini step stores its results
@@ -188,3 +189,30 @@ landmark?, instruction, confidence?, abstained?, sourceFrameIds, model?, promptV
 replaces drafts and abstentions but never a turn the owner already approved or rejected. Gemini's original
 text stays in `draft_instruction`. `GET /api/scans/mine` returns each scan's `revisionId` so the website's
 review screen can find its cues.
+
+### Generating directions (Krishna)
+
+`src/lib/api/cue-generation.ts` holds the generate endpoint. It calls Krishna's internal Gemini service
+(`services/gemini`, see its `INTEGRATION.md`) through `src/lib/gemini/client.ts`. Set
+`GEMINI_SERVICE_URL` and `GEMINI_SERVICE_TOKEN` in `.env.local`, and run the service next to the API. The
+token is a shared secret between the two servers; never expose it to the browser.
+
+- **Turns:** `src/lib/gemini/turns.ts` (a copy of `services/gemini/clients/typescript/turns.ts`; keep them
+  identical) turns each saved path into steps. Straight stretches and the arrival are skipped.
+- **One cue per turn:** `routeSegmentId` is a stable key for "this turn, approached from this direction",
+  such as `turn:0.0:0.0:-4.0:h0:left`. Paths that share a turn share one cue. The opposite direction is a
+  different cue.
+- **Photos:** frames come from `capture_frames` (camera poses). `scan.transform` places them in the space,
+  because the processor keeps the GLB and the photos in the same capture frame. Each photo is read from
+  private capture storage and checked against the manifest's size and SHA-256.
+- **Gemini's best option** is saved. `confidence` comes from how clearly the landmark is visible: clear →
+  high, partial → medium, uncertain → low. It is not a calibrated probability.
+- **Time:** Gemini takes about 10–60 s per turn. One request handles at most 12 turns and reports
+  `remaining`, so press the button again to continue. Each cue is saved as soon as it arrives.
+- **Reruns:** turns that already have a cue are skipped unless `regenerate` is true. Approved and rejected
+  cues are never sent again or replaced.
+- **Failures:** if the service is busy (503/504) or the token is wrong, the run stops early and reports it.
+  Earlier cues stay. A turn without good photos is reported as `no_photos`, and the owner can type a cue by
+  hand.
+- **Geometry columns:** once `landmark_cues` gains `maneuver`, `side`, `position` and `incomingHeading`,
+  and `cueDraftInput` accepts them, the endpoint sends them automatically. No change is needed here.
