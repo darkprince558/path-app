@@ -83,3 +83,19 @@ test("unlabelled phone scans hide downward-facing surfaces in the upper half", a
   surfaces.dispose();
   model.dispose();
 });
+
+test("meshopt-compressed scans open and keep labels and colours", async () => {
+  // fixtures/venue/classified-room.glb run through `gltf-transform meshopt` (quantized, EXT_meshopt_compression).
+  const bytes = readFileSync(new URL("../../../fixtures/venue/classified-room-meshopt.glb", import.meta.url));
+  const model = await parseGlb(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer, identity);
+  assert.match(model.object.userData.generator, /^glTF-Transform/);
+  const surfaces = prepareScanSurfaces([model.object], 8);
+  assert.equal(surfaces.hasCeiling, true);
+  const hits: Intersection[] = [];
+  new Raycaster(new Vector3(-2, 5, 0), new Vector3(0, -1, 0)).intersectObject(model.object, true, hits);
+  assert.ok(Math.abs(hits[0]!.point.y) < 1e-3, `floor hit expected, got y=${hits[0]?.point.y}`);
+  const red = firstMesh(model.object).geometry.getAttribute("color").getComponent(0, 0);
+  assert.ok(red > 0 && red < 0.6, `linear colour expected, got ${red}`);
+  surfaces.dispose();
+  model.dispose();
+});

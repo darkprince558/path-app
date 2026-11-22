@@ -83,6 +83,22 @@ On a 1.37M-triangle, 37 MB hallway scan it took about 3 minutes on a laptop CPU,
 hole edges by 74% (70,304 to 18,128) and loose pieces from 2,048 to 76, at the same
 triangle count. Edges come out slightly rounder than the original.
 
+### Making scans smaller
+
+The viewer opens meshopt-compressed GLBs (`EXT_meshopt_compression` with
+`KHR_mesh_quantization`), so a scan can be shrunk before upload with the standard
+glTF-Transform tool. It joins pieces, merges duplicate points, simplifies only where the
+shape barely changes, stores coordinates in fewer bits and packs the result:
+
+```
+npx @gltf-transform/cli@4.3.0 optimize scan-filled.glb scan-small.glb --compress meshopt
+```
+
+The hole-filled hallway went from 36 MB and 1.37M triangles to 3.9 MB and 744k triangles,
+with no visible change, and still routes. Smaller files load faster on phones and leave room
+under the 400 MB limit. Clean up first (`scan_fill_holes.py`, which also drops floating
+fragments), then compress: compressed files can't be read back by `scan_fill_holes.py`.
+
 ## Run locally
 
 Requires Node 22+ and pnpm. Set `API_TARGET=http://127.0.0.1:8001` for the legacy mock.

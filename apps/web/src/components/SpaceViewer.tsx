@@ -1,4 +1,5 @@
 import { Line, OrbitControls } from "@react-three/drei";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Box3, DoubleSide, BufferGeometry, Float32BufferAttribute, MathUtils, MOUSE, Sphere, TOUCH, Vector3, type Object3D } from "three";
@@ -139,6 +140,8 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
   resetToken = 0, onPick, onError, onReady, automaticNavigation = false, initialAutomaticNavigation = false, navigationApproximate = false, navigationUnavailable, avoidStairs = false, onAutomaticChange }: SpaceViewerProps) {
   const [automatic, setAutomatic] = useState(initialAutomaticNavigation);
   const [debug, setDebug] = useState(false);
+  /** Minimised route card: only its status line shows, so the map stays visible. */
+  const [routeFolded, setRouteFolded] = useState(false);
   const [autoState, setAutoState] = useState<AutomaticState | null>(null);
   const enabled = automatic && automaticNavigation && !navigationUnavailable;
   useEffect(() => {
@@ -213,16 +216,29 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
       <ScanLook objects={objects} ceilingHidden={ceilingHidden} onCeiling={setHasCeiling} />
     </Canvas>
   </ViewerBoundary>
-    {(hasCeiling || automaticNavigation) && <div className="absolute left-3 top-24 z-10 flex w-[min(22rem,calc(100%-1.5rem))] flex-col items-start gap-2 xl-text:top-32">
-      {automaticNavigation && <div className="max-h-[45vh] w-full overflow-auto rounded-xl bg-night/95 p-3 text-paper ring-1 ring-sage/50">
-      <label className="flex gap-2"><input type="checkbox" checked={enabled} disabled={!!navigationUnavailable}
-        onChange={e => { setAutomatic(e.target.checked); setAutoState(null); }} />Automatic route</label>
-      {navigationUnavailable && <p className="text-sm">{navigationUnavailable}</p>}
-      {enabled && !!objects.length && <Suspense fallback={<p role="status">Loading navigation…</p>}>
-        <ScanNavigation key={models.map(m => m.id).join(",")} objects={objects} avoidStairs={avoidStairs} approximate={navigationApproximate} onChange={setAutoState} />
-        <label className="mt-2 flex gap-2"><input type="checkbox" checked={debug} onChange={e => setDebug(e.target.checked)} />Show NavMesh debug</label>
-      </Suspense>}
-    </div>}
+    {(hasCeiling || automaticNavigation) && <div className="absolute left-3 top-24 z-10 flex w-[min(19rem,calc(100%-1.5rem))] flex-col items-start gap-2 xl-text:top-32">
+      {automaticNavigation && <div className="max-h-[50dvh] w-full overflow-auto rounded-2xl bg-night/90 px-3 py-2 text-paper shadow-lg ring-1 ring-sage/40 backdrop-blur-sm">
+        <div className="flex min-h-11 items-center gap-2">
+          <label className="flex flex-1 items-center gap-2 text-sm font-bold">
+            <input type="checkbox" className="size-4 accent-coral" checked={enabled} disabled={!!navigationUnavailable}
+              onChange={e => { setAutomatic(e.target.checked); setAutoState(null); }} />Automatic route
+          </label>
+          {enabled && <button type="button" aria-expanded={!routeFolded} aria-label={routeFolded ? "Show route controls" : "Minimise route controls"}
+            onClick={() => setRouteFolded(folded => !folded)}
+            className="-mr-2 grid size-11 shrink-0 place-items-center rounded-full text-sage hover:bg-paper/10">
+            {routeFolded ? <ChevronDown className="size-5" aria-hidden /> : <ChevronUp className="size-5" aria-hidden />}
+          </button>}
+        </div>
+        {navigationUnavailable && <p className="pb-1 text-sm">{navigationUnavailable}</p>}
+        {enabled && !!objects.length && <Suspense fallback={<p role="status" className="text-sm">Loading navigation…</p>}>
+          <div className="pb-1">
+            <ScanNavigation key={models.map(m => m.id).join(",")} objects={objects} avoidStairs={avoidStairs}
+              approximate={navigationApproximate} collapsed={routeFolded} onChange={setAutoState}>
+              <label className="flex items-center gap-2 text-paper"><input type="checkbox" checked={debug} onChange={e => setDebug(e.target.checked)} />Show NavMesh debug</label>
+            </ScanNavigation>
+          </div>
+        </Suspense>}
+      </div>}
       {hasCeiling && <button type="button" aria-pressed={!ceilingHidden} onClick={() => setCeilingHidden(hidden => !hidden)}
         className="min-h-11 rounded-full bg-night/80 px-4 text-sm font-bold text-paper ring-1 ring-sage/50">
         {ceilingHidden ? "Show ceiling" : "Hide ceiling"}
