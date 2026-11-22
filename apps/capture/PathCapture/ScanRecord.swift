@@ -11,6 +11,10 @@ struct ScanRecord: Codable, Identifiable {
   var partial: Bool
   var deviceModel: String?
   var deviceOSVersion: String?
+  // Account-scoped receipts are independent of the local Mac recorder link.
+  var hostedLinks: [String: URL]?
+  var pendingHostedUploads: Set<String>?
+  var hostedMapName: String { "iPhone scan " + id.uuidString.lowercased() }
   var guestURL: URL?
   var videoJob: UUID?
   var videoGuestURL: URL?

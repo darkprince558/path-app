@@ -22,7 +22,7 @@ final class CaptureAccount: ObservableObject {
 
   func logIn(signUp: Bool = false) async {
     await perform {
-      var login = Auth0.webAuth().scope("openid profile email offline_access")
+      var login = Auth0.webAuth().audience("https://api.not404.app").scope("openid profile email offline_access")
       if signUp { login = login.parameters(["screen_hint": "signup"]) }
       let credentials = try await login.start()
       // A fresh login can follow a failed renewal for a different account.
@@ -34,6 +34,10 @@ final class CaptureAccount: ObservableObject {
       }
       readProfile()
     }
+  }
+
+  func uploadToken() async throws -> String {
+    try await manager.credentials().accessToken
   }
 
   func logOut() async {

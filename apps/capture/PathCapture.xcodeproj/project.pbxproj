@@ -27,7 +27,7 @@
 		};
 		100000000000000000000003 /* PathCapture sources */ = {
 			isa = PBXGroup;
-			children = (100000000000000000000010, 100000000000000000000011, 100000000000000000000012, 100000000000000000000100, 100000000000000000000101, 100000000000000000000102, 100000000000000000000103, 100000000000000000000104, 100000000000000000000105, 100000000000000000000106, 100000000000000000000107);
+			children = (100000000000000000000010, 100000000000000000000011, 100000000000000000000012, 100000000000000000000100, 100000000000000000000101, 100000000000000000000102, 100000000000000000000103, 100000000000000000000104, 100000000000000000000105, 100000000000000000000106, 100000000000000000000107, 100000000000000000000108);
 			path = PathCapture;
 			sourceTree = "<group>";
 		};
@@ -64,7 +64,7 @@
 		100000000000000000000008 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (100000000000000000000014, 100000000000000000000015, 100000000000000000000016, 100000000000000000000200, 100000000000000000000201, 100000000000000000000202, 100000000000000000000203, 100000000000000000000204, 100000000000000000000205, 100000000000000000000206);
+			files = (100000000000000000000014, 100000000000000000000015, 100000000000000000000016, 100000000000000000000200, 100000000000000000000201, 100000000000000000000202, 100000000000000000000203, 100000000000000000000204, 100000000000000000000205, 100000000000000000000206, 100000000000000000000208);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 
@@ -79,6 +79,8 @@
 		100000000000000000000404 /* Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000207); runOnlyForDeploymentPostprocessing = 0; };
 		100000000000000000000106 /* AccountView.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		100000000000000000000206 /* AccountView.swift in Sources */ = { isa = PBXBuildFile; fileRef = 100000000000000000000106; };
+		100000000000000000000108 /* HostedScanAPI.swift */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostedScanAPI.swift; sourceTree = "<group>"; };
+		100000000000000000000208 /* HostedScanAPI.swift in Sources */ = { isa = PBXBuildFile; fileRef = 100000000000000000000108; };
 		100000000000000000000107 /* Auth0.plist */ = { isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Auth0.plist; sourceTree = "<group>"; };
 		100000000000000000000207 /* Auth0.plist in Resources */ = { isa = PBXBuildFile; fileRef = 100000000000000000000107; };
 
@@ -140,7 +142,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
                 INFOPLIST_FILE = PathCapture/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Path Capture";
+				INFOPLIST_KEY_CFBundleDisplayName = "Not 404 Scanner";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Record the hallway and align its camera images with the 3D scan.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Record gyro and acceleration alongside your hallway scan.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Send scans to your paired Mac for reconstruction and sharing.";
@@ -164,7 +166,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
                 INFOPLIST_FILE = PathCapture/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Path Capture";
+				INFOPLIST_KEY_CFBundleDisplayName = "Not 404 Scanner";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Record the hallway and align its camera images with the 3D scan.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Record gyro and acceleration alongside your hallway scan.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Send scans to your paired Mac for reconstruction and sharing.";
