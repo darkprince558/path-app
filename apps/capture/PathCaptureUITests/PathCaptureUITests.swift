@@ -1,6 +1,18 @@
 import XCTest
 
 final class PathCaptureUITests: XCTestCase {
+  func testScanScreenReplay() throws {
+    let app = XCUIApplication()
+    app.launchArguments = ["-PathCaptureReplay", "hallway"]
+    app.launch()
+    XCTAssertTrue(app.staticTexts["Walk map"].waitForExistence(timeout: 10))
+    XCTAssertTrue(app.descendants(matching: .any)["scan-tracking"].firstMatch.exists)
+    XCTAssertTrue(app.staticTexts["scan-distance"].exists)
+    app.buttons["Finish walk"].tap()
+    XCTAssertTrue(app.navigationBars["Walk review"].waitForExistence(timeout: 10))
+    XCTAssertTrue(app.staticTexts["Tracked distance"].exists)
+  }
+
   func testWholeWalkReview() throws {
     let app = XCUIApplication()
     app.launch()

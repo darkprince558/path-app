@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "duration": 180,
+  "events": [
+    {"second":0, "velocity":[0.5,0], "quality":"normal"},
+    {"second":5, "observationOffset":[0,0,1]},
+    {"second":8, "faces":115000},
+    {"second":74, "quality":"limited"},
+    {"second":80, "quality":"normal"},
+    {"second":90, "velocity":[0,0.5]}
+  ]
+}
