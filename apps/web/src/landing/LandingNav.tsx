@@ -39,7 +39,7 @@ export default function LandingNav() {
             </a>
           ))}
         </nav>
-        <div className="justify-self-end rounded-full bg-paper/8 px-5 py-3 font-bold"><AccountControls /></div>
+        <div className="inline-flex min-h-11 items-center justify-self-end rounded-full bg-paper/8 px-5 font-bold"><AccountControls /></div>
       </div>
     </header>
   );
