@@ -178,3 +178,123 @@ precondition(legacyDevice["osVersion"] == "unknown (legacy scan)")
 let legacyIndex = try JSONSerialization.jsonObject(with: Data(contentsOf: legacyBundle.appendingPathComponent("frames.json"))) as! [String: Any]
 precondition((legacyIndex["frames"] as! [[String: Any]]).allSatisfy { $0["intrinsics"] == nil })
 print("Stable device IDs, frame dimensions, scaled intrinsics and legacy export passed.")
+
+// A three-minute L-shaped replay crosses the old time and face budgets. A
+// tracking loss must leave a gap and the camera path alone must never paint coverage.
+var accumulated = WalkMap(), sectionMap = WalkMap()
+var walkSections = 0, began = 0
+for second in 0...180 {
+  let here = SIMD2<Float>(Float(min(second,90)) * 0.5, Float(max(0,second-90)) * 0.5)
+  sectionMap.locate(here, forward: SIMD2(1,0), at: Double(second), normal: !(74...79).contains(second))
+  if second == 4 { precondition(sectionMap.tiles.isEmpty) }
+  if second >= 5 && sectionMap.tracked {
+    sectionMap.observe(SIMD3(here.x, 0, here.y + 1), cameraHeight: 1.5)
+  }
+  if SectionBudget.shouldSave(seconds: Double(second-began), points: 130_000, faces: 115_000) || second == 180 {
+    accumulated.include(sectionMap)
+    sectionMap = sectionMap.nextSection()
+    walkSections += 1
+    began = second
+  }
+}
+precondition(walkSections > 5 && accumulated.distance > 85 && accumulated.distance < 89)
+precondition(accumulated.tiles.count > 150)
+precondition(!accumulated.tiles.contains(SIMD2(150,4)))  // unseen during tracking loss
+precondition(accumulated.tracks.allSatisfy { run in zip(run,run.dropFirst()).allSatisfy { simd_distance($0,$1) <= 0.51 } })
+try accumulated.write(to: dest)
+let reopenedMap = try WalkMap.read(from: dest)
+precondition(reopenedMap.tiles == accumulated.tiles && reopenedMap.tracks == accumulated.tracks)
+let almostAffine: [Float] = [1,0,0,0, 0,1,0,0, 0,0,1,0, 3,2,1,0.99999994]
+let exactPose = try CaptureBundle.affinePose(almostAffine)
+precondition(exactPose[15] == 1 && exactPose[12] == 3)
+var projective = almostAffine; projective[3] = 0.1
+precondition((try? CaptureBundle.affinePose(projective)) == nil)
+print("180-second route replay: \(walkSections) sections, \(accumulated.distance) tracked metres; map survived reload.")
+
+let replayScript = try ReplayScript(contentsOf: URL(fileURLWithPath: "apps/capture/PathCapture/hallway.json"))
+let replay = ReplaySource(script: replayScript)
+replay.advance(to: 4)
+precondition(replay.liveMap.tiles.isEmpty && replay.tracking == .normal)
+replay.advance(to: 76)
+precondition(replay.tracking == .limited && !replay.liveMap.tracked)
+replay.advance(to: 180)
+replay.stop(reason: nil)
+replay.stop(reason: nil)
+precondition(replay.phase == .finished && replay.savedSections == walkSections)
+precondition(replay.liveMap.distance == accumulated.distance && replay.liveMap.tiles == accumulated.tiles)
+
+let viewport = CGSize(width: 320, height: 160)
+var drawingCamera = MapCamera(centre: CGPoint(x: -3, y: 7), metresPerPoint: 0.05,
+                              rotation: 0.71, viewport: viewport)
+let finger = CGPoint(x: 54, y: 33)
+let anchor = drawingCamera.unproject(finger)
+func close(_ lhs: CGPoint, _ rhs: CGPoint) -> Bool { hypot(lhs.x - rhs.x, lhs.y - rhs.y) < 0.00001 }
+precondition(close(drawingCamera.project(anchor), finger))
+let movedFinger = CGPoint(x: 92, y: 51)
+drawingCamera.change(from: finger, to: movedFinger, zoom: 1.65, turn: 0.4)
+precondition(close(drawingCamera.project(anchor), movedFinger))
+drawingCamera.change(from: finger, to: finger, zoom: 1e8, turn: 0)
+precondition(abs(drawingCamera.metresPerPoint * viewport.width - 2) < 0.00001)
+drawingCamera.change(from: finger, to: finger, zoom: 1e-8, turn: 0)
+precondition(abs(drawingCamera.metresPerPoint * viewport.width - 200) < 0.00001)
+let corridorBounds = CGRect(x: -35, y: 10, width: 84, height: 9)
+let fit = MapCamera.fitting(corridorBounds, rotation: 1.1, viewport: viewport)
+for x in [corridorBounds.minX, corridorBounds.maxX] {
+  for y in [corridorBounds.minY, corridorBounds.maxY] {
+    precondition(CGRect(origin: .zero, size: viewport).contains(fit.project(CGPoint(x: x, y: y))))
+  }
+}
+var adjacentTiles = WalkMap()
+adjacentTiles.tiles = [SIMD2(-2,3), SIMD2(-1,3), SIMD2(1,3)]
+let layer = WalkLayer(adjacentTiles)
+precondition(layer.rows[3]?.count == 2 && layer.rows[3]?.first?.width == 0.5)
+print("Map projection, pivot, zoom limits, rotated fit and tile runs passed.")
+
+// Viewed from a phone looking sideways, a flat depth image is a wall. The
+// same image looking down is floor. Direction must follow walking, not yaw.
+func guidanceFrame(_ at: SIMD3<Float>, facing: SIMD3<Float>, depth: Float = 1.5) -> SideObservation {
+  var transform = simd_float4x4(simd_quatf(from: SIMD3(0, 0, -1), to: facing))
+  transform.columns.3 = SIMD4(at, 1)
+  return SideObservation.sample(width: 96, height: 80, focal: SIMD2(72, 72),
+                                center: SIMD2(48, 40), camera: transform) { _,_ in depth }
+}
+let guideRight = SIMD3<Float>(1, 0, 0), guideFloor = SIMD3<Float>(0, -1, 0)
+precondition(guidanceFrame(.zero, facing: guideFloor).upright.isEmpty)
+precondition(!guidanceFrame(.zero, facing: guideRight).upright.isEmpty)
+
+for sign: Float in [-1, 1] {
+  var guide = SideGuidance()
+  var position = SIMD3<Float>.zero
+  for step in 0...12 {
+    position.z = sign * Float(step) * 0.25
+    guide.update(position: position, at: Double(step)*0.4, frame: guidanceFrame(position, facing: guideRight))
+  }
+  precondition(guide.cue == (sign < 0 ? .left : .right))
+  // Hold the phone in the same place and sweep onto the omitted surface.
+  for step in 13...15 {
+    guide.update(position: position, at: Double(step)*0.4, frame: guidanceFrame(position, facing: -guideRight))
+  }
+  precondition(guide.cue == nil)
+}
+var openGuide = SideGuidance(), floorGuide = SideGuidance(), stillGuide = SideGuidance()
+for step in 0...16 {
+  let position = SIMD3<Float>(0, 0, -Float(step)*0.25)
+  let time = Double(step)*0.4
+  let wallFrame = guidanceFrame(position, facing: guideRight)
+  let openFrame = guidanceFrame(position, facing: -guideRight, depth: 4.8)
+  var both = wallFrame
+  both.open.formUnion(openFrame.open)
+  precondition(!both.open.isEmpty)
+  openGuide.update(position: position, at: time, frame: both)
+  floorGuide.update(position: position, at: time, frame: guidanceFrame(position, facing: guideFloor))
+  stillGuide.update(position: .zero, at: time, frame: guidanceFrame(.zero, facing: guideRight))
+  precondition(openGuide.cue == nil && floorGuide.cue == nil && stillGuide.cue == nil)
+}
+let sidedReplay = ReplaySource(script: replayScript)
+sidedReplay.advance(to: 40)
+precondition(sidedReplay.rescanSide == .right && sidedReplay.sectionNumber > 1)
+sidedReplay.advance(to: 54)
+precondition(sidedReplay.rescanSide == nil)
+sidedReplay.advance(to: 76)
+precondition(sidedReplay.tracking == .limited && sidedReplay.rescanSide == nil)
+print("Side guidance passed direction, stationary recovery, open-side, floor-only and continuous-section checks.")

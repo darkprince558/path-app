@@ -11,6 +11,10 @@ struct ScanRecord: Codable, Identifiable {
   var partial: Bool
   var deviceModel: String?
   var deviceOSVersion: String?
+  var walkID: UUID?
+  var sectionNumber: Int?
+  var walkEndReason: String?
+  var depthPriority: Bool?
   var guestURL: URL?
   var videoJob: UUID?
   var videoGuestURL: URL?
@@ -31,7 +35,7 @@ struct ScanRecord: Codable, Identifiable {
     try CaptureBundle.write(take: folder, record: self, to: bundle)
     return try Self.zip(bundle, name: "capture-" + id.uuidString.lowercased() + ".zip")
   }
-  private static func zip(_ folder: URL, name: String) throws -> URL {
+  static func zip(_ folder: URL, name: String) throws -> URL {
     let coordinator = NSFileCoordinator(filePresenter: nil)
     let staging = FileManager.default.temporaryDirectory.appendingPathComponent(
       UUID().uuidString, isDirectory: true)
@@ -58,5 +62,37 @@ struct ScanRecord: Codable, Identifiable {
       try? JSONDecoder().decode(
         Self.self, from: Data(contentsOf: $0.appendingPathComponent("scan.json")))
     }.sorted { $0.created > $1.created }
+  }
+}
+
+struct WalkArchive: Encodable {
+  struct Section: Encodable {
+    let number: Int
+    let scanID: UUID
+    let path: String
+    let partial: Bool
+  }
+  let walkID: UUID
+  let coordinateFrame = "ARKit session world, metres, +Y up"
+  let sections: [Section]
+
+  static func prepare(_ records: [ScanRecord]) throws -> URL {
+    guard let id = records.first?.walkID, records.allSatisfy({ $0.walkID == id && $0.sectionNumber != nil }) else {
+      throw CocoaError(.fileReadCorruptFile)
+    }
+    let fm = FileManager.default
+    let staging = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let root = staging.appendingPathComponent("Walk-" + id.uuidString)
+    try fm.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? fm.removeItem(at: staging) }
+    var sections = [Section]()
+    for record in records.sorted(by: { ($0.sectionNumber ?? 0) < ($1.sectionNumber ?? 0) }) {
+      let name = record.id.uuidString
+      try fm.copyItem(at: record.folder, to: root.appendingPathComponent(name))
+      sections.append(Section(number: record.sectionNumber!, scanID: record.id, path: name, partial: record.partial))
+    }
+    let index = WalkArchive(walkID: id, sections: sections)
+    try JSONEncoder().encode(index).write(to: root.appendingPathComponent("walk.json"), options: .atomic)
+    return try ScanRecord.zip(root, name: root.lastPathComponent + ".zip")
   }
 }

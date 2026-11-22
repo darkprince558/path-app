@@ -80,3 +80,7 @@ What the next teammate should do:
 ```
 
 After pulling a note, run `entire brain refresh` in the repo, then try `entire brain query "scan visibility" --source doc --limit 3`. Keep raw scans, credentials and full transcripts in their approved storage. A reference to the evidence is enough here.
+
+- **Continuous hallway capture.** A real iPhone take crossed the previous 220,000-face stop after about 15 seconds. Hallway mode now checkpoints sections in one AR session. When processing a walk, use the ordered sections in its complete archive. Each raw LiDAR depth frame needs its recorded intrinsics, world pose and confidence map when available. See the [capture and Mac fusion guide](../apps/capture/README.md#map-a-hallway) and [two-section reconstruction check](../apps/capture/walk/test_reconstruct.py).
+
+- **Live side guidance.** Four saved iPhone walks supplied 910 depth frames for a chronological replay. On one walk the cue pointed right in both stretches where the finished scan showed weak right-side coverage. A route with little upright evidence on either side yielded one brief cue. For the next physical check, deliberately omit a known wall and note where the arrow appears and clears. The recordings had no independent labels for missed surfaces. [Scanner behavior](../apps/capture/README.md#map-a-hallway) · [Local depth replay](../apps/capture/native-tests/replay-side-guidance/main.swift)

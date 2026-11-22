@@ -6,7 +6,7 @@ cd "$root"
 : "${1:?Pass the UDID of a booted iOS simulator from xcrun simctl list devices booted}"
 check_dir=$(mktemp -d "${TMPDIR:-/tmp}/path-capture-test.XXXXXX")
 src=apps/capture/PathCapture
-xcrun swiftc -O "$src/PointCloud.swift" "$src/ScanGeometry.swift" "$src/ScanRecord.swift" "$src/CaptureBundle.swift" "$src/MacConnection.swift" apps/capture/native-tests/main.swift -o "$check_dir/export"
+xcrun swiftc -O "$src/WalkMap.swift" "$src/MapCamera.swift" "$src/SideGuidance.swift" "$src/ScanSource.swift" "$src/ReplaySource.swift" "$src/PointCloud.swift" "$src/ScanGeometry.swift" "$src/ScanRecord.swift" "$src/CaptureBundle.swift" "$src/MacConnection.swift" apps/capture/native-tests/main.swift -o "$check_dir/export"
 "$check_dir/export" "$check_dir/fixture"
 python3 - "$check_dir/fixture" <<'PY'
 from pathlib import Path
@@ -21,10 +21,19 @@ xcrun simctl install "$1" "$check_dir/build/Build/Products/Debug-iphonesimulator
 container=$(xcrun simctl get_app_container "$1" com.pathapp.demo.capture data)
 python3 - "$container" "$check_dir/fixture" <<'PY'
 from pathlib import Path
-import shutil,sys
+import json,shutil,sys
 scan='6D8C1359-2480-4493-89B8-39BE20CC6FC9'
 dest=Path(sys.argv[1])/'Documents/Scans'/scan
 shutil.copytree(Path(sys.argv[2])/'bundle-take', dest, dirs_exist_ok=True)
+for number, suffix in enumerate(("01","02"),1):
+    scan_id = "6136293B-0E77-45A2-BD95-E133AE61FC" + suffix
+    folder = dest.parent/scan_id
+    shutil.copytree(dest, folder, dirs_exist_ok=True)
+    record = json.loads((folder/"scan.json").read_text())
+    record.update(id=scan_id,walkID="9577C372-B6A3-45D9-893C-A21D22671EC4",sectionNumber=number, created=record["created"]+number)
+    (folder/"scan.json").write_text(json.dumps(record))
+    shutil.copyfile(Path(sys.argv[2])/"walk-map.json",folder/"walk-map.json")
+
 PY
 xcodebuild -quiet "${args[@]}" -parallel-testing-enabled NO -resultBundlePath "$check_dir/review.xcresult" test
 printf 'Simulator review evidence: %s\n' "$check_dir/review.xcresult"
