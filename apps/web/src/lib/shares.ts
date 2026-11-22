@@ -1,3 +1,4 @@
+import { apiFetch } from "./http.ts";
 /**
  * Client for the share endpoints in services/api/README.md.
  *
@@ -39,7 +40,7 @@ export class ShareError extends Error {
 async function request(url: string, signal: AbortSignal): Promise<Response> {
   let response: Response;
   try {
-    response = await fetch(url, { signal, credentials: "same-origin" });
+    response = await apiFetch(url, { signal, credentials: "same-origin" });
   } catch (error) {
     if (signal.aborted) throw error;
     throw new ShareError("network", "Couldn't reach the server.");

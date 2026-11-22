@@ -20,7 +20,7 @@ See [calibration policy, provenance trace and local tests](../../docs/scan-calib
 
 ## Auth0 login shell
 
-The Next.js App Router shell and official Auth0 SDK live in this package. Copy `.env.local.example` to `.env.local` here, then fill in `AUTH0_CLIENT_SECRET` from the Auth0 application and generate `AUTH0_SECRET` locally with `openssl rand -hex 32`. The domain, client ID and base URL in the example match the configured Regular Web Application. Keep `APP_BASE_URL=http://localhost:3000`; the registered callback is `http://localhost:3000/auth/callback` and logout URL is `http://localhost:3000/`. Do not commit `.env.local` or put secrets in `NEXT_PUBLIC_` variables.
+The Next.js App Router shell and official Auth0 SDK live in this package. Copy `.env.local.example` to `.env.local` here, then fill in `AUTH0_CLIENT_SECRET` from the Auth0 application and generate `AUTH0_SECRET` locally with `openssl rand -hex 32`. The domain, client ID and base URL in the example match the configured Regular Web Application. For API-only development use `APP_BASE_URL=http://localhost:3000`; the registered callback is `http://localhost:3000/auth/callback` and logout URL is `http://localhost:3000/`. Do not commit `.env.local` or put secrets in `NEXT_PUBLIC_` variables.
 
 ```sh
 cd services/api
@@ -143,3 +143,7 @@ Names are 1–80 characters after trimming and collapsing spaces, with no contro
 To grant private access, send `{"visibility":"private","viewerIds":["teammate"]}` as the owner. Repeat with an empty list to revoke access. To rename, send `{"name":"Library study rooms"}`. The smoke test covers these changes, partial changes, the owner and shared lists, deletion, the raw asset URL, and unauthenticated discovery.
 
 The mock binds to loopback, uses `X-Dev-User` to simulate an account, checks file headers, limits uploads to 32 MiB, and discards data on exit. On the hosted API derive identity from a verified session, validate the uploaded model, persist grants, and enforce visibility on every read. Use the deployed site’s origin for portable share URLs. [Architecture and data model](../../docs/architecture.md)
+
+## React authentication and production
+
+The React website uses this backend’s `/api/users/me` session and `/auth/*` routes. For Vite use `APP_BASE_URL=http://localhost:5173`; production uses `https://not404.vodka`. See the [Auth0 production runbook](../../docs/auth0-production.md) for Dashboard settings, verified results, deployment approval gates and outstanding VM inspection. `npm start` binds to `127.0.0.1:3000`.
