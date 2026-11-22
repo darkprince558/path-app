@@ -14,7 +14,8 @@ import { isApprovedScan } from './approved-scans';
 
 type Db = ReturnType<typeof connectDatabase>['db'];
 type Scan = typeof scans.$inferSelect;
-export const MAX_GLB_BYTES = 32 * 1024 * 1024;
+/** Largest model the API accepts or serves (manual uploads and processed scans). */
+export const MAX_GLB_BYTES = 100 * 1024 * 1024;
 const MAX_MULTIPART_BYTES = MAX_GLB_BYTES + 1024 * 1024;
 export const identityTransform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 export const transform = z.array(z.number().finite()).length(16).refine(matrix => {
@@ -59,7 +60,7 @@ export async function boundedFormData(request: Request): Promise<FormData> {
 }
 
 export class PayloadTooLarge extends ApiError {
-  constructor() { super(413, 'PAYLOAD_TOO_LARGE', 'GLB upload exceeds 32 MiB'); }
+  constructor() { super(413, 'PAYLOAD_TOO_LARGE', `GLB upload exceeds ${MAX_GLB_BYTES / 1024 / 1024} MiB`); }
 }
 
 export function parseUpload(form: FormData) {

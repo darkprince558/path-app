@@ -1,4 +1,5 @@
 import { apiFetch } from "./http.ts";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "./scans.ts";
 export type Visibility = "public" | "private";
 export type Position = { x: number; y: number; z: number };
 export type CoordinateSystem = { units: "relative" | "metres"; upAxis: "Y"; calibrated: boolean };
@@ -53,6 +54,6 @@ export async function scanBytes(scan: Scan, signal: AbortSignal): Promise<ArrayB
   const response = await apiFetch(expected, { signal, credentials: "same-origin", cache: "no-store" });
   if (!response.ok) throw new ApiError(response.status, `Could not download ${scan.name} (${response.status}).`);
   const bytes = await response.arrayBuffer();
-  if (bytes.byteLength > 32 * 1024 * 1024) throw new Error("This scan exceeds the 32 MiB viewer limit.");
+  if (bytes.byteLength > MAX_UPLOAD_BYTES) throw new Error(`This scan exceeds the ${MAX_UPLOAD_LABEL} viewer limit.`);
   return bytes;
 }

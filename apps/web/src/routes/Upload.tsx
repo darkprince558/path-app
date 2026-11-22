@@ -7,6 +7,7 @@ import {
   cleanMapName,
   formatBytes,
   MAX_NAME_LENGTH,
+  MAX_UPLOAD_LABEL,
   uploadScan,
   UploadError,
   type ScanFormat,
@@ -25,7 +26,7 @@ export default function Upload() {
   const abortRef = useRef<AbortController | null>(null);
   const [file, setFile] = useState<{ file: File; format: ScanFormat } | null>(null);
   const [fileProblem, setFileProblem] = useState<string | null>(null);
-  const [visibility, setVisibility] = useState<Visibility>("unlisted");
+  const [visibility, setVisibility] = useState<Visibility>("public");
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
   const nameId = useId();
@@ -116,7 +117,7 @@ export default function Upload() {
       {phase.step === "done" ? (
         <div className="mt-8">
           <SharePanel
-            mapId={phase.result.shareId}
+            mapId={phase.result.id ?? phase.result.shareId}
             sharePath={phase.result.sharePath}
             initialVisibility={phase.visibility}
             footer={
@@ -177,7 +178,7 @@ export default function Upload() {
               ) : (
                 <>
                   <span className="font-bold">Tap to choose a file</span>
-                  <span className="text-sm text-muted">PLY point cloud or GLB model, up to 32 MB</span>
+                  <span className="text-sm text-muted">PLY point cloud or GLB model, up to {MAX_UPLOAD_LABEL}</span>
                 </>
               )}
             </label>

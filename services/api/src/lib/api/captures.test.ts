@@ -9,7 +9,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { captures, captureFrames, eventMembers, events, eventSpaces, processingJobs, scanRevisions, spaces, users } from '../../db/schema';
-import { canonicalJson, captureManifest, capturePath, validateFrameReferences, MAX_CAPTURE_JSON_BYTES } from '../capture/contract';
+import { canonicalJson, captureManifest, capturePath, validateFrameReferences, MAX_CAPTURE_BYTES, MAX_CAPTURE_FILE_BYTES, MAX_CAPTURE_JSON_BYTES } from '../capture/contract';
 import { captureObjectKey, CaptureIntegrityError, LocalCaptureStorage } from '../storage/captures';
 import { boundedCaptureJson, byteChunks, digestBytes, finalizeCapture, registerCapture, uploadCaptureFile } from './captures';
 import { POST as registerRoute } from '../../app/api/captures/route';
@@ -58,8 +58,8 @@ test('manifest rejects unsafe paths, missing/duplicate files, limits and invalid
   const largeFrames = manifest.files.map(file => file.path === 'frames.json'
     ? { ...file, byteSize: MAX_CAPTURE_JSON_BYTES + 1 } : file);
   assert.equal(captureManifest.safeParse({ ...manifest, files: largeFrames }).success, false);
-  const tooManyBytes = [...manifest.files, ...Array.from({ length: 9 }, (_, i) => ({
-    path: `frames/extra-${i}.jpg`, byteSize: 32 * 1024 * 1024, sha256: 'a'.repeat(64),
+  const tooManyBytes = [...manifest.files, ...Array.from({ length: Math.ceil(MAX_CAPTURE_BYTES / MAX_CAPTURE_FILE_BYTES) + 1 }, (_, i) => ({
+    path: `frames/extra-${i}.jpg`, byteSize: MAX_CAPTURE_FILE_BYTES, sha256: 'a'.repeat(64),
   }))];
   assert.equal(captureManifest.safeParse({ ...manifest, files: tooManyBytes }).success, false);
 });
