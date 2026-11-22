@@ -105,8 +105,9 @@ voxelized NavMesh; it does not promise an exact continuous-surface geodesic.
 
 Recast is lazy-loaded when routing is enabled. Generated query/mesh and debug geometry are disposed
 on disable, replacement and unmount; cancelled builds dispose their result. Geometry budgets support up to 2 million vertices and 2 million triangles;
-voxel budgets remain 2 million horizontal cells,
-30 million bounding-volume voxels, 2048 route polygons. Generation still runs on the
+voxel budgets remain 2 million horizontal cells and 2048 route polygons. There is no
+bounding-volume cap: Recast stores only occupied spans, so multi-storey scans build
+(a 48 × 45 × 9.5 m two-storey capture builds in about 0.3 s). Generation still runs on the
 main thread after WASM initialization. Large captures may exceed the budget or pause
 the UI and need worker/tiled generation in a later change. Alignment verification
 asserts the coordinate frame, not that every observed surface is traversable.

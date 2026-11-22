@@ -37,6 +37,8 @@ def read_glb(path):
         sys.exit(f"{path} is not a binary glTF 2.0 file")
     json_len = struct.unpack_from("<I", data, 12)[0]
     doc = json.loads(data[20:20 + json_len])
+    if doc.get("extensionsRequired"):
+        sys.exit(f"{path} uses {', '.join(doc['extensionsRequired'])}. Run this on the uncompressed scan, then compress.")
     offset = 20 + json_len
     binary = b""
     if offset + 8 <= len(data):

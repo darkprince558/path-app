@@ -40,7 +40,7 @@ async function pick(page: Page, bounds: Sphere, p: { x: number; y: number; z: nu
   const camera = new PerspectiveCamera(55, rect.width / rect.height);
   const vertical = MathUtils.degToRad(55), horizontal = 2 * Math.atan(Math.tan(vertical / 2) * rect.width / rect.height);
   const distance = bounds.radius / Math.sin(Math.min(vertical, horizontal) / 2) * 1.1;
-  camera.position.copy(bounds.center).add(new Vector3(0, distance * 0.4, distance * 0.92));
+  camera.position.copy(bounds.center).add(new Vector3(0, distance * 0.77, distance * 0.64));
   camera.lookAt(bounds.center); camera.updateMatrixWorld();
   const screen = new Vector3(p.x, p.y, p.z).project(camera);
   await canvas.dblclick({ position: { x: (screen.x + 1) * rect.width / 2, y: (1 - screen.y) * rect.height / 2 } });
@@ -57,6 +57,7 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole("status")).toContainText("Start selected");
     await pick(page, bounds, spacePoint({ x: 4, y: 0, z: -2 }));
     await expect(page.getByRole("status")).toContainText(/Route ready · 10\.\d+ m/);
+    await page.getByText("Route options", { exact: true }).click();
     await page.getByLabel("Show NavMesh debug").check();
     await expect.poll(async () => {
       const png = (await page.locator("canvas").screenshot()).toString("base64");

@@ -1,5 +1,6 @@
 import { Box3, Group, LoadingManager, Material, Matrix4, Mesh, Texture } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 
 export class ModelParseError extends Error {
   constructor(message: string) {
@@ -108,7 +109,10 @@ export async function parseGlb(buffer: ArrayBuffer, transform: readonly number[]
     }
     return url;
   });
-  const gltf = await new GLTFLoader(manager).parseAsync(buffer, "");
+  // Compressed scans (EXT_meshopt_compression + KHR_mesh_quantization, e.g. from
+  // `gltf-transform optimize --compress meshopt`) are 5-10x smaller to download. The decoder's
+  // WebAssembly is bundled in the module, so nothing is fetched from elsewhere.
+  const gltf = await new GLTFLoader(manager).setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer, "");
   const object = new Group();
   // Which tool wrote the file: lib/scan-surfaces.ts treats Path Capture scans' vertex colours as camera sRGB.
   const generator = (gltf.asset as { generator?: unknown } | undefined)?.generator;
