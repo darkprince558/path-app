@@ -172,3 +172,25 @@ for (const width of [1280, 390]) {
     expect(errors).toEqual([]);
   });
 }
+
+test("a GLB can be uploaded as Public and its sharing is not locked afterwards", async ({ page }) => {
+  const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+  await mockScan(page, { owner: true, unverified: true, upload: true });
+  let uploadedVisibility: string | null = null;
+  await page.route("**/api/scans?*", route => {
+    uploadedVisibility = new URL(route.request().url()).searchParams.get("visibility");
+    return route.fallback();
+  });
+  await page.goto("/maps/new");
+  await page.locator('input[type="file"]').setInputFiles({ name: "Hallway.glb", mimeType: "model/gltf-binary", buffer: Buffer.from(roomGlb()) });
+  const upload = page.getByRole("group", { name: /Who can open it/ });
+  await expect(upload.getByRole("radio")).toHaveCount(3);
+  for (const radio of await upload.getByRole("radio").all()) await expect(radio).toBeEnabled();
+  await upload.getByRole("radio", { name: /Public/ }).check();
+  await page.getByRole("button", { name: "Upload and get link" }).click();
+  await expect(page.getByRole("link", { name: "Next: label places" })).toBeVisible();
+  expect(uploadedVisibility).toBe("public");
+  await expect(page.getByText(/before sharing|start private/i)).toHaveCount(0);
+  for (const radio of await page.getByRole("radio").all()) await expect(radio).toBeEnabled();
+  expect(errors).toEqual([]);
+});

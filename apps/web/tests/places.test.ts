@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cleanPlaceName, readPlace, sharingLockReason, sortPlaces } from "../src/lib/place-rules.ts";
+import { cleanPlaceName, readPlace, sortPlaces } from "../src/lib/place-rules.ts";
 
 test("place names are trimmed, collapsed and bounded", () => {
   assert.equal(cleanPlaceName("  Room   214 "), "Room 214");
@@ -26,8 +26,3 @@ test("places sort by name, numbers in order", () => {
   assert.deepEqual(sortPlaces([p("1", "Room 10"), p("2", "Exit"), p("3", "Room 2")]).map((x) => x.name), ["Exit", "Room 2", "Room 10"]);
 });
 
-test("sharing is locked only while a map has no places", () => {
-  assert.equal(sharingLockReason(null), null); // not loaded or not supported: don't block
-  assert.match(sharingLockReason(0) ?? "", /Label at least one place/);
-  assert.equal(sharingLockReason(1), null);
-});
