@@ -1,6 +1,19 @@
 import XCTest
 
 final class PathCaptureUITests: XCTestCase {
+  func testAccountIsAccessibleFromScanner() throws {
+    let app = XCUIApplication()
+    app.launch()
+    app.buttons["Account"].tap()
+    XCTAssertTrue(app.navigationBars["Account"].waitForExistence(timeout: 5))
+    if !app.buttons["Log Out"].exists {
+      XCTAssertTrue(app.buttons["Log In"].waitForExistence(timeout: 5))
+      XCTAssertTrue(app.buttons["Sign Up"].exists)
+    }
+    app.navigationBars.buttons.element(boundBy: 0).tap()
+    XCTAssertTrue(app.staticTexts["Scan a space"].waitForExistence(timeout: 5))
+  }
+
   func testOfflineScanReview() throws {
     let app = XCUIApplication()
     app.launch()

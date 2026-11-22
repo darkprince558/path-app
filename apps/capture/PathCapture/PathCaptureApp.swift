@@ -7,6 +7,7 @@ import VisionKit
   var body: some SwiftUI.Scene { WindowGroup { CaptureScreen() } }
 }
 private struct CaptureScreen: View {
+  @StateObject private var account = CaptureAccount()
   @StateObject private var scanner = CaptureController()
   @Environment(\.scenePhase) var phase
   @State private var pairing = false
@@ -73,6 +74,11 @@ private struct CaptureScreen: View {
               }
             }
             Section {
+              NavigationLink {
+                AccountView(account: account)
+              } label: {
+                Label("Account", systemImage: "person.crop.circle")
+              }
               Button {
                 pairing = true
               } label: {
@@ -83,7 +89,7 @@ private struct CaptureScreen: View {
         }
       }.navigationTitle(scanner.phase == .recording ? "Scanning" : "Path Capture")
         .navigationBarTitleDisplayMode(.inline)
-    }.onChange(of: phase) { _, p in if p == .background { scanner.stop(interrupted: true) } }.sheet(
+    }.task { await account.restore() }.onChange(of: phase) { _, p in if p == .background { scanner.stop(interrupted: true) } }.sheet(
       item: $scanner.selected, onDismiss: { scanner.reload() }
     ) { record in ScanDetail(record: record, mac: $paired) }.sheet(isPresented: $pairing) {
       PairMac(mac: $paired)
