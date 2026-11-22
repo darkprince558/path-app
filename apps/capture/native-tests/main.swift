@@ -222,3 +222,30 @@ replay.stop(reason: nil)
 replay.stop(reason: nil)
 precondition(replay.phase == .finished && replay.savedSections == walkSections)
 precondition(replay.liveMap.distance == accumulated.distance && replay.liveMap.tiles == accumulated.tiles)
+
+let viewport = CGSize(width: 320, height: 160)
+var drawingCamera = MapCamera(centre: CGPoint(x: -3, y: 7), metresPerPoint: 0.05,
+                              rotation: 0.71, viewport: viewport)
+let finger = CGPoint(x: 54, y: 33)
+let anchor = drawingCamera.unproject(finger)
+func close(_ lhs: CGPoint, _ rhs: CGPoint) -> Bool { hypot(lhs.x - rhs.x, lhs.y - rhs.y) < 0.00001 }
+precondition(close(drawingCamera.project(anchor), finger))
+let movedFinger = CGPoint(x: 92, y: 51)
+drawingCamera.change(from: finger, to: movedFinger, zoom: 1.65, turn: 0.4)
+precondition(close(drawingCamera.project(anchor), movedFinger))
+drawingCamera.change(from: finger, to: finger, zoom: 1e8, turn: 0)
+precondition(abs(drawingCamera.metresPerPoint * viewport.width - 2) < 0.00001)
+drawingCamera.change(from: finger, to: finger, zoom: 1e-8, turn: 0)
+precondition(abs(drawingCamera.metresPerPoint * viewport.width - 200) < 0.00001)
+let corridorBounds = CGRect(x: -35, y: 10, width: 84, height: 9)
+let fit = MapCamera.fitting(corridorBounds, rotation: 1.1, viewport: viewport)
+for x in [corridorBounds.minX, corridorBounds.maxX] {
+  for y in [corridorBounds.minY, corridorBounds.maxY] {
+    precondition(CGRect(origin: .zero, size: viewport).contains(fit.project(CGPoint(x: x, y: y))))
+  }
+}
+var adjacentTiles = WalkMap()
+adjacentTiles.tiles = [SIMD2(-2,3), SIMD2(-1,3), SIMD2(1,3)]
+let layer = WalkLayer(adjacentTiles)
+precondition(layer.rows[3]?.count == 2 && layer.rows[3]?.first?.width == 0.5)
+print("Map projection, pivot, zoom limits, rotated fit and tile runs passed.")

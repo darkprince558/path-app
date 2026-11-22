@@ -24,7 +24,9 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
   @Published private(set) var liveMap = WalkMap()
   @Published private(set) var savedSections = 0
   @Published private(set) var sectionNumber = 1
-  private var completedMap = WalkMap()
+  private var completedLayers = [WalkLayer]()
+  private var activeLayer = WalkLayer(WalkMap())
+  var mapLayers: [WalkLayer] { completedLayers + [activeLayer] }
   private var sectionMap = WalkMap()
   private var walkID = UUID()
   private var walkStart: Double?
@@ -64,7 +66,8 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
     sectionNumber = 1
     savedSections = 0
     saving.removeAll()
-    completedMap = WalkMap()
+    completedLayers = []
+    activeLayer = WalkLayer(WalkMap())
     sectionMap = WalkMap()
     liveMap = WalkMap()
     lastStorageCheck = -.infinity
@@ -164,9 +167,8 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
       instruction = "This area is already on the map. Sweep toward a dark edge to add coverage."
     }
     if frame.timestamp - lastMapPublish >= 0.4 {
-      var combined = completedMap
-      combined.include(sectionMap)
-      liveMap = combined
+      activeLayer = WalkLayer(sectionMap)
+      liveMap = sectionMap
       lastMapPublish = frame.timestamp
     }
     if frame.timestamp - lastStorageCheck > 5 {
@@ -198,8 +200,10 @@ final class CaptureController: NSObject, ScanSource, ARSessionDelegate {
     let job = saveSection(previous, reason: nil, prioritizeDepth: prioritizeDepth)
     saving[section] = job
     let id = walkID
-    completedMap.include(sectionMap)
+    completedLayers.append(WalkLayer(sectionMap))
     sectionMap = sectionMap.nextSection()
+    activeLayer = WalkLayer(sectionMap)
+    liveMap = sectionMap
     take = next
     sectionNumber += 1
     Task { @MainActor in

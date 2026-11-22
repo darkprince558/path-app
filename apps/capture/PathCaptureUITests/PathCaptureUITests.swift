@@ -1,6 +1,17 @@
 import XCTest
 
 final class PathCaptureUITests: XCTestCase {
+  func testTrySimulatedWalkFromLibrary() throws {
+    let app = XCUIApplication()
+    app.launch()
+    let replay = app.buttons["Try a simulated walk"]
+    XCTAssertTrue(replay.waitForExistence(timeout: 10))
+    replay.tap()
+    XCTAssertTrue(app.buttons["Finish walk"].waitForExistence(timeout: 5))
+    app.buttons["Finish walk"].tap()
+    XCTAssertTrue(app.navigationBars["Walk review"].waitForExistence(timeout: 5))
+  }
+
   func testScanScreenReplay() throws {
     let app = XCUIApplication()
     app.launchArguments = ["-PathCaptureReplay", "hallway"]
@@ -13,6 +24,16 @@ final class PathCaptureUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["scan-distance"].exists)
     app.buttons["scan-map"].tap()
     XCTAssertTrue(app.buttons["Collapse map"].waitForExistence(timeout: 5))
+    let surface = app.descendants(matching: .any)["map-surface"].firstMatch
+    XCTAssertTrue(surface.waitForExistence(timeout: 5))
+    surface.swipeLeft()
+    XCTAssertTrue(app.buttons["Recenter"].waitForExistence(timeout: 5))
+    surface.pinch(withScale: 1.6, velocity: 1)
+    surface.rotate(0.5, withVelocity: 1)
+    app.buttons["Recenter"].tap()
+    XCTAssertFalse(app.buttons["Recenter"].exists)
+    app.buttons["Whole walk"].tap()
+    XCTAssertTrue(app.buttons["Recenter"].exists)
     app.buttons["Collapse map"].tap()
     app.buttons["scan-layout-toggle"].tap()
     XCTAssertFalse(app.buttons["scan-map"].exists)

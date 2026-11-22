@@ -28,6 +28,7 @@ final class ReplaySource: ScanSource {
   let script: ReplayScript
   @Published private(set) var phase = ScanPhase.recording
   @Published private(set) var liveMap = WalkMap()
+  private(set) var mapLayers = [WalkLayer]()
   private(set) var tracking = TrackingQuality.waiting
   private(set) var duration = 0.0
   private(set) var sectionNumber = 1
@@ -80,6 +81,7 @@ final class ReplaySource: ScanSource {
     }
     var map = completed
     map.include(section)
+    mapLayers = [WalkLayer(map)]
     liveMap = map
   }
 
