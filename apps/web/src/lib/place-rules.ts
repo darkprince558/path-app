@@ -55,8 +55,3 @@ export function sortPlaces(places: Place[]): Place[] {
   return [...places].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }) || a.id.localeCompare(b.id));
 }
 
-/** Why sharing beyond Private is locked, or null when the map has enough places. */
-export function sharingLockReason(placeCount: number | null): string | null {
-  if (placeCount === null || placeCount > 0) return null;
-  return "Label at least one place (for example the entrance) before sharing, so visitors know where things are.";
-}
