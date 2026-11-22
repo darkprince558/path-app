@@ -10,6 +10,10 @@ Use this folder for knowledge a teammate will still need after your branch merge
 | Public scans appear in discovery. Unlisted scans open by link. Private scans require an owner or invited account. | Map owners choose an audience for both the scene and its underlying files. | [Sharing rules](../docs/architecture.md#sharing) |
 | GitHub holds the source and team checkpoints. The live site and scan storage need a runtime of their own. | A guest needs an HTTPS URL they can open without access to the team repository. Vultr is a deployment proposal. | [Deployment plan](../docs/deployment.md) |
 
+## iOS scanner account
+
+The [scanner sign-in instructions](../apps/capture/README.md#ios-scanner-sign-in) give Anish and Krishna the native application's callback and logout URI. The iPhone 16 Pro simulator running iOS 18.6 reached the hosted login form and returned signed out after cancellation. The [scanner check](../scripts/check-ios-scanner.sh) exercises account navigation and local review of a synthetic scan. Use a test account to verify the return with a profile, restoration after relaunch and logout.
+
 ## Calibration handoff
 
 The [calibration trace and repair](../docs/scan-calibration.md) records why capture
