@@ -365,6 +365,18 @@
     stroke-dashoffset: -6;
   }
 }
+/* Landing "Under the hood": depth dots appear in a sweep, like a scan passing over the room. */
+.pipe-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pipe-dot 0.5s ease-out both;
+}
+@keyframes pipe-dot {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
 
 /*
  * Reduced motion: on when the person picks "Reduce motion" in Settings, or when they
