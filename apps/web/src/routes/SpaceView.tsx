@@ -1,3 +1,4 @@
+import { AccountControls, useAuth } from "../lib/auth";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { automaticNavigationIssue } from "../lib/automatic-navigation";
@@ -5,14 +6,15 @@ import NavigationPanel from "../components/NavigationPanel";
 import SpaceEditor, { type PickedPoint } from "../components/SpaceEditor";
 import { LoadingPanel } from "../components/StatusPanel";
 import { validateGraph, type Route } from "../lib/navigation";
-import { coordinates, currentUser, request, scanAligned, scanBytes, type Graph, type SavedPath, type Scan, type Space, type User } from "../lib/space-api";
+import { coordinates, request, scanAligned, scanBytes, type Graph, type SavedPath, type Scan, type Space } from "../lib/space-api";
 
 const SpaceViewer = lazy(() => import("../components/SpaceViewer"));
-type Data = { space: Space; scans: Scan[]; graph: Graph; paths: SavedPath[]; user: User | null };
+type Data = { space: Space; scans: Scan[]; graph: Graph; paths: SavedPath[] };
 type Model = { id: string; name: string; bytes: ArrayBuffer; transform: number[] };
 
 export default function SpaceView() {
   const { spaceId = "" } = useParams();
+  const { user } = useAuth();
   const [search] = useSearchParams();
   const [data, setData] = useState<Data | null>(null);
   const [models, setModels] = useState<Model[]>([]);
@@ -37,12 +39,12 @@ export default function SpaceView() {
       request<{ space: Space }>(`/api/spaces/${encodeURIComponent(spaceId)}`, options),
       request<{ scans: Scan[] }>(`/api/spaces/${encodeURIComponent(spaceId)}/scans`, options),
       request<Graph>(`/api/spaces/${encodeURIComponent(spaceId)}/graph`, options),
-      request<{ paths: SavedPath[] }>("/api/paths", options), currentUser(controller.signal),
-    ]).then(([s, scans, graph, paths, user]) => {
+      request<{ paths: SavedPath[] }>("/api/paths", options),
+    ]).then(([s, scans, graph, paths]) => {
       if (controller.signal.aborted) return;
       if (graph.spaceId !== spaceId || scans.scans.some(scan => scan.spaceId !== spaceId)) throw new Error("The response contains data for another space.");
       validateGraph(graph);
-      setData({ space: s.space, scans: scans.scans, graph, paths: paths.paths.filter(p => p.spaceId === spaceId), user });
+      setData({ space: s.space, scans: scans.scans, graph, paths: paths.paths.filter(p => p.spaceId === spaceId) });
       document.title = `${s.space.name} · !404`;
     }).catch(e => { if (!controller.signal.aborted) { setError(e.message); setData(null); setModels([]); } });
     return () => controller.abort();
@@ -57,19 +59,20 @@ export default function SpaceView() {
       .catch(e => { if (!controller.signal.aborted) { setAssetError(e.message); setLoading(false); } });
     return () => controller.abort();
   }, [readyScans, assetAttempt]);
-  const owner = !!data?.user && data.user.id === data.space.ownerId;
+  const owner = !!data && !!user && user.id === data.space.ownerId;
   const frame = data ? coordinates(data.space) : null;
   const alignmentWarning = data?.scans.some(s => s.status === "ready" && s.format === "glb" && !scanAligned(s, data.space)) ?? false;
   const navigationUnavailable = alignmentWarning || frame?.units !== "metres" ? "Automatic routing requires every visible scan aligned in calibrated metres." : readyScans.map(s => automaticNavigationIssue(s.metadata)).find(Boolean);
   return <main className="flex h-dvh flex-col bg-night md:flex-row" aria-label="3D space navigation">
     <aside className="z-10 max-h-[46dvh] shrink-0 space-y-4 overflow-y-auto bg-paper p-4 text-forest md:max-h-none md:w-80">
       <header className="flex items-center justify-between"><Link className="font-display text-2xl font-black" to="/spaces">!404</Link><button className="underline" onClick={() => { refresh(); setAssetAttempt(n => n + 1); }}>Refresh</button></header>
+      <AccountControls />
       {error && <p role="alert">This space is unavailable or private. {error}</p>}
       {!data && !error && <p role="status">Opening space…</p>}
       {data && <>
         <h1 className="text-xl font-bold">{data.space.name}</h1>
         <p className="text-sm text-muted">{frame?.units === "metres" ? "Space coordinates in metres; verify each scan's calibration." : "Relative scale — physical distances have not been established."}</p>
-        {alignmentWarning ? <p role="status" className="text-sm text-rust">Navigation is hidden until the owner verifies every visible scan's alignment and units.</p> : <div hidden={automatic}><NavigationPanel space={data.space} graph={data.graph} paths={data.paths} user={data.user} initialPath={search.get("path") ?? undefined} onRoute={onRoute} onSaved={refresh} /></div>}
+        {alignmentWarning ? <p role="status" className="text-sm text-rust">Navigation is hidden until the owner verifies every visible scan's alignment and units.</p> : <div hidden={automatic}><NavigationPanel space={data.space} graph={data.graph} paths={data.paths} user={user} initialPath={search.get("path") ?? undefined} onRoute={onRoute} onSaved={refresh} /></div>}
         <label className="flex gap-2"><input type="checkbox" checked={showGraph} onChange={e => setShowGraph(e.target.checked)} />Show navigation graph</label>
         <button className="secondary-button" onClick={() => setResetToken(n => n + 1)}>Reset view</button>
         <label className="editor-grid">Space link<input readOnly value={`${window.location.origin}/spaces/${spaceId}`} onFocus={e => e.target.select()} /></label>

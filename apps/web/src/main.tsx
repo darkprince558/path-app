@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Navigate } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import "./index.css";
+import { AuthProvider, RequireAuth } from "./lib/auth";
 import AppLayout from "./components/AppLayout";
 import { PreferencesProvider } from "./lib/preferences";
 import Community from "./routes/Community";
@@ -24,9 +25,11 @@ const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
-      { path: "/maps", element: <MyMaps /> },
-      { path: "/maps/new", element: <Upload /> },
-      { path: "/maps/:shareId", element: <ManageMap /> },
+      { element: <RequireAuth />, children: [
+        { path: "/maps", element: <MyMaps /> },
+        { path: "/maps/new", element: <Upload /> },
+        { path: "/maps/:shareId", element: <ManageMap /> },
+      ] },
       { path: "/community", element: <Community /> },
       { path: "/settings", element: <Settings /> },
     ],
@@ -46,7 +49,7 @@ if (!root) throw new Error("Missing #root element");
 createRoot(root).render(
   <StrictMode>
     <PreferencesProvider>
-      <RouterProvider router={router} />
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
     </PreferencesProvider>
   </StrictMode>,
 );

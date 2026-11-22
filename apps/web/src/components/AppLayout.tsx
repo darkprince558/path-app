@@ -2,7 +2,7 @@ import { Map as MapIcon, Plus, Settings as SettingsIcon, Users } from "lucide-re
 import { useEffect, useState, type ComponentType } from "react";
 import { Link, NavLink, Outlet } from "react-router";
 import { Toaster } from "sonner";
-import { currentUser } from "../lib/session";
+import { AccountControls } from "../lib/auth";
 import { Wordmark } from "./Logo";
 
 interface NavItem {
@@ -17,23 +17,11 @@ const NAV: NavItem[] = [
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
-function Avatar({ initials, className = "" }: { initials: string; className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`grid size-9 shrink-0 place-items-center rounded-full bg-sage font-bold text-ink ${className}`}
-    >
-      {initials}
-    </span>
-  );
-}
-
 /**
  * Signed-in shell. Desktop: forest sidebar (My maps, Community, New map, account).
  * Phone: slim top bar plus a bottom tab bar, since a sidebar doesn't fit at 375px.
  */
 export default function AppLayout() {
-  const user = currentUser();
 
   return (
     <div className="min-h-dvh bg-paper md:flex">
@@ -68,8 +56,7 @@ export default function AppLayout() {
           New map
         </Link>
         <div className="mt-auto flex items-center gap-3 px-1">
-          <Avatar initials={user.initials} />
-          <span className="truncate font-bold">{user.name}</span>
+          <AccountControls />
         </div>
       </aside>
 
@@ -82,8 +69,7 @@ export default function AppLayout() {
           <Link to="/settings" aria-label="Settings" className="grid size-11 place-items-center rounded-full text-muted">
             <SettingsIcon className="size-5" aria-hidden />
           </Link>
-          <span className="sr-only">Signed in as {user.name}</span>
-          <Avatar initials={user.initials} className="size-8 text-sm" />
+          <AccountControls />
         </div>
       </header>
 

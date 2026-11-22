@@ -2,6 +2,10 @@
 
 Arielle owns the website: the signed-in home, upload and sharing, and the guest 3D viewer. Build the website here. Start with an upload control, the three visibility choices, a copy-link action and a guest route at `/s/<shareId>`. Display upload, loading and processing failures where they occur.
 
+## Authentication
+
+The existing Next.js backend owns Auth0. React uses `AuthProvider` / `useAuth` and `/api/users/me`, with full-page Sign in / Sign out links. My maps and owner pages require a verified session; Community and authorized guest views work signed out. API requests use same-origin cookies and clear account state on 401. No frontend SDK, tokens or secrets are needed. Run `npm run test:auth:browser` for synthetic browser coverage. See the [production setup and real-login checklist](../../docs/auth0-production.md).
+
 ## Automatic routes from approved scans
 
 The existing space and shared-GLB viewers now have **Automatic route** and
@@ -68,9 +72,9 @@ py -3 -B tools/scan_mock.py --port 8001        # from the repo root (or: make de
 cd apps/web && pnpm install && API_TARGET=http://127.0.0.1:8001 pnpm dev
 ```
 
-To try the landmark direction screens without Sam's backend, start the mock with `--demo-cues`. Every upload then gets two draft directions to review on Manage map; approved ones appear under **Directions** on the guest map.
+The mock with `--demo-cues` still supplies synthetic directions through fixture HTTP calls. Interactive owner screens now require the Next.js Auth0 session.
 
-Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), choose `fixtures/venue/scene.ply`, pick a visibility and upload. The page shows the guest link, a copy button and a QR code, and lets you change visibility or private viewers afterwards. You can also upload with the curl command in the [API README](../../services/api/README.md). Then open `http://localhost:5173/s/<shareId>`. The guest page sends no `X-Dev-User` header, so it is a signed-out guest. Owner calls (upload, sharing) send `X-Dev-User: demo-owner` in development only (override with `VITE_DEV_USER`). A production build sends none, because the hosted API reads the signed-in session. `pnpm build` type-checks and writes static files to `dist/`. `pnpm preview` serves them with the same proxy on port 4173. The host must serve `index.html` for `/s/<shareId>`.
+With the real authenticated backend, open `http://localhost:5173/maps` (Your maps). The legacy upload form at **New map** (`/maps/new`) lets you choose `fixtures/venue/scene.ply`, pick a visibility and upload. The page shows the guest link, a copy button and a QR code, and lets you change visibility or private viewers afterwards. You can also upload with the curl command in the [API README](../../services/api/README.md). Then open `http://localhost:5173/s/<shareId>`. The website uses the backend session in every build and sends no `X-Dev-User` header. The Python mock supports fixture HTTP tests; its stand-in accounts no longer sign the React app in. `pnpm build` type-checks and writes static files to `dist/`. `pnpm preview` serves them with the same proxy on port 4173. The host must serve `index.html` for `/s/<shareId>`.
 
 | Path | What it does |
 | --- | --- |
@@ -85,7 +89,7 @@ Open `http://localhost:5173/maps` (Your maps), then **New map** (`/maps/new`), c
 | `src/lib/cues.ts` | Cue client for Sam's proposed endpoints: `GET /api/scan-revisions/<id>/cues` (owner), `PATCH /api/cues/<id>` with `{instruction?, status?}`, and `GET /api/shares/<id>/cues` (guests, approved only; any failure just hides directions). |
 | `src/components/ConfirmDialog.tsx` | Modal confirmation on `<dialog>`: focus starts on Cancel, Escape cancels, focus returns afterward. |
 | `src/routes/Community.tsx` | `/community`: public maps from `GET /api/scans/public` with their names, and loading placeholders, empty and error states. |
-| `src/lib/session.ts` | Stand-in signed-in account for development (`VITE_DEV_USER`, `VITE_DEV_NAME`) until real sign-in exists. |
+| `src/lib/auth.tsx` | Shared backend session context, account controls and protected map routes; loading, retry and signed-out states. |
 | `src/lib/preferences.tsx` | Settings kept on the device (no account needed): text size, motion, and the "Avoid stairs" default. `useTripAvoidStairs` gives each map a per-trip switch that starts from the default and doesn't change it. |
 | `src/routes/Settings.tsx` | `/settings`: Text size (Default, Large, Extra large), Motion (Match my device, Reduce, Allow), Avoid stairs by default. |
 | `src/routes/Upload.tsx` | `/maps/new` (`/upload` redirects here): an optional name (suggested from the file name), choose a PLY or GLB (checked for type, size and header before sending), pick Public, Unlisted or Private, upload with progress and cancel. Uses the mock's `POST /api/scans`; the Next.js API receives scans from the iPhone app instead. |

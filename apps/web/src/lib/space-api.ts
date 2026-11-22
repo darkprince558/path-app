@@ -1,3 +1,4 @@
+import { apiFetch } from "./http.ts";
 export type Visibility = "public" | "private";
 export type Position = { x: number; y: number; z: number };
 export type CoordinateSystem = { units: "relative" | "metres"; upAxis: "Y"; calibrated: boolean };
@@ -15,7 +16,7 @@ export class ApiError extends Error {
 }
 
 export async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...options });
+  const response = await apiFetch(url, { credentials: "same-origin", cache: "no-store", ...options });
   const value = await response.json().catch(() => null);
   if (!response.ok) throw new ApiError(response.status, value?.error?.message ?? `Request failed (${response.status}).`);
   return value as T;
@@ -23,11 +24,6 @@ export async function request<T>(url: string, options: RequestInit = {}): Promis
 
 export function send<T>(url: string, method: string, value: unknown): Promise<T> {
   return request(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) });
-}
-
-export async function currentUser(signal?: AbortSignal): Promise<User | null> {
-  try { return (await request<{ user: User }>("/api/users/me", { signal })).user; }
-  catch (error) { if (error instanceof ApiError && error.status === 401) return null; throw error; }
 }
 
 export function coordinates(space: Space): CoordinateSystem {
@@ -54,7 +50,7 @@ export async function scanBytes(scan: Scan, signal: AbortSignal): Promise<ArrayB
   // Asset URLs are always the same-origin, authorized API route for this scan.
   const expected = `/api/scans/${encodeURIComponent(scan.id)}/file`;
   if (scan.downloadPath !== expected) throw new Error(`Invalid download path for ${scan.name}.`);
-  const response = await fetch(expected, { signal, credentials: "same-origin", cache: "no-store" });
+  const response = await apiFetch(expected, { signal, credentials: "same-origin", cache: "no-store" });
   if (!response.ok) throw new ApiError(response.status, `Could not download ${scan.name} (${response.status}).`);
   const bytes = await response.arrayBuffer();
   if (bytes.byteLength > 32 * 1024 * 1024) throw new Error("This scan exceeds the 32 MiB viewer limit.");
