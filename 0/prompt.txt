@@ -1,0 +1,33 @@
+Task (from the session that started this one):
+Background (from the session that started this one):
+Not 404 (not404.vodka) is a Hack Western 13 project due Sun Nov 22 2026, 9:00 a.m. Toronto: people scan a place with a LiDAR iPhone and share a 3D map by link or QR, with automatic walking routes. Arielle (frontend owner, GitHub tetearie054/AryBaum, works on Windows, no Mac) wants plain-language explanations, with any jargon explained in brackets and how to see the result. Stack: Vite, React 19, TypeScript, Tailwind v4, React Router, lucide-react icons, three.js (only for the 3D viewer, not needed here). The landing page is in `apps/web/src/landing/` and already has a hero, a problem loop, a team section and a Join section. Teammates: Sam (API, Auth0, uploads), Krishna (routes, places, cues), Anish (iPhone scanner app and CPU processor). Never commit secrets; stage only the files you change.
+
+Task:
+Add a short "how it works" pipeline section to the Not 404 landing page (`apps/web/src/landing/`, used by the `/` route in `apps/web/src/main.tsx`). Arielle wants a quick, uncluttered visual of the journey from scan to shared map, matching the existing landing sections' style (night/paper/sage/coral tokens in `apps/web/src/index.css`; look at how the existing problem loop and Join sections are built). Work on a new branch from the latest `origin/main` and chat with Arielle about the design as you go: show her a draft before polishing.
+
+Steps to show, in plain words, from what the codebase actually does (check the sources rather than trusting this list):
+1. Scan: the iPhone LiDAR scanner app (Path Capture, `apps/capture/`) walks a place and records a 3D mesh.
+2. Upload: the scan reaches the server (Sam's Next.js API in `services/api`, on a Vultr server; GLB uploads through the website, or capture bundles from the app).
+3. Process: the server checks and prepares the model; automatic walkable-floor routing (NavMesh, `apps/web/src/lib/navmesh.ts`) and optional landmark cues/places.
+4. Share: an unlisted, public or private link or QR code.
+5. Open anywhere: the website shows the 3D map in any browser, with a step-by-step route.
+
+Keep it to roughly 4–5 short steps with an icon each, one line of text per step, responsive at phone width (390 px) and desktop, accessible (headings, list semantics, reduced-motion respected). No new dependencies. Run `pnpm --dir apps/web exec tsc --noEmit` and `pnpm --dir apps/web test`, and check it in the browser at desktop and phone sizes. Ask Arielle before pushing; when she approves, she has been pushing straight to `main` (the server auto-deploys `main` to not404.vodka within about 2 minutes).
+
+Shared notes folder for this group of sessions (outside the repo; read siblings' notes there, leave hand-over notes or large findings there instead of pasting them into messages): C:\Users\tetea\AppData\Local\Claude-Data\claude_pzs8sxrjxfjjc\side-session-notes\local_5b9586c1-3751-4d9c-bb15-e58732e88daa
+
+---
+
+mmm not quite what i was thinking. I wanted a behind the scene on the back end like how the pipeline is. it would be more for people interested in the tech behind the scene, not just for the user. SO like how are things scanned, with those dots and stuff, then rendered with images etc...
+
+---
+
+Can you make the animations like tv slide show thing ui look more like the other section at the top? like less complicated?
+
+---
+
+wait no i liked the descriptions to the right of the media player, i just wanted the ui in the actual player/tv to be same sort of look
+
+---
+
+Yes, push to main
