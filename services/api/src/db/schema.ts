@@ -22,8 +22,11 @@ const metadata = () => jsonb('metadata').$type<Record<string, unknown>>().defaul
 export const users = pgTable('users', {
   id: id(), auth0Sub: text('auth0_sub').notNull().unique(),
   username: text('username').notNull(), displayName: text('display_name').notNull(),
+  // Verified Auth0 email, lower-cased, so owners can add people to private maps.
+  // Not unique: one person may sign in through more than one Auth0 connection.
+  email: text('email'),
   createdAt: createdAt(), updatedAt: updatedAt(),
-}, (t) => [uniqueIndex('users_username_unique').on(t.username)]);
+}, (t) => [uniqueIndex('users_username_unique').on(t.username), index('users_email_idx').on(t.email)]);
 
 export const spaces = pgTable('spaces', {
   id: id(), ownerId: uuid('owner_id').notNull().references(() => users.id),

@@ -217,8 +217,7 @@ export function uploadScan(options: {
 
 /**
  * Changes a map's name or visibility. Only the owner may. `mapId` comes from mapEditId().
- * Adding or removing viewers isn't offered yet: the Next.js API keeps grants by account
- * UUID, and a proper people picker comes after the demo.
+ * People are added and removed with addViewer() and removeViewer().
  */
 export async function updateMap(
   mapId: string,
@@ -297,3 +296,54 @@ async function fetchList<T>(path: string, signal?: AbortSignal): Promise<T[]> {
 export const fetchMyMaps = (signal?: AbortSignal) => fetchList<OwnedMap>("/api/scans/mine", signal);
 export const fetchSharedMaps = (signal?: AbortSignal) => fetchList<SharedMap>("/api/scans/shared", signal);
 
+
+/** Someone added to a private map. Only the map's owner receives these. */
+export interface MapViewer {
+  id: string;
+  displayName: string;
+  email: string | null;
+}
+
+/** Thrown when the server can't manage people (the local mock has no viewer routes). */
+export class ViewersUnavailableError extends Error {}
+
+async function viewerRequest(mapId: string, path: string, init: RequestInit, failed: string): Promise<MapViewer[]> {
+  let response: Response;
+  try {
+    response = await apiFetch(`/api/scans/${encodeURIComponent(mapId)}/viewers${path}`, init);
+  } catch {
+    throw new UploadError(`Couldn't reach the server. ${failed}`);
+  }
+  const text = await response.text();
+  if (response.ok) {
+    const viewers = (JSON.parse(text) as { viewers?: unknown }).viewers;
+    if (!Array.isArray(viewers)) throw new UploadError("The server's reply was missing the list of people. Reload to see it.");
+    return viewers as MapViewer[];
+  }
+  const message = readError(text);
+  let code: unknown;
+  try { code = (JSON.parse(text) as { error?: { code?: unknown } }).error?.code; } catch { /* not JSON */ }
+  // USER_NOT_FOUND carries a readable message; any other 404 means this server has no viewer routes.
+  if (response.status === 404 && code !== "USER_NOT_FOUND") throw new ViewersUnavailableError();
+  throw new UploadError(response.status === 400 || response.status === 404
+    ? message ?? failed
+    : response.status === 403 ? "Only the map's owner can change who can open it." : `The server answered ${response.status}. ${failed}`,
+  response.status);
+}
+
+/** GET /api/scans/<id>/viewers (owner only). `mapId` comes from mapEditId(). */
+export function listViewers(mapId: string): Promise<MapViewer[]> {
+  return viewerRequest(mapId, "", {}, "Couldn't load who can open this map.");
+}
+
+/** POST /api/scans/<id>/viewers {email}: adds every account with that verified email. */
+export function addViewer(mapId: string, email: string): Promise<MapViewer[]> {
+  return viewerRequest(mapId, "", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim() }),
+  }, "Nobody was added.");
+}
+
+/** DELETE /api/scans/<id>/viewers/<userId>. */
+export function removeViewer(mapId: string, userId: string): Promise<MapViewer[]> {
+  return viewerRequest(mapId, `/${encodeURIComponent(userId)}`, { method: "DELETE" }, "Their access didn't change.");
+}

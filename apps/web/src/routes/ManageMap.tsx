@@ -194,6 +194,7 @@ function ManageReady({
         initialVisibility={map.visibility}
         viewers={viewerNames(map)}
         heading="Link and QR code"
+        manageViewers
       />
 
       <CueReview shareId={map.shareId} revisionId={map.revisionId} />

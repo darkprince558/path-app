@@ -130,6 +130,25 @@ maps require ownership or a viewer grant. Changing visibility through
 The returned `id` is used for edits; `shareId` is used for guest links.
 No database migration is needed; the existing visibility enum includes unlisted.
 
+### Shared users on private maps
+
+The owner adds people to a map by the email they sign in with. Grants live in
+`scan_viewers`; `canReadScan` already lets a granted account open a private map, and
+`GET /api/scans/shared` lists it for them. Emails come from the website's Auth0 session
+and are stored in `users.email` (migration `0007_user_email`) only when Auth0 marks them
+verified, lower-cased, on every signed-in request. Someone who has never signed in on the
+website therefore cannot be found yet. Only the owner sees the list and its emails.
+
+| Request | Behavior |
+| --- | --- |
+| `GET /api/scans/<scanId>/viewers` | Owner only. `{viewers: [{id, displayName, email}]}`, sorted by name. |
+| `POST /api/scans/<scanId>/viewers` | Owner only. `{"email": "…"}` (case-insensitive) adds every account with that verified email and returns the new list. Adding twice is harmless. 404 `USER_NOT_FOUND` when no account has it; 400 for the owner's own email. |
+| `DELETE /api/scans/<scanId>/viewers/<userId>` | Owner only. Removes that grant and returns the new list. |
+
+Others get 403 (people who can open the map) or 404. A grant on a scan whose containing
+space is **private** is not enough on its own, because `canReadScan` checks the space
+first. Browser uploads use unlisted spaces, so this does not affect them.
+
 ## Python integration mock
 
 Sam owns the durable backend. The team can integrate against the local reference API now with Python 3.9+ and Make. From the repo root, run `make dev-api` in one terminal, then upload the fixture from another.

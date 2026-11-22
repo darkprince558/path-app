@@ -2,6 +2,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { shareUrl, updateSharing, UploadError, type Visibility } from "../lib/scans";
+import SharedPeople from "./SharedPeople";
 import VisibilityPicker, { visibilityDetail, visibilityLabel } from "./VisibilityPicker";
 
 const FOREST = "#2F4A3A";
@@ -19,21 +20,21 @@ export default function SharePanel({
   heading = "Your link is ready",
   footer,
   lockedReason,
+  manageViewers = false,
 }: {
   /** The ID edit calls take (mapEditId). */
   mapId: string;
   sharePath: string;
   initialVisibility: Visibility;
-  /**
-   * Names of people already added to a private map. Shown, not edited: adding and removing
-   * people waits for a proper people picker after the demo.
-   */
+  /** Names of people already added to a private map. */
   viewers?: string[];
   heading?: string;
   /** Extra actions under the sharing controls, e.g. "Upload another scan". */
   footer?: ReactNode;
   /** Why only Private can be chosen right now (no labelled places yet). */
   lockedReason?: string | null;
+  /** Owner can add and remove people by email (Manage map). Otherwise the names are read-only. */
+  manageViewers?: boolean;
 }) {
   const url = shareUrl(sharePath);
   const [saved, setSaved] = useState(initialVisibility);
@@ -41,6 +42,7 @@ export default function SharePanel({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [people, setPeople] = useState(viewers);
   const urlRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -70,8 +72,8 @@ export default function SharePanel({
       setSaved(result.visibility);
       const who =
         result.visibility === "private"
-          ? viewers.length
-            ? ` You and ${viewers.join(", ")} can open it.`
+          ? people.length
+            ? ` You and ${people.join(", ")} can open it.`
             : " Only you can open it."
           : "";
       setMessage({ tone: "ok", text: `Saved. This map is now ${visibilityLabel(result.visibility)}.${who}` });
@@ -154,7 +156,9 @@ export default function SharePanel({
       <fieldset className="grid gap-3">
         <legend className="mb-2 font-display text-xl font-extrabold">Change who can open it</legend>
         <VisibilityPicker name="share-visibility" value={visibility} onChange={setVisibility} disabled={saving} lockedReason={lockedReason} />
-        {visibility === "private" ? (
+        {visibility === "private" && manageViewers ? (
+          <SharedPeople mapId={mapId} fallbackNames={viewers} onNamesChange={setPeople} />
+        ) : visibility === "private" ? (
           <div className="grid gap-1 rounded-lg bg-surface px-4 py-3 ring-1 ring-forest/15">
             <p className="font-bold">People who can view</p>
             {viewers.length ? (
@@ -168,7 +172,7 @@ export default function SharePanel({
             ) : (
               <p>Just you.</p>
             )}
-            <p className="text-sm text-muted">Adding and removing people is coming soon.</p>
+            <p className="text-sm text-muted">Add people on Manage map.</p>
           </div>
         ) : null}
         <button

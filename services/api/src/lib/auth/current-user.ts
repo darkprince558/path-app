@@ -3,7 +3,7 @@ import { auth0 } from '../auth0';
 import { auth0Audience } from './config';
 import { UnauthorizedError } from './errors';
 import { verifyAccessToken } from './token';
-import { syncAuth0User, type AppUser } from './user-sync';
+import { syncAuth0User, verifiedEmail, type AppUser } from './user-sync';
 
 function bearerToken(request: Request) {
   const header = request.headers.get('authorization');
@@ -17,12 +17,14 @@ export async function requireAuthenticatedUser(request: Request): Promise<AppUse
   let token = bearerToken(request);
   let sessionSub: string | undefined;
   let sessionName: string | undefined;
+  let sessionEmail: string | undefined;
 
   if (token === null) {
     const session = await auth0.getSession();
     if (!session?.user.sub) throw new UnauthorizedError('Authentication required');
     sessionSub = session.user.sub;
     sessionName = session.user.name;
+    sessionEmail = verifiedEmail(session.user.email, session.user.email_verified);
     try {
       token = (await auth0.getAccessToken({ audience: auth0Audience() })).token;
     } catch {
@@ -43,5 +45,6 @@ export async function requireAuthenticatedUser(request: Request): Promise<AppUse
   if (sessionSub && sessionSub !== sub) throw new UnauthorizedError('Session does not match access token');
 
   const claimedName = typeof claims.name === 'string' ? claims.name : undefined;
-  return syncAuth0User(sub, sessionName || claimedName);
+  // Access tokens rarely carry email; the website session (scope includes email) does.
+  return syncAuth0User(sub, sessionName || claimedName, sessionEmail ?? verifiedEmail(claims.email, claims.email_verified));
 }
