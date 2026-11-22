@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { type Object3D } from "three";
-import { buildNavMesh, DEFAULT_AGENT, trianglesFromObject, type NavigationMesh, type Point } from "../lib/navmesh";
+import { buildNavMesh, DEFAULT_AGENT, MAX_NAV_VERTICES, MAX_NAV_TRIANGLES, trianglesFromObject, type NavigationMesh, type Point } from "../lib/navmesh";
+
+import { routeDirections } from "../lib/route-directions";
 
 export interface AutomaticState {
   navigation: NavigationMesh | null;
@@ -8,9 +10,9 @@ export interface AutomaticState {
   pick(point: Point): void;
 }
 
-/** Runs only after opt-in. Models already contain the approved scan-to-space transform. */
-export default function ScanNavigation({ objects, avoidStairs, onChange }: {
-  objects: Object3D[]; avoidStairs: boolean; onChange: (state: AutomaticState | null) => void;
+/** Models already contain their saved scan-to-space transform. */
+export default function ScanNavigation({ objects, avoidStairs, approximate = false, onChange }: {
+  objects: Object3D[]; avoidStairs: boolean; approximate?: boolean; onChange: (state: AutomaticState | null) => void;
 }) {
   const [navigation, setNavigation] = useState<NavigationMesh | null>(null);
   const [error, setError] = useState("");
@@ -28,7 +30,7 @@ export default function ScanNavigation({ objects, avoidStairs, onChange }: {
           const triangles = trianglesFromObject(object), offset = input.positions.length / 3;
           for (const value of triangles.positions) input.positions.push(value);
           for (const index of triangles.indices) input.indices.push(index + offset);
-          if (input.positions.length > 1_800_000 || input.indices.length > 600_000) throw new Error("Combined scans exceed the navigation geometry budget.");
+          if (input.positions.length > MAX_NAV_VERTICES * 3 || input.indices.length > MAX_NAV_TRIANGLES * 3) throw new Error("Combined scans exceed the navigation geometry budget.");
         }
         const value = await buildNavMesh(input, { ...DEFAULT_AGENT, step: avoidStairs ? 0 : DEFAULT_AGENT.step });
         created = value;
@@ -61,7 +63,12 @@ export default function ScanNavigation({ objects, avoidStairs, onChange }: {
       <button type="button" className="border rounded px-2 py-1" disabled={!navigation || !start} aria-pressed={pick === "destination"} onClick={() => setPick("destination")}>Set destination</button>
       <button type="button" className="border rounded px-2 py-1" onClick={() => { setStart(null); setEnd(null); setPick("start"); setPickError(""); }}>Clear route</button>
     </div>
-    {message ? <p role="alert">{message}</p> : <p role="status">{!navigation ? "Generating walkable floor…" : route?.ok ? `Route ready · ${route.distance.toFixed(2)} m` : start ? "Start selected. Choose a destination." : "Walkable floor ready. Choose a start."}</p>}
+    {message ? <p role="alert">{message}</p> : <p role="status">{!navigation ? "Generating walkable floor…" : route?.ok ? `Route ready · ${approximate ? "≈ " : ""}${route.distance.toFixed(2)} m` : start ? "Start selected. Choose a destination." : "Walkable floor ready. Choose a start."}</p>}
+    {route?.ok && <details className="text-sm">
+      <summary className="cursor-pointer py-1 font-bold">Step-by-step directions</summary>
+      <ol aria-label="Route directions" className="list-decimal pl-5">{routeDirections(route.points).map((step, i) => <li key={i}>{step}</li>)}</ol>
+    </details>}
+    {approximate && <p className="text-sm">Scale is unverified. This preview assumes the GLB uses metres and +Y up.</p>}
     <p className="text-xs">Preview from scan geometry · 0.30 m radius, 1.80 m height. Verify the route against the room.</p>
   </section>;
 }

@@ -39,6 +39,8 @@ export interface SpaceViewerProps {
   showGraph?: boolean;
   resetToken?: number;
   automaticNavigation?: boolean;
+  initialAutomaticNavigation?: boolean;
+  navigationApproximate?: boolean;
   navigationUnavailable?: string;
   avoidStairs?: boolean;
   onAutomaticChange?: (enabled: boolean) => void;
@@ -133,8 +135,8 @@ class ViewerBoundary extends Component<{ children: ReactNode; onError?: (message
 
 /** GLBs and overlays share one space frame. The parent owns authenticated downloads. */
 export default function SpaceViewer({ models, nodes, edges, route = [], showGraph = false,
-  resetToken = 0, onPick, onError, onReady, automaticNavigation = false, navigationUnavailable, avoidStairs = false, onAutomaticChange }: SpaceViewerProps) {
-  const [automatic, setAutomatic] = useState(false);
+  resetToken = 0, onPick, onError, onReady, automaticNavigation = false, initialAutomaticNavigation = false, navigationApproximate = false, navigationUnavailable, avoidStairs = false, onAutomaticChange }: SpaceViewerProps) {
+  const [automatic, setAutomatic] = useState(initialAutomaticNavigation);
   const [debug, setDebug] = useState(false);
   const [autoState, setAutoState] = useState<AutomaticState | null>(null);
   const enabled = automatic && automaticNavigation && !navigationUnavailable;
@@ -214,7 +216,7 @@ export default function SpaceViewer({ models, nodes, edges, route = [], showGrap
         onChange={e => { setAutomatic(e.target.checked); setAutoState(null); }} />Automatic route</label>
       {navigationUnavailable && <p className="text-sm">{navigationUnavailable}</p>}
       {enabled && !!objects.length && <Suspense fallback={<p role="status">Loading navigation…</p>}>
-        <ScanNavigation key={models.map(m => m.id).join(",")} objects={objects} avoidStairs={avoidStairs} onChange={setAutoState} />
+        <ScanNavigation key={models.map(m => m.id).join(",")} objects={objects} avoidStairs={avoidStairs} approximate={navigationApproximate} onChange={setAutoState} />
         <label className="mt-2 flex gap-2"><input type="checkbox" checked={debug} onChange={e => setDebug(e.target.checked)} />Show NavMesh debug</label>
       </Suspense>}
     </div>}

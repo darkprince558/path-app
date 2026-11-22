@@ -3,13 +3,17 @@ import { MathUtils, PerspectiveCamera, Sphere, Vector3 } from "three";
 import { parseGlb } from "../src/lib/glb";
 import { approvedMetadata, approvedTransform, roomGlb, spacePoint } from "./helpers/room-glb";
 
-async function mockScan(page: Page, options: { closed?: boolean; noFloor?: boolean; unverified?: boolean; denied?: boolean; owner?: boolean; legacy?: boolean } = {}) {
+async function mockScan(page: Page, options: { closed?: boolean; noFloor?: boolean; unverified?: boolean; denied?: boolean; owner?: boolean; legacy?: boolean; upload?: boolean } = {}) {
   const bytes = roomGlb(options);
   let scanMetadata: Record<string, unknown> = options.legacy
     ? { alignmentVerified: true, coordinateSystem: { units: "relative", upAxis: "Y", calibrated: false } }
     : options.unverified ? {} : approvedMetadata;
   await page.route("**/api/**", async route => {
     const path = new URL(route.request().url()).pathname;
+    if (options.upload && path === "/api/scans" && route.request().method() === "POST") {
+      expect(route.request().postDataBuffer()).toEqual(Buffer.from(bytes));
+      return route.fulfill({ status: 201, json: { id: "scan", shareId: "room", sharePath: "/s/room", name: "New hallway" } });
+    }
     if (path === "/api/scans/scan/calibration") { scanMetadata = approvedMetadata; return route.fulfill({ json: { scan: { metadata: scanMetadata } } }); }
     if (path === "/api/scans/scan" && route.request().method() === "PATCH") {
       scanMetadata = route.request().postDataJSON().metadata; return route.fulfill({ json: { scan: { metadata: scanMetadata } } });
@@ -92,7 +96,7 @@ test("space manual and saved routes survive automatic mode", async ({ page }) =>
   await expect(page.getByLabel("Saved route")).toHaveValue("saved");
   await expect(page.getByText("1 connected segments")).toBeVisible();
 });
-test("no floor, disconnected doorway, missing calibration and denied shares", async ({ page }) => {
+test("no floor, disconnected doorway, relative coordinates and denied shares", async ({ page }) => {
   const bounds = await mockScan(page, { closed: true }); await page.goto("/s/room");
   await page.getByLabel("Automatic route", { exact: true }).check();
   await expect(page.getByRole("status")).toContainText("Walkable floor ready");
@@ -103,7 +107,7 @@ test("no floor, disconnected doorway, missing calibration and denied shares", as
   await page.getByLabel("Automatic route", { exact: true }).check();
   await expect(page.getByRole("alert")).toContainText(/continuous floor/);
   await expect(page.locator("canvas")).toBeVisible();
-  await page.unroute("**/api/**"); await mockScan(page, { unverified: true }); await page.reload();
+  await page.unroute("**/api/**"); await mockScan(page, { legacy: true }); await page.reload();
   await expect(page.getByLabel("Automatic route", { exact: true })).toBeDisabled();
   await page.unroute("**/api/**"); await mockScan(page, { denied: true }); await page.reload();
   await expect(page.getByRole("heading", { name: "This link isn't open to you" })).toBeVisible();
@@ -141,3 +145,29 @@ test("owner alignment confirmation alone cannot calibrate an imported model", as
   await page.getByRole("button", { name: "Save alignment confirmation" }).click();
   await expect(page.getByLabel("Automatic route", { exact: true })).toBeEnabled();
 });
+
+for (const width of [1280, 390]) {
+  test(`fresh upload can route without calibration or an extra mode toggle at ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+    const bounds = await mockScan(page, { owner: true, unverified: true, upload: true });
+    await page.goto("/maps/new");
+    await page.locator('input[type="file"]').setInputFiles({ name: "Hallway.glb", mimeType: "model/gltf-binary", buffer: Buffer.from(roomGlb()) });
+    await page.getByRole("button", { name: "Upload and get link" }).click();
+    await page.getByRole("link", { name: "Plan a route", exact: true }).click();
+    await expect(page.getByLabel("Automatic route", { exact: true })).toBeChecked();
+    await expect(page.getByRole("status")).toContainText("Walkable floor ready");
+    await expect(page.getByText(/Scale is unverified/)).toBeVisible();
+    await pick(page, bounds, spacePoint({ x: -4, y: 0, z: -2 }));
+    await pick(page, bounds, spacePoint({ x: 4, y: 0, z: -2 }));
+    await expect(page.getByRole("status")).toContainText(/Route ready · ≈ 10\.\d+ m/);
+    await page.getByText("Step-by-step directions", { exact: true }).click();
+    await expect(page.getByRole("list", { name: "Route directions" })).toContainText("Arrive at your destination");
+    await page.getByText("Step-by-step directions", { exact: true }).click();
+    await page.screenshot({ path: info.outputPath("upload-autopath.png") });
+    await page.getByRole("button", { name: "Clear route" }).click();
+    await expect(page.getByRole("status")).toContainText("Walkable floor ready");
+    await expect(page.getByRole("list", { name: "Route directions" })).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}

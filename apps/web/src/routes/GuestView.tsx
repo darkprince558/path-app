@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
-import { automaticNavigationIssue } from "../lib/automatic-navigation";
+import { singleScanNavigation } from "../lib/automatic-navigation";
 import { Wordmark } from "../components/Logo";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Milestone, Settings as SettingsIcon, X } from "lucide-react";
@@ -176,8 +176,11 @@ export default function GuestView() {
           <div className="absolute inset-0 touch-none" onPointerDown={() => setTouched(true)}>
             <Suspense fallback={<LoadingPanel label="Building the 3D view…" />}>
               <SpaceViewer
+                key={shareId}
                 automaticNavigation
-                navigationUnavailable={automaticNavigationIssue(state.meta.metadata)}
+                initialAutomaticNavigation
+                navigationUnavailable={singleScanNavigation(state.meta.metadata).unavailable}
+                navigationApproximate={singleScanNavigation(state.meta.metadata).approximate}
                 avoidStairs={avoidStairs}
                 models={state.models}
                 nodes={[]}
