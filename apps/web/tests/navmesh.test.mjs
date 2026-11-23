@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { BoxGeometry, Group, BufferGeometry, Float32BufferAttribute, Mesh, MeshStandardMaterial } from "three";
-import { buildNavMesh, DEFAULT_AGENT, trianglesFromObject } from "../src/lib/navmesh.ts";
+import { buildNavMesh, cellSizeFor, DEFAULT_AGENT, trianglesFromObject } from "../src/lib/navmesh.ts";
 import { createRoom, disposeRoom } from "../src/lib/navmesh-room.ts";
 
 const start = { x: -4, y: 0, z: -2 }, end = { x: 4, y: 0, z: -2 };
@@ -239,6 +239,28 @@ test("a tall multi-storey footprint builds although its bounding volume exceeds 
     try {
       assert.equal(nav.route({ x: -20, y: -1.4, z: -20 }, { x: 20, y: -1.4, z: 20 }).ok, true, "lower floor routes");
       assert.equal(nav.route({ x: -5, y: 3.1, z: -5 }, { x: 5, y: 3.1, z: 5 }).ok, true, "upper floor routes");
+    } finally { nav.dispose(); }
+  } finally { disposeRoom(group); }
+});
+
+test("the NavMesh grid stays at 10 cm for rooms and coarsens only for building-sized footprints", () => {
+  assert.equal(cellSizeFor(48, 45), 0.1);        // ACEB
+  assert.equal(cellSizeFor(129, 281), 0.15);     // Hack Western DEMO: 3.6M cells at 10 cm
+  assert.equal(cellSizeFor(300, 300), 0.25);
+  assert.equal(cellSizeFor(1000, 1000), null);   // even 30 cm is too many cells
+});
+
+test("a 300 x 100 m floor, rejected at a 10 cm grid, routes end to end on a coarser grid", async () => {
+  const group = new Group();
+  const slab = new Mesh(new BoxGeometry(300, 0.2, 100), new MeshStandardMaterial()); slab.position.set(0, -0.1, 0); group.add(slab);
+  const wall = new Mesh(new BoxGeometry(0.3, 3, 60), new MeshStandardMaterial()); wall.position.set(0, 1.5, -20); group.add(wall);
+  try {
+    const nav = await buildNavMesh(trianglesFromObject(group));
+    try {
+      assert.equal(nav.cellSize, 0.15);
+      const route = nav.route({ x: -140, y: 0, z: -20 }, { x: 140, y: 0, z: -20 });
+      assert.equal(route.ok, true);
+      assert.ok(route.distance > 280 && route.distance < 300, `goes around the wall: ${route.ok && route.distance}`);
     } finally { nav.dispose(); }
   } finally { disposeRoom(group); }
 });

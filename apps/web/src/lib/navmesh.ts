@@ -6,8 +6,18 @@ export interface Point { x: number; y: number; z: number }
 export interface Triangles { positions: number[]; indices: number[] }
 export interface Agent { radius: number; height: number; slope: number; step: number }
 export const DEFAULT_AGENT: Agent = { radius: 0.3, height: 1.8, slope: 40, step: 0.2 };
-export const MAX_NAV_VERTICES = 2_000_000, MAX_NAV_TRIANGLES = 2_000_000;
-const CS = 0.1, CH = 0.05;
+// Whole-building scans (Hack Western DEMO: 2.25M triangles over 129 x 281 m) build in about
+// a second at a 15 cm grid; geometry, not Recast, sets these limits.
+export const MAX_NAV_VERTICES = 4_000_000, MAX_NAV_TRIANGLES = 4_000_000;
+const CH = 0.05, MAX_CELLS = 2_000_000;
+/** Horizontal grid sizes, finest first. Rooms keep 10 cm; large footprints coarsen to fit MAX_CELLS. */
+export const CELL_SIZES = [0.1, 0.15, 0.2, 0.25, 0.3] as const;
+
+/** The finest grid whose footprint fits the cell budget, or null when even 30 cm is too many cells. */
+export function cellSizeFor(width: number, depth: number): number | null {
+  for (const cs of CELL_SIZES) if (Math.ceil(width / cs) * Math.ceil(depth / cs) <= MAX_CELLS) return cs;
+  return null;
+}
 // The SDK checks completed initialization, not an in-flight initialization.
 // React StrictMode and concurrent callers must share one WASM module instance.
 let initialization: Promise<void> | undefined;
@@ -50,7 +60,7 @@ export function trianglesFromObject(root: Object3D): Triangles {
   return { positions, indices };
 }
 
-function validate(input: Triangles, agent: Agent) {
+function validate(input: Triangles, agent: Agent): number {
   if (!Number.isFinite(agent.radius) || agent.radius < 0.1 || agent.radius > 1.5 ||
       !Number.isFinite(agent.height) || agent.height < 0.5 || agent.height > 3 ||
       !Number.isFinite(agent.slope) || agent.slope < 0 || agent.slope > 60 ||
@@ -64,26 +74,28 @@ function validate(input: Triangles, agent: Agent) {
   }
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < p.length; i++) { const a = i % 3; min[a] = Math.min(min[a]!, p[i]!); max[a] = Math.max(max[a]!, p[i]!); }
-  const x = Math.ceil((max[0]! - min[0]!) / CS), z = Math.ceil((max[2]! - min[2]!) / CS);
+  const width = max[0]! - min[0]!, depth = max[2]! - min[2]!;
+  const cs = cellSizeFor(width, depth);
   const y = Math.max(1, Math.ceil((max[1]! - min[1]!) / CH));
   // Recast's heightfield is sparse: it allocates per horizontal cell and per occupied span,
   // so cost follows the footprint and the triangle budget above, not the bounding volume.
   // A volume cap rejected multi-storey scans (ACEB: 48 x 45 x 9.5 m, built in ~0.3 s).
-  if (!x || !z || x * z > 2_000_000 || y > 65_000) throw new Error("Geometry exceeds the demo voxel budget or has empty bounds.");
+  if (!(width > 0) || !(depth > 0) || cs === null || y > 65_000) throw new Error("Geometry exceeds the demo voxel budget or has empty bounds.");
   const a = new Vector3(), b = new Vector3(), c = new Vector3();
   for (let i = 0; i < ix.length; i += 3) {
     a.fromArray(p, ix[i]! * 3); b.fromArray(p, ix[i + 1]! * 3); c.fromArray(p, ix[i + 2]! * 3);
     if (b.sub(a).cross(c.sub(a)).lengthSq() < 1e-16) throw new Error("Geometry contains degenerate triangles.");
   }
+  return cs;
 }
 
 export type NavRoute = { ok: true; points: Point[]; distance: number } | { ok: false; message: string };
 
 export async function buildNavMesh(input: Triangles, agent: Agent = DEFAULT_AGENT) {
-  validate(input, agent);
+  const cs = validate(input, agent);
   await initialize();
   const result = generateSoloNavMesh(input.positions, input.indices, {
-    cs: CS, ch: CH, walkableRadius: Math.ceil(agent.radius / CS),
+    cs, ch: CH, walkableRadius: Math.ceil(agent.radius / cs),
     walkableHeight: Math.ceil(agent.height / CH), walkableClimb: Math.floor(agent.step / CH),
     walkableSlopeAngle: agent.slope, minRegionArea: 0, mergeRegionArea: 0,
     maxSimplificationError: 0.5, detailSampleDist: 1, detailSampleMaxError: CH,
@@ -96,6 +108,8 @@ export async function buildNavMesh(input: Triangles, agent: Agent = DEFAULT_AGEN
   let disposed = false;
   return {
     debug: { positions, indices },
+    /** Horizontal grid used for this scan, in metres (coarser for large footprints). */
+    cellSize: cs,
     dispose() { if (!disposed) { disposed = true; query.destroy(); mesh.destroy(); } },
     route(start: Point, end: Point): NavRoute {
       if (disposed) return { ok: false, message: "Navigation has been disposed." };

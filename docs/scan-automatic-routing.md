@@ -104,8 +104,10 @@ checks and corridor straightening. It approximates the shortest route on the
 voxelized NavMesh; it does not promise an exact continuous-surface geodesic.
 
 Recast is lazy-loaded when routing is enabled. Generated query/mesh and debug geometry are disposed
-on disable, replacement and unmount; cancelled builds dispose their result. Geometry budgets support up to 2 million vertices and 2 million triangles;
-voxel budgets remain 2 million horizontal cells and 2048 route polygons. There is no
+on disable, replacement and unmount; cancelled builds dispose their result. Geometry budgets support up to 4 million vertices and 4 million triangles;
+voxel budgets remain 2 million horizontal cells and 2048 route polygons. The horizontal
+grid is 10 cm when the footprint fits, otherwise the finest of 15, 20, 25 or 30 cm that does
+(the 129 × 281 m Hack Western DEMO builds in about 1.3 s at 15 cm). There is no
 bounding-volume cap: Recast stores only occupied spans, so multi-storey scans build
 (a 48 × 45 × 9.5 m two-storey capture builds in about 0.3 s). Generation still runs on the
 main thread after WASM initialization. Large captures may exceed the budget or pause
